@@ -19,9 +19,6 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef as builder
 
-# Install charcoal
-RUN cargo install --git https://github.com/camden-smallwood/charcoal.git --rev f6338bf318500dd6977af813c37f66c504925c44
-
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 COPY --from=planner /build/recipe.json recipe.json
 # Build our project dependecies, not our application!
@@ -46,21 +43,6 @@ WORKDIR /root/
 COPY --from=builder /build/target/debug/forc_pub .
 COPY --from=builder /build/target/debug/forc_pub.d .
 COPY --from=builder /build/Rocket.toml .
-COPY --from=builder /build/projects projects
-COPY --from=builder /usr/local/cargo/bin/charcoal /bin
-
-# Install fuelup
-RUN curl -fsSL https://install.fuel.network/ | sh -s -- --no-modify-path
-ENV PATH="/root/.fuelup/bin:$PATH"
-
-# Install all fuel toolchains
-RUN fuelup toolchain install latest
-RUN fuelup toolchain install nightly
-RUN fuelup toolchain install beta-1
-RUN fuelup toolchain install beta-2
-RUN fuelup toolchain install beta-3
-RUN fuelup toolchain install beta-4
-RUN fuelup toolchain install beta-5
 
 EXPOSE 6000
 
