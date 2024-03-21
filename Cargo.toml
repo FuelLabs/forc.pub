@@ -1,0 +1,14 @@
+[package]
+name = "forc_pub"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nanoid = "0.4.0"
+fs_extra = "1.2.0"
+hex = "0.4.3"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1.0.91"
+regex = "1.7.0"
+rocket = { version = "0.5.0-rc.2", features = ["tls", "json"] }
+serde = { version = "1.0", features = ["derive"] }
