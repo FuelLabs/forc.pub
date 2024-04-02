@@ -44,6 +44,6 @@ COPY --from=builder /build/target/debug/forc_pub .
 COPY --from=builder /build/target/debug/forc_pub.d .
 COPY --from=builder /build/Rocket.toml .
 
-EXPOSE 6000
+EXPOSE 8080
 
 CMD ["./forc_pub"]
