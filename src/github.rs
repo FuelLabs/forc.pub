@@ -68,13 +68,10 @@ async fn fetch_user(token: String) -> Result<User, GithubError> {
 
     let status = res.status();
 
-    let body = res
-        .json::<User>()
-        .await
-        .map_err(|_| GithubError::Api {
-            name: "user".to_string(),
-            status: status.to_string(),
-        })?;
+    let body = res.json::<User>().await.map_err(|_| GithubError::Api {
+        name: "user".to_string(),
+        status: status.to_string(),
+    })?;
 
     Ok(body)
 }
