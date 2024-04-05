@@ -29,11 +29,8 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
     saveSessionId,
     clearSessionId,
   } = useLocalSession();
-  // const {sessionId, saveSessionId, clearSessionId}= useSessionId();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // const githubCode = loadGithubCode();
-  // const sessionId = loadSessionId();
   const logout = useCallback(() => {
     setGithubUser(null);
     clearSessionId();
@@ -57,7 +54,7 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
     const params = {
       code: githubCode,
     };
-    const request = new Request('http://0.0.0.0:8080/login', {
+    const request = new Request('http://localhost:8080/login', {
       method: 'POST',
       body: JSON.stringify(params),
     });
@@ -82,7 +79,13 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
       .catch((error) => {
         console.log('Unexpected error: ', error);
       });
-  }, [githubCode, setGithubUser, clearGithubCode, clearSessionId, saveSessionId]);
+  }, [
+    githubCode,
+    setGithubUser,
+    clearGithubCode,
+    clearSessionId,
+    saveSessionId,
+  ]);
 
   // If there's a session id, attempt to fetch the user info from the session.
   useEffect(() => {
@@ -90,9 +93,12 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
       return;
     }
 
-    const request = new Request(`http://0.0.0.0:8080/session?id=${sessionId}`, {
-      method: 'GET',
-    });
+    const request = new Request(
+      `http://localhost:8080/session?id=${sessionId}`,
+      {
+        method: 'GET',
+      }
+    );
     fetch(request)
       .then((response) => {
         if (response.status < 400) {
