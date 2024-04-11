@@ -33,6 +33,11 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: forc-pub
+            - secretRef:
+                name: forc-pub
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -44,9 +49,6 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 60
-          env:
-            - name: PORT
-              value: {{ .Values.service.port | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
