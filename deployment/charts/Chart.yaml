@@ -1,6 +1,0 @@
-apiVersion: v2
-name: forc.pub
-description: forc.pub Helm Chart
-type: application
-appVersion: '0.1.0'
-version: 0.1.0

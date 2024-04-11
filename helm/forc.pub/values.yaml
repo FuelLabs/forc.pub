@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/fuellabs/forc.pub
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: "master"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -37,8 +37,8 @@ securityContext: {}
 #   runAsUser: 1000
 
 service:
-  type: NodePort
-  port: 6000
+  type: ClusterIP
+  port: 8080
 
 ingress:
   enabled: false
