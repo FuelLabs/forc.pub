@@ -3,9 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { useLocalSession } from '../../../utils/localStorage';
 
 interface AuthenticatedUser {
-  avatar_url?: string;
-  name: string;
+  fullName: string;
   email?: string;
+  githubUrl: string;
+  githubLogin: string;
+  isAdmin: boolean;
+  avatarUrl?: string;
 }
 
 interface LoginResponse {

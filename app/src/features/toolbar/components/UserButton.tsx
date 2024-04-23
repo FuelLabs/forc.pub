@@ -52,12 +52,12 @@ function UserButton() {
       <StyledWrapper>
         <Button color='inherit' onClick={handleMenu} endIcon={<ArrowDropDownIcon />}>
           <img
-            src={user.avatar_url}
-            title={user.name}
-            alt={`${user.name} (TODO: login)`}
+            src={user.avatarUrl}
+            title={user.fullName}
+            alt={user.githubLogin}
             style={{ height: '30px', width: '30px', borderRadius: '50%' }}
           />
-          <div style={{ marginLeft: '10px' }}>{user.name}</div>
+          <div style={{ marginLeft: '10px' }}>{user.fullName}</div>
         </Button>
         <Menu
           anchorEl={anchorEl}

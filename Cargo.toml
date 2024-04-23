@@ -3,6 +3,10 @@ name = "forc_pub"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "forc_pub"
+path = "src/lib.rs"
+
 [dependencies]
 nanoid = "0.4.0"
 hex = "0.4.3"
@@ -13,3 +17,7 @@ rocket = { version = "0.5.0-rc.2", features = ["tls", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 reqwest = { version = "0.12.2", features = ["json"] }
 thiserror = "1.0.58"
+diesel = { version = "2.1.6", features = ["postgres", "uuid", "r2d2"] }
+dotenvy = "0.15"
+uuid = "1.8.0"
+diesel_migrations = "2.1.0"
