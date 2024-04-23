@@ -66,7 +66,7 @@ fn test_multiple_user_sessions() {
     assert_eq!(result.avatar_url.expect("is some"), TEST_URL_1);
     assert_eq!(result.github_url, TEST_URL_2);
     assert!(result.is_admin);
-    
+
     let result = db.get_user_for_session(session2).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_1);
 
