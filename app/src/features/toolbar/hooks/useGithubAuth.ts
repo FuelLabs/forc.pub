@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLocalSession } from '../../../utils/localStorage';
+import { SERVER_URI } from '../../../constants';
 
 interface AuthenticatedUser {
-  avatar_url?: string;
-  name: string;
+  fullName: string;
   email?: string;
+  githubUrl: string;
+  githubLogin: string;
+  isAdmin: boolean;
+  avatarUrl?: string;
 }
 
 interface LoginResponse {
@@ -54,7 +58,7 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
     const params = {
       code: githubCode,
     };
-    const request = new Request('http://localhost:8080/login', {
+    const request = new Request(`${SERVER_URI}/login`, {
       method: 'POST',
       body: JSON.stringify(params),
     });
@@ -93,12 +97,9 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
       return;
     }
 
-    const request = new Request(
-      `http://localhost:8080/session?id=${sessionId}`,
-      {
-        method: 'GET',
-      }
-    );
+    const request = new Request(`${SERVER_URI}/session?id=${sessionId}`, {
+      method: 'GET',
+    });
     fetch(request)
       .then((response) => {
         if (response.status < 400) {

@@ -74,6 +74,9 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
+      - uses: docker-practice/actions-setup-docker@master
+        timeout-minutes: 12
+      - run: ./scripts/start_local_db.sh
       - uses: Swatinem/rust-cache@v1
       - name: Run tests
         uses: actions-rs/cargo@v1
