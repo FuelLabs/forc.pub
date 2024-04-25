@@ -21,7 +21,7 @@ This section is for local development of `forc.pub`.
 
 ### Dependencies and Tools
 
-Sway Playground is built in Rust and TypeScript. To begin, install the Rust toolchain following instructions at <https://www.rust-lang.org/tools/install>. Then configure your Rust toolchain to use Rust `stable`:
+`forc.pub` is built in Rust and TypeScript. To begin, install the Rust toolchain following instructions at <https://www.rust-lang.org/tools/install>. Then configure your Rust toolchain to use Rust `stable`:
 
 ```sh
 rustup default stable
@@ -67,7 +67,7 @@ cd forc.pub
 cargo build
 ```
 
-Confirm the Sway Playground built successfully:
+Confirm the server built successfully:
 
 ```sh
 cargo run --bin forc.pub
