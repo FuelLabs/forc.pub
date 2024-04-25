@@ -118,7 +118,7 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
       .catch((error) => {
         console.log('Unexpected error: ', error);
       });
-  }, [githubUser, sessionId, setGithubUser]);
+  }, [githubUser, sessionId, setGithubUser, clearSessionId]);
 
   return [githubUser, logout];
 }
