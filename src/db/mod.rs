@@ -27,10 +27,8 @@ impl Default for Database {
 impl Database {
     pub fn new() -> Self {
         // Create a connection pool
-        dotenv().ok();
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let pool = Pool::builder()
-            .build(ConnectionManager::<PgConnection>::new(database_url))
+            .build(ConnectionManager::<PgConnection>::new(db_url()))
             .expect("db connection pool");
 
         // Run migrations
@@ -52,4 +50,13 @@ impl Database {
 
 pub(crate) fn string_to_uuid(s: String) -> Result<Uuid, DatabaseError> {
     Uuid::parse_str(s.as_str()).map_err(|_| DatabaseError::InvalidUuid(s))
+}
+
+fn db_url() -> String {
+    dotenv().ok();
+    let user = env::var("POSTGRES_USER").expect("POSTGRES_USER must be set");
+    let password = env::var("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD must be set");
+    let uri = env::var("POSTGRES_URI").expect("POSTGRES_URI must be set");
+    let db_name = env::var("POSTGRES_DB_NAME").expect("POSTGRES_DB_NAME must be set");
+    format!("postgres://{user}:{password}@{uri}/{db_name}")
 }
