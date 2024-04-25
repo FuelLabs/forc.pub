@@ -8,6 +8,7 @@ import {  useNavigate } from 'react-router-dom';
 import { useGithubAuth } from '../hooks/useGithubAuth';
 import { useLocalSession } from '../../../utils/localStorage';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { REDIRECT_URI } from '../../../constants';
 
 export const GITHUB_CLIENT_ID = 'Iv1.ebdf596c6c548759';
 
@@ -98,7 +99,7 @@ function UserButton() {
           ].join(',');
 
           window.open(
-            `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}`,
+            `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${REDIRECT_URI}`,
             undefined,
             windowDimensions
           );
