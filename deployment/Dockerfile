@@ -32,7 +32,7 @@ RUN cargo build
 FROM ubuntu:22.04 as run
 
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends ca-certificates curl git \
+    && apt-get install -y --no-install-recommends ca-certificates curl git libpq5 \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \

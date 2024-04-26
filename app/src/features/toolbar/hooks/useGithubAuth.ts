@@ -112,12 +112,13 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
         response.user && setGithubUser(response.user);
         if (response.error) {
           console.log('session error: ', response.error);
+          clearSessionId();
         }
       })
       .catch((error) => {
         console.log('Unexpected error: ', error);
       });
-  }, [githubUser, sessionId, setGithubUser]);
+  }, [githubUser, sessionId, setGithubUser, clearSessionId]);
 
   return [githubUser, logout];
 }
