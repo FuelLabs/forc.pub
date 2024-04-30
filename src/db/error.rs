@@ -10,4 +10,6 @@ pub enum DatabaseError {
     InsertUserFailed(String),
     #[error("Failed to save session for user; {0}")]
     InsertSessionFailed(String),
+    #[error("Failed to save session for user; {0}")]
+    InsertTokenFailed(String),
 }

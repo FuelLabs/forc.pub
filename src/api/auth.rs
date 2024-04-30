@@ -1,6 +1,12 @@
 use rocket::serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::models;
+
+pub struct UserSessionId {
+    pub user_id: Uuid,
+    pub session_id: String,
+}
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -42,26 +48,19 @@ pub struct LoginResponse {
     pub error: Option<String>,
 }
 
-/// The response to a session request.
+/// The response to a logout request.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SessionResponse {
-    pub user: Option<User>,
+pub struct LogoutResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
-/// The publish request.
-#[derive(Deserialize, Debug)]
-pub struct PublishRequest {
-    pub name: String,
-    pub version: String,
-}
-
-/// The response to a publish request.
+/// The response to a user GET request.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PublishResponse {
+pub struct UserResponse {
+    pub user: Option<User>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }

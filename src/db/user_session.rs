@@ -4,6 +4,7 @@ use super::{string_to_uuid, Database};
 use diesel::prelude::*;
 use diesel::upsert::excluded;
 use std::time::{Duration, SystemTime};
+use uuid::Uuid;
 
 impl Database {
     /// Insert a user session into the database and return the session ID.
@@ -11,7 +12,7 @@ impl Database {
     /// If the user does exist, update the user's full name and avatar URL if they have changed.
     pub fn insert_user_session(
         &self,
-        user: &api::User,
+        user: &api::auth::User,
         expires_in: u32,
     ) -> Result<String, DatabaseError> {
         let connection = &mut self.connection();
@@ -53,6 +54,16 @@ impl Database {
         Ok(saved_session.id.to_string())
     }
 
+    /// Fetch a user given the user ID.
+    pub fn get_user(&self, user_id: Uuid) -> Result<models::User, DatabaseError> {
+        let connection = &mut self.connection();
+        schema::users::table
+            .filter(schema::users::id.eq(user_id))
+            .select(models::User::as_returning())
+            .first::<models::User>(connection)
+            .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
+    }
+
     /// Fetch a user from the database for a given session ID.
     pub fn get_user_for_session(&self, session_id: String) -> Result<models::User, DatabaseError> {
         let session_uuid = string_to_uuid(session_id.clone())?;
@@ -63,5 +74,15 @@ impl Database {
             .select(models::User::as_returning())
             .first::<models::User>(connection)
             .map_err(|_| DatabaseError::NotFound(session_id))
+    }
+
+    /// Delete a session given its ID.
+    pub fn delete_session(&self, session_id: String) -> Result<(), DatabaseError> {
+        let session_uuid = string_to_uuid(session_id.clone())?;
+        let connection = &mut self.connection();
+        diesel::delete(schema::sessions::table.filter(schema::sessions::id.eq(session_uuid)))
+            .execute(connection)
+            .map_err(|_| DatabaseError::NotFound(session_id))?;
+        Ok(())
     }
 }

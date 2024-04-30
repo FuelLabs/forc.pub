@@ -1,5 +1,6 @@
 mod error;
 mod user_session;
+mod api_token;
 
 use self::error::DatabaseError;
 use crate::{api, models, schema};

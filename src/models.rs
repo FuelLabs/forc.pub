@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+use diesel::{prelude::*, sql_types::Bytea};
 use std::time::SystemTime;
 use uuid::Uuid;
 
@@ -42,4 +42,24 @@ pub struct Session {
 pub struct NewSession {
     pub user_id: Uuid,
     pub expires_at: SystemTime,
+}
+
+#[derive(Queryable, Selectable, Debug)]
+#[diesel(table_name = crate::schema::api_tokens)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Token {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub friendly_name: String,
+    pub expires_at: Option<SystemTime>,
+    pub created_at: SystemTime,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::api_tokens)]
+pub struct NewToken {
+    pub user_id: Uuid,
+    pub friendly_name: String,
+    pub token: Vec<u8>,
+    pub expires_at: Option<SystemTime>,
 }

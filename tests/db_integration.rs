@@ -23,8 +23,8 @@ fn clear_tables(db: &Database) {
         .expect("clear users table");
 }
 
-fn mock_user_1() -> api::User {
-    api::User {
+fn mock_user_1() -> api::auth::User {
+    api::auth::User {
         github_login: TEST_LOGIN_1.to_string(),
         full_name: TEST_FULL_NAME_1.to_string(),
         email: Some(TEST_EMAIL_1.to_string()),
@@ -34,8 +34,8 @@ fn mock_user_1() -> api::User {
     }
 }
 
-fn mock_user_2() -> api::User {
-    api::User {
+fn mock_user_2() -> api::auth::User {
+    api::auth::User {
         github_login: TEST_LOGIN_2.to_string(),
         ..Default::default()
     }
