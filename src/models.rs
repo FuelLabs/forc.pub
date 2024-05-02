@@ -1,4 +1,4 @@
-use diesel::{prelude::*, sql_types::Bytea};
+use diesel::prelude::*;
 use std::time::SystemTime;
 use uuid::Uuid;
 

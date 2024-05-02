@@ -6,18 +6,17 @@ extern crate rocket;
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
-    ApiError, ApiResult, EmptyResponse,
+    ApiResult, EmptyResponse,
 };
 use forc_pub::cors::Cors;
-use forc_pub::db::error::DatabaseError;
+
 use forc_pub::db::Database;
 use forc_pub::github::handle_login;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
-use forc_pub::util::sys_time_to_epoch;
-use rocket::http::{Cookie, CookieJar};
-use rocket::time::OffsetDateTime;
-use rocket::{serde::json::Json, State};
 
+use rocket::http::{Cookie, CookieJar};
+
+use rocket::{serde::json::Json, State};
 
 #[derive(Default)]
 pub struct ServerState {
@@ -34,10 +33,7 @@ async fn login(
     let (user, expires_in) = handle_login(request.code.clone()).await?;
     let session = db.insert_user_session(&user, expires_in)?;
     let session_id = session.id.to_string();
-    cookies.add(
-        Cookie::build(SESSION_COOKIE_NAME, session_id.clone())
-            .finish(),
-    );
+    cookies.add(Cookie::build(SESSION_COOKIE_NAME, session_id.clone()).finish());
     Ok(Json(LoginResponse { user, session_id }))
 }
 
@@ -75,11 +71,7 @@ fn new_token(
 }
 
 #[delete("/token/<id>")]
-fn delete_token(
-    db: &State<Database>,
-    auth: SessionAuth,
-    id: String,
-) -> ApiResult<EmptyResponse> {
+fn delete_token(db: &State<Database>, auth: SessionAuth, id: String) -> ApiResult<EmptyResponse> {
     let user_id = auth.user.id;
     let _ = db.delete_token(user_id, id.clone())?;
     Ok(Json(EmptyResponse))

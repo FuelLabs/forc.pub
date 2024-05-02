@@ -1,16 +1,14 @@
-use std::error;
-use std::f64::consts::E;
 use std::time::SystemTime;
 
-use crate::db::{string_to_uuid, Database};
-use crate::{api, models};
-use rocket::fairing::{Fairing, Info, Kind};
-use rocket::http::{Header, Status};
-use rocket::outcome::try_outcome;
+use crate::db::Database;
+use crate::models;
+
+use rocket::http::Status;
+
 use rocket::request::{FromRequest, Outcome};
-use rocket::response::status;
-use rocket::{Data, Request, Response};
-use thiserror::Error;
+
+use rocket::Request;
+
 use uuid::Uuid;
 
 pub const SESSION_COOKIE_NAME: &str = "session";
@@ -40,13 +38,10 @@ impl<'r> FromRequest<'r> for SessionAuth {
             .get(SESSION_COOKIE_NAME)
             .map(|c| Uuid::parse_str(c.value()).ok())
         {
-            if let Ok(session) = db.get_session(session_id.clone()) {
+            if let Ok(session) = db.get_session(session_id) {
                 if let Ok(user) = db.get_user_for_session(session_id.to_string()) {
                     if session.expires_at > SystemTime::now() {
-                        return Outcome::Success(SessionAuth {
-                            user: user.into(),
-                            session_id,
-                        });
+                        return Outcome::Success(SessionAuth { user, session_id });
                     }
                 }
             }

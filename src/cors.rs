@@ -17,12 +17,18 @@ impl Fairing for Cors {
 
     // Build an Access-Control-Allow-Origin * policy Response header.
     async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
-        response.set_header(Header::new("Access-Control-Allow-Origin", "http://localhost:3000")); // TODO: env var
+        response.set_header(Header::new(
+            "Access-Control-Allow-Origin",
+            "http://localhost:3000",
+        )); // TODO: env var
         response.set_header(Header::new(
             "Access-Control-Allow-Methods",
             "POST, PATCH, PUT, DELETE, HEAD, OPTIONS, GET",
         ));
-        response.set_header(Header::new("Access-Control-Allow-Headers", "*, Access-Control-Request-Headers, Content-Type"));
+        response.set_header(Header::new(
+            "Access-Control-Allow-Headers",
+            "*, Access-Control-Request-Headers, Content-Type",
+        ));
         response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
     }
 }

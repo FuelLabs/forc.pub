@@ -36,8 +36,4 @@ diesel::table! {
 diesel::joinable!(api_tokens -> users (user_id));
 diesel::joinable!(sessions -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    api_tokens,
-    sessions,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(api_tokens, sessions, users,);

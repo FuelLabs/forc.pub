@@ -72,7 +72,7 @@ impl Database {
             .select(models::Session::as_returning())
             .first::<models::Session>(connection)
             .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
-    }    
+    }
 
     /// Fetch a user from the database for a given session ID.
     pub fn get_user_for_session(&self, session_id: String) -> Result<models::User, DatabaseError> {

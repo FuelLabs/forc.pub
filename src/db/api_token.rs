@@ -1,13 +1,12 @@
 use super::error::DatabaseError;
-use super::{api, models, schema};
+use super::{models, schema};
 use super::{string_to_uuid, Database};
 use diesel::prelude::*;
-use diesel::upsert::excluded;
-use std::time::{Duration, SystemTime};
-use uuid::Uuid;
+
 use rand::{distributions::Uniform, rngs::OsRng, Rng};
 use sha2::{Digest, Sha256};
 
+use uuid::Uuid;
 
 /// NEVER CHANGE THE PREFIX OF EXISTING TOKENS!!! Doing so will implicitly
 /// revoke all the tokens, disrupting production users.
@@ -87,5 +86,4 @@ fn generate_token() -> String {
         TOKEN_PREFIX,
         generate_secure_alphanumeric_string(TOKEN_LENGTH)
     )
-    .into()
 }

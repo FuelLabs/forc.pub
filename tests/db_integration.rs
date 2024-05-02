@@ -1,7 +1,6 @@
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::db::Database;
-use uuid::Uuid;
 
 /// Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
 /// This should be done by running `./scripts/start_local_db.sh` before running the tests.
@@ -56,7 +55,9 @@ fn test_multiple_user_sessions() {
     // Insert another user
     let session3 = db.insert_user_session(&user2, 1000).expect("result is ok");
 
-    let result = db.get_user_for_session(session1.id.to_string()).expect("result is ok");
+    let result = db
+        .get_user_for_session(session1.id.to_string())
+        .expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_1);
     assert_eq!(result.full_name, TEST_FULL_NAME_1);
     assert_eq!(result.email.expect("is some"), TEST_EMAIL_1);
@@ -64,10 +65,14 @@ fn test_multiple_user_sessions() {
     assert_eq!(result.github_url, TEST_URL_2);
     assert!(result.is_admin);
 
-    let result = db.get_user_for_session(session2.id.to_string()).expect("result is ok");
+    let result = db
+        .get_user_for_session(session2.id.to_string())
+        .expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_1);
 
-    let result = db.get_user_for_session(session3.id.to_string()).expect("result is ok");
+    let result = db
+        .get_user_for_session(session3.id.to_string())
+        .expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_2);
 
     clear_tables(&db);

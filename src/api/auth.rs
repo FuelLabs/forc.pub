@@ -1,5 +1,4 @@
 use rocket::serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::models;
 

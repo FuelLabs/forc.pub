@@ -1,7 +1,12 @@
-pub mod auth;
 pub mod api_token;
+pub mod auth;
 
-use rocket::{http::Status, response::Responder, serde::{json::Json, Deserialize, Serialize}, Request};
+use rocket::{
+    http::Status,
+    response::Responder,
+    serde::{json::Json, Serialize},
+    Request,
+};
 use thiserror::Error;
 
 /// A wrapper for API responses that can return errors.
@@ -20,11 +25,10 @@ pub enum ApiError {
 }
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
-	fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
+    fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
         match self {
             ApiError::Database(_) => Err(Status::InternalServerError),
             ApiError::Github(_) => Err(Status::Unauthorized),
         }
-	}
+    }
 }
-

@@ -1,6 +1,5 @@
 use crate::{models, util::sys_time_to_epoch};
 use rocket::serde::{Deserialize, Serialize};
-use std::time::{SystemTime, Duration, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
