@@ -21,7 +21,10 @@ fn get_allowed_origin(headers: &HeaderMap<'_>) -> Option<String> {
         }
 
         // If the request origin matches the allowed regex, allow only the request origin.
-        let re = Regex::new(r"^https://forc(((.pub)|((-pub)(-git-[a-zA-Z0-9-]+-fuel-labs)?\.vercel\.app)))$").unwrap();
+        let re = Regex::new(
+            r"^https://forc(((.pub)|((-pub)(-git-[a-zA-Z0-9-]+-fuel-labs)?\.vercel\.app)))$",
+        )
+        .unwrap();
         if re.is_match(req_origin) {
             return Some(req_origin.to_string());
         }
