@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { SERVER_URI } from '../../../constants';
 import { useGithubAuth } from '../../toolbar/hooks/useGithubAuth';
-import axios from 'axios';
 import HTTP, {
   CreateTokenResponse,
   RawToken,
-  TokensResponse,
 } from '../../../utils/http';
 
 export interface Token {

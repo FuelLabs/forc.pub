@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLocalSession } from '../../../utils/localStorage';
-import { SERVER_URI } from '../../../constants';
 import useCookie from 'react-use-cookie';
-import axios from 'axios';
-import HTTP, {
-  AuthenticatedUser,
-  LoginResponse,
-  UserResponse,
-} from '../../../utils/http';
+import HTTP, { AuthenticatedUser } from '../../../utils/http';
 
 export function useGithubAuth(): [
   AuthenticatedUser | null,
@@ -23,7 +17,7 @@ export function useGithubAuth(): [
     await HTTP.post(`/logout`);
     setSessionId('');
     setGithubUser(null);
-  }, [setGithubUser]);
+  }, [setGithubUser, setSessionId]);
 
   // If this was a redirect from Github, we have a code to log in with.
   useEffect(() => {
@@ -41,16 +35,18 @@ export function useGithubAuth(): [
       return;
     }
 
-    HTTP.post(`/login`, { code: githubCode }).then(({ data }) => {
-      clearGithubCode();
-      if (data.user) {
-        setGithubUser(data.user);
-      }
-    }).catch(() => clearGithubCode());
+    HTTP.post(`/login`, { code: githubCode })
+      .then(({ data }) => {
+        clearGithubCode();
+        if (data.user) {
+          setGithubUser(data.user);
+        }
+      })
+      .catch(() => clearGithubCode());
   }, [githubCode, setGithubUser, clearGithubCode]);
 
   useEffect(() => {
-      // Attempt to fetch the logged in user info if the session cookie is set and the user hasn't been fetched.
+    // Attempt to fetch the logged in user info if the session cookie is set and the user hasn't been fetched.
     if (!!githubUser || !sessionId) {
       return;
     }
@@ -62,4 +58,3 @@ export function useGithubAuth(): [
 
   return [githubUser, logout];
 }
-

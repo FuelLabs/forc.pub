@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Token, useApiTokens } from '../features/tokens/hooks/useApiTokens';
+import React from 'react';
+import { useApiTokens } from '../features/tokens/hooks/useApiTokens';
 import { useIsMobile } from '../features/toolbar/hooks/useIsMobile';
 import { Button, TextField } from '@mui/material';
 import TokenCard from '../features/tokens/components/TokenCard';
@@ -34,7 +34,7 @@ function ApiTokens() {
             size='large'
             style={{ float: 'right' }}
             onClick={async () => {
-              let { token } = await createToken(tokenName);
+              await createToken(tokenName);
               setTokenName('');
               setShowTokenForm(false);
             }}>

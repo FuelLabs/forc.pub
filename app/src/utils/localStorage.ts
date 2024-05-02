@@ -1,7 +1,6 @@
 import { useLocalStorage } from "usehooks-ts";
 
 const STORAGE_GH_CODE_KEY = 'gh_code';
-const STORAGE_FP_SESSION_KEY = 'fp_session';
 
 export function useLocalSession() {
   function clear<T>(key: string, handleSave: (value: T | null) => void) {

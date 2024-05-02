@@ -1,6 +1,5 @@
 import React from 'react';
-import { Button, Card, CardHeader, IconButton } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { Button } from '@mui/material';
 import { Token } from '../hooks/useApiTokens';
 import CopyableToken from './CopyableToken';
 
