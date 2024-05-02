@@ -110,13 +110,11 @@ fn test_api_tokens() {
     assert_eq!(tokens.len(), 2);
 
     // Delete tokens
-    db
-        .delete_token(user.id, token1.id.into())
+    db.delete_token(user.id, token1.id.into())
         .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 1);
-    db
-        .delete_token(user.id, token2.id.into())
+    db.delete_token(user.id, token2.id.into())
         .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 0);

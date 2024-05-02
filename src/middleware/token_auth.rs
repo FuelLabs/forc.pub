@@ -5,8 +5,6 @@ use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
 
-
-
 pub const SESSION_COOKIE_NAME: &str = "session";
 
 pub struct TokenAuth {
