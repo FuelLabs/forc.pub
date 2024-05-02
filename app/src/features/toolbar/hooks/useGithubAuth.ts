@@ -51,10 +51,12 @@ export function useGithubAuth(): [
       return;
     }
 
-    HTTP.get(`/user`).then(({ data }) => {
-      setGithubUser(data.user);
-    });
-  }, [githubUser, setGithubUser, sessionId]);
+    HTTP.get(`/user`)
+      .then(({ data }) => {
+        setGithubUser(data.user);
+      })
+      .catch(() => setSessionId(''));
+  }, [githubUser, setGithubUser, setSessionId, sessionId]);
 
   return [githubUser, logout];
 }
