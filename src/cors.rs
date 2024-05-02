@@ -14,7 +14,7 @@ fn get_allowed_origin(headers: &HeaderMap<'_>) -> Option<String> {
 
     if let Some(req_origin) = headers.get_one("Origin") {
         // If the environment variable CORS_HTTP_ORIGIN is set, only allow that origin.
-        if let Some(env_origin) = env::var("CORS_HTTP_ORIGIN").ok() {
+        if let Ok(env_origin) = env::var("CORS_HTTP_ORIGIN") {
             if req_origin == env_origin.as_str() {
                 return Some(env_origin);
             }
