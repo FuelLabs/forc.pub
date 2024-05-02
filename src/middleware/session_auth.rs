@@ -1,14 +1,9 @@
-use std::time::SystemTime;
-
 use crate::db::Database;
 use crate::models;
-
 use rocket::http::Status;
-
 use rocket::request::{FromRequest, Outcome};
-
 use rocket::Request;
-
+use std::time::SystemTime;
 use uuid::Uuid;
 
 pub const SESSION_COOKIE_NAME: &str = "session";
@@ -34,10 +29,13 @@ impl<'r> FromRequest<'r> for SessionAuth {
         // let db = try_outcome!(request.guard::<Database>().await);
 
         let mut db = match request.rocket().state::<Database>() {
-            Some(db) => {
-                db.conn()
-            },
-            None => return Outcome::Failure((Status::InternalServerError, SessionAuthError::DatabaseConnection)),
+            Some(db) => db.conn(),
+            None => {
+                return Outcome::Failure((
+                    Status::InternalServerError,
+                    SessionAuthError::DatabaseConnection,
+                ))
+            }
         };
         if let Some(Some(session_id)) = request
             .cookies()
@@ -45,7 +43,7 @@ impl<'r> FromRequest<'r> for SessionAuth {
             .map(|c| Uuid::parse_str(c.value()).ok())
         {
             if let Ok(session) = db.get_session(session_id) {
-                if let Ok(user) = db.get_user_for_session(session_id.to_string()) {
+                if let Ok(user) = db.get_user_for_session(session_id) {
                     if session.expires_at > SystemTime::now() {
                         return Outcome::Success(SessionAuth { user, session_id });
                     }

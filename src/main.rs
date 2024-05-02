@@ -8,7 +8,7 @@ use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
     ApiResult, EmptyResponse,
 };
-use forc_pub::cors::Cors;
+use forc_pub::middleware::cors::Cors;
 
 use forc_pub::db::Database;
 use forc_pub::github::handle_login;
@@ -64,7 +64,7 @@ fn new_token(
     Ok(Json(CreateTokenResponse {
         token: Token {
             // The only time we return the plain token is when it's created.
-            token: Some(plain_token),
+            token: Some(plain_token.into()),
             ..token.into()
         },
     }))

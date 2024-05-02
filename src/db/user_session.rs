@@ -1,6 +1,5 @@
 use super::error::DatabaseError;
 use super::{api, models, schema, DbConn};
-use super::{string_to_uuid, Database};
 use diesel::prelude::*;
 use diesel::upsert::excluded;
 use std::time::{Duration, SystemTime};
@@ -71,14 +70,16 @@ impl DbConn {
     }
 
     /// Fetch a user from the database for a given session ID.
-    pub fn get_user_for_session(&mut self, session_id: String) -> Result<models::User, DatabaseError> {
-        let session_uuid = string_to_uuid(session_id.clone())?;
+    pub fn get_user_for_session(
+        &mut self,
+        session_id: Uuid,
+    ) -> Result<models::User, DatabaseError> {
         schema::sessions::table
             .inner_join(schema::users::table)
-            .filter(schema::sessions::id.eq(session_uuid))
+            .filter(schema::sessions::id.eq(session_id))
             .select(models::User::as_returning())
             .first::<models::User>(self.inner())
-            .map_err(|_| DatabaseError::NotFound(session_id))
+            .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
     }
 
     /// Delete a session given its ID.
