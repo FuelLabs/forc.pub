@@ -22,6 +22,7 @@ pub struct SessionAuth {
 pub enum SessionAuthError {
     Missing,
     Invalid,
+    DatabaseConnection,
 }
 
 #[rocket::async_trait]
@@ -29,10 +30,15 @@ impl<'r> FromRequest<'r> for SessionAuth {
     type Error = SessionAuthError;
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        // TODO: use fairing?
+        // TODO: use fairing for db connection?
         // let db = try_outcome!(request.guard::<Database>().await);
 
-        let db = request.rocket().state::<Database>().unwrap();
+        let mut db = match request.rocket().state::<Database>() {
+            Some(db) => {
+                db.conn()
+            },
+            None => return Outcome::Failure((Status::InternalServerError, SessionAuthError::DatabaseConnection)),
+        };
         if let Some(Some(session_id)) = request
             .cookies()
             .get(SESSION_COOKIE_NAME)

@@ -31,7 +31,7 @@ async fn login(
     request: Json<LoginRequest>,
 ) -> ApiResult<LoginResponse> {
     let (user, expires_in) = handle_login(request.code.clone()).await?;
-    let session = db.insert_user_session(&user, expires_in)?;
+    let session = db.conn().insert_user_session(&user, expires_in)?;
     let session_id = session.id.to_string();
     cookies.add(Cookie::build(SESSION_COOKIE_NAME, session_id.clone()).finish());
     Ok(Json(LoginResponse { user, session_id }))
@@ -41,7 +41,7 @@ async fn login(
 #[post("/logout")]
 async fn logout(db: &State<Database>, auth: SessionAuth) -> ApiResult<EmptyResponse> {
     let session_id = auth.session_id;
-    let _ = db.delete_session(session_id)?;
+    let _ = db.conn().delete_session(session_id)?;
     Ok(Json(EmptyResponse))
 }
 
@@ -60,7 +60,7 @@ fn new_token(
     request: Json<CreateTokenRequest>,
 ) -> ApiResult<CreateTokenResponse> {
     let user = auth.user;
-    let (token, plain_token) = db.new_token(user.id, request.name.clone())?;
+    let (token, plain_token) = db.conn().new_token(user.id, request.name.clone())?;
     Ok(Json(CreateTokenResponse {
         token: Token {
             // The only time we return the plain token is when it's created.
@@ -73,14 +73,14 @@ fn new_token(
 #[delete("/token/<id>")]
 fn delete_token(db: &State<Database>, auth: SessionAuth, id: String) -> ApiResult<EmptyResponse> {
     let user_id = auth.user.id;
-    let _ = db.delete_token(user_id, id.clone())?;
+    let _ = db.conn().delete_token(user_id, id.clone())?;
     Ok(Json(EmptyResponse))
 }
 
 #[get("/tokens")]
 fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> {
     let user_id = auth.user.id;
-    let tokens = db.get_tokens_for_user(user_id)?;
+    let tokens = db.conn().get_tokens_for_user(user_id)?;
     Ok(Json(TokensResponse {
         tokens: tokens.into_iter().map(|t| t.into()).collect(),
     }))

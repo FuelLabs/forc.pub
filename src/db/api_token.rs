@@ -1,5 +1,5 @@
 use super::error::DatabaseError;
-use super::{models, schema};
+use super::{models, schema, DbConn};
 use super::{string_to_uuid, Database};
 use diesel::prelude::*;
 
@@ -13,15 +13,13 @@ use uuid::Uuid;
 const TOKEN_PREFIX: &str = "pub_";
 const TOKEN_LENGTH: usize = 32;
 
-impl Database {
+impl DbConn {
     /// Creates an API token for the user and returns the token.
     pub fn new_token(
-        &self,
+        &mut self,
         user_id: Uuid,
         friendly_name: String,
     ) -> Result<(models::Token, String), DatabaseError> {
-        let connection = &mut self.connection();
-
         let plain_token = generate_token();
         let token = Sha256::digest(plain_token.as_bytes()).as_slice().to_vec();
 
@@ -36,16 +34,14 @@ impl Database {
         let saved_token = diesel::insert_into(schema::api_tokens::table)
             .values(&new_token)
             .returning(models::Token::as_returning())
-            .get_result(connection)
+            .get_result(self.inner())
             .map_err(|_| DatabaseError::InsertTokenFailed(user_id.to_string()))?;
 
         Ok((saved_token, plain_token))
     }
 
     /// Deletes an API token for the user.
-    pub fn delete_token(&self, user_id: Uuid, token_id: String) -> Result<(), DatabaseError> {
-        let connection = &mut self.connection();
-
+    pub fn delete_token(&mut self, user_id: Uuid, token_id: String) -> Result<(), DatabaseError> {
         let token_uuid = string_to_uuid(token_id.clone())?;
 
         diesel::delete(
@@ -53,19 +49,18 @@ impl Database {
                 .filter(schema::api_tokens::id.eq(token_uuid))
                 .filter(schema::api_tokens::user_id.eq(user_id)),
         )
-        .execute(connection)
+        .execute(self.inner())
         .map_err(|_| DatabaseError::NotFound(token_id))?;
 
         Ok(())
     }
 
     /// Fetch all tokens for the given user ID.
-    pub fn get_tokens_for_user(&self, user_id: Uuid) -> Result<Vec<models::Token>, DatabaseError> {
-        let connection = &mut self.connection();
+    pub fn get_tokens_for_user(&mut self, user_id: Uuid) -> Result<Vec<models::Token>, DatabaseError> {
         schema::api_tokens::table
             .filter(schema::api_tokens::user_id.eq(user_id))
             .select(models::Token::as_returning())
-            .load(connection)
+            .load(self.inner())
             .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
     }
 }

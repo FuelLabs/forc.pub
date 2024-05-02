@@ -1,6 +1,6 @@
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
-use forc_pub::db::Database;
+use forc_pub::db::{Database, DbConn};
 
 /// Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
 /// This should be done by running `./scripts/start_local_db.sh` before running the tests.
@@ -12,13 +12,15 @@ const TEST_URL_1: &str = "url1.url";
 const TEST_URL_2: &str = "url2.url";
 const TEST_LOGIN_2: &str = "foobar";
 
-fn clear_tables(db: &Database) {
-    let connection = &mut db.connection();
+fn clear_tables(db: &mut DbConn) {
+    diesel::delete(forc_pub::schema::api_tokens::table)
+        .execute(db.inner())
+        .expect("clear api_tokens table");
     diesel::delete(forc_pub::schema::sessions::table)
-        .execute(connection)
+        .execute(db.inner())
         .expect("clear sessions table");
     diesel::delete(forc_pub::schema::users::table)
-        .execute(connection)
+        .execute(db.inner())
         .expect("clear users table");
 }
 
@@ -42,7 +44,7 @@ fn mock_user_2() -> api::auth::User {
 
 #[test]
 fn test_multiple_user_sessions() {
-    let db = Database::default();
+    let db = &mut Database::default().conn();
 
     let user1 = mock_user_1();
     let user2 = mock_user_2();
@@ -75,5 +77,5 @@ fn test_multiple_user_sessions() {
         .expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_2);
 
-    clear_tables(&db);
+    clear_tables(db);
 }
