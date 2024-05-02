@@ -4,18 +4,17 @@
 extern crate rocket;
 
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
+use forc_pub::api::publish::PublishRequest;
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
     ApiResult, EmptyResponse,
 };
-use forc_pub::middleware::cors::Cors;
-
 use forc_pub::db::Database;
 use forc_pub::github::handle_login;
+use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
-
+use forc_pub::middleware::token_auth::TokenAuth;
 use rocket::http::{Cookie, CookieJar};
-
 use rocket::{serde::json::Json, State};
 
 #[derive(Default)]
@@ -86,6 +85,16 @@ fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> 
     }))
 }
 
+#[post("/publish", data = "<request>")]
+fn publish(request: Json<PublishRequest>, auth: TokenAuth) -> ApiResult<EmptyResponse> {
+    println!(
+        "Publishing: {:?} for token: {:?}",
+        request, auth.token.friendly_name
+    );
+
+    Ok(Json(EmptyResponse))
+}
+
 /// Catches all OPTION requests in order to get the CORS related Fairing triggered.
 #[options("/<_..>")]
 fn all_options() {
@@ -118,6 +127,7 @@ fn rocket() -> _ {
                 user,
                 new_token,
                 delete_token,
+                publish,
                 tokens,
                 all_options,
                 health

@@ -10,8 +10,8 @@ pub struct Token {
     pub token: Option<String>,
 }
 
-impl From<models::Token> for Token {
-    fn from(token: models::Token) -> Self {
+impl From<models::ApiToken> for Token {
+    fn from(token: models::ApiToken) -> Self {
         Token {
             id: token.id.to_string(),
             name: token.friendly_name,

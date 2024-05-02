@@ -1,5 +1,6 @@
 pub mod api_token;
 pub mod auth;
+pub mod publish;
 
 use rocket::{
     http::Status,

@@ -83,31 +83,43 @@ fn test_user_sessions() {
 fn test_api_tokens() {
     let db = &mut Database::default().conn();
 
-    let session = db.insert_user_session(&mock_user_1(), 1000).expect("result is ok");
+    let session = db
+        .insert_user_session(&mock_user_1(), 1000)
+        .expect("result is ok");
     let user = db.get_user_for_session(session.id).expect("result is ok");
 
     // Insert tokens
-    let (token1, plain_token1) = db.new_token(user.id, TEST_TOKEN_NAME_1.into()).expect("result is ok");
-    let (token2, plain_token2) = db.new_token(user.id, TEST_TOKEN_NAME_2.into()).expect("result is ok");
+    let (token1, plain_token1) = db
+        .new_token(user.id, TEST_TOKEN_NAME_1.into())
+        .expect("result is ok");
+    let (token2, plain_token2) = db
+        .new_token(user.id, TEST_TOKEN_NAME_2.into())
+        .expect("result is ok");
 
     assert_eq!(token1.friendly_name, TEST_TOKEN_NAME_1);
     assert_eq!(token1.expires_at, None);
     assert_eq!(token2.friendly_name, TEST_TOKEN_NAME_2);
     assert_eq!(token2.expires_at, None);
 
+    // Test token hashing
+    assert_eq!(token1, db.get_token(plain_token1).expect("test token 1"));
+    assert_eq!(token2, db.get_token(plain_token2).expect("test token 2"));
+
     // Get tokens
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 2);
 
     // Delete tokens
-    let _ = db.delete_token(user.id, token1.id.into()).expect("result is ok");
+    db
+        .delete_token(user.id, token1.id.into())
+        .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 1);
-    let _ = db.delete_token(user.id, token2.id.into()).expect("result is ok");
+    db
+        .delete_token(user.id, token2.id.into())
+        .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 0);
-
-    // TODO: test validating a plain token
 
     clear_tables(db);
 }

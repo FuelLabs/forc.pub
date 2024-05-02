@@ -15,6 +15,12 @@ const TOKEN_LENGTH: usize = 32;
 #[derive(Debug)]
 pub struct PlainToken(String);
 
+impl Default for PlainToken {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PlainToken {
     pub fn hash(&self) -> Vec<u8> {
         Sha256::digest(self.0.as_bytes()).as_slice().to_vec()
@@ -33,9 +39,15 @@ impl PlainToken {
     }
 }
 
-impl Into<String> for PlainToken {
-    fn into(self) -> String {
-        self.0
+impl From<String> for PlainToken {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<PlainToken> for String {
+    fn from(val: PlainToken) -> Self {
+        val.0
     }
 }
 
@@ -45,11 +57,11 @@ impl DbConn {
         &mut self,
         user_id: Uuid,
         friendly_name: String,
-    ) -> Result<(models::Token, PlainToken), DatabaseError> {
+    ) -> Result<(models::ApiToken, PlainToken), DatabaseError> {
         let plain_token = PlainToken::new();
         let token = plain_token.hash();
 
-        let new_token = models::NewToken {
+        let new_token = models::NewApiToken {
             user_id,
             friendly_name,
             token,
@@ -59,7 +71,7 @@ impl DbConn {
         // Insert new session
         let saved_token = diesel::insert_into(schema::api_tokens::table)
             .values(&new_token)
-            .returning(models::Token::as_returning())
+            .returning(models::ApiToken::as_returning())
             .get_result(self.inner())
             .map_err(|_| DatabaseError::InsertTokenFailed(user_id.to_string()))?;
 
@@ -85,11 +97,24 @@ impl DbConn {
     pub fn get_tokens_for_user(
         &mut self,
         user_id: Uuid,
-    ) -> Result<Vec<models::Token>, DatabaseError> {
+    ) -> Result<Vec<models::ApiToken>, DatabaseError> {
         schema::api_tokens::table
             .filter(schema::api_tokens::user_id.eq(user_id))
-            .select(models::Token::as_returning())
+            .select(models::ApiToken::as_returning())
             .load(self.inner())
             .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
+    }
+
+    /// Fetch an API token given the plaintext token.
+    pub fn get_token(
+        &mut self,
+        plain_token: PlainToken,
+    ) -> Result<models::ApiToken, DatabaseError> {
+        let hashed = plain_token.hash();
+        schema::api_tokens::table
+            .filter(schema::api_tokens::token.eq(hashed))
+            .select(models::ApiToken::as_returning())
+            .first::<models::ApiToken>(self.inner())
+            .map_err(|_| DatabaseError::NotFound("API Token".to_string()))
     }
 }

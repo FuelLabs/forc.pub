@@ -1,4 +1,4 @@
-mod api_token;
+pub mod api_token;
 pub mod error;
 mod user_session;
 

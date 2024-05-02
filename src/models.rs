@@ -44,10 +44,10 @@ pub struct NewSession {
     pub expires_at: SystemTime,
 }
 
-#[derive(Queryable, Selectable, Debug)]
+#[derive(Queryable, Selectable, Debug, PartialEq, Eq)]
 #[diesel(table_name = crate::schema::api_tokens)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Token {
+pub struct ApiToken {
     pub id: Uuid,
     pub user_id: Uuid,
     pub friendly_name: String,
@@ -57,7 +57,7 @@ pub struct Token {
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::api_tokens)]
-pub struct NewToken {
+pub struct NewApiToken {
     pub user_id: Uuid,
     pub friendly_name: String,
     pub token: Vec<u8>,
