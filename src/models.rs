@@ -2,7 +2,7 @@ use diesel::{prelude::*, sql_types::Bytea};
 use std::time::SystemTime;
 use uuid::Uuid;
 
-#[derive(Queryable, Selectable, Debug)]
+#[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {

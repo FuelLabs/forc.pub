@@ -49,17 +49,14 @@ fn test_multiple_user_sessions() {
     let user2 = mock_user_2();
 
     let session1 = db.insert_user_session(&user1, 1000).expect("result is ok");
-    Uuid::parse_str(session1.as_str()).expect("result is a valid UUID");
 
     // Insert an existing user
     let session2 = db.insert_user_session(&user1, 1000).expect("result is ok");
-    Uuid::parse_str(session2.as_str()).expect("result is a valid UUID");
 
     // Insert another user
     let session3 = db.insert_user_session(&user2, 1000).expect("result is ok");
-    Uuid::parse_str(session3.as_str()).expect("result is a valid UUID");
 
-    let result = db.get_user_for_session(session1).expect("result is ok");
+    let result = db.get_user_for_session(session1.id.to_string()).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_1);
     assert_eq!(result.full_name, TEST_FULL_NAME_1);
     assert_eq!(result.email.expect("is some"), TEST_EMAIL_1);
@@ -67,10 +64,10 @@ fn test_multiple_user_sessions() {
     assert_eq!(result.github_url, TEST_URL_2);
     assert!(result.is_admin);
 
-    let result = db.get_user_for_session(session2).expect("result is ok");
+    let result = db.get_user_for_session(session2.id.to_string()).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_1);
 
-    let result = db.get_user_for_session(session3).expect("result is ok");
+    let result = db.get_user_for_session(session3.id.to_string()).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_2);
 
     clear_tables(&db);

@@ -3,11 +3,6 @@ use uuid::Uuid;
 
 use crate::models;
 
-pub struct UserSessionId {
-    pub user_id: Uuid,
-    pub session_id: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
@@ -42,25 +37,13 @@ pub struct LoginRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
-    pub user: Option<User>,
-    pub session_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-/// The response to a logout request.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LogoutResponse {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+    pub user: User,
+    pub session_id: String,
 }
 
 /// The response to a user GET request.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserResponse {
-    pub user: Option<User>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+    pub user: User,
 }

@@ -3,219 +3,95 @@
 #[macro_use]
 extern crate rocket;
 
-use std::hash::Hash;
-
-use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, DeleteTokenRequest, DeleteTokenResponse, TokensResponse, Token};
-use forc_pub::api::auth::LogoutResponse;
+use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::{
-    auth::{LoginRequest, LoginResponse, UserResponse, User, UserSessionId},
-    ApiError, PublishRequest, PublishResponse,
+    auth::{LoginRequest, LoginResponse, UserResponse},
+    ApiError, ApiResult, EmptyResponse,
 };
 use forc_pub::cors::Cors;
+use forc_pub::db::error::DatabaseError;
 use forc_pub::db::Database;
 use forc_pub::github::handle_login;
+use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
+use forc_pub::util::sys_time_to_epoch;
 use rocket::http::{Cookie, CookieJar};
+use rocket::time::OffsetDateTime;
 use rocket::{serde::json::Json, State};
-use uuid::Uuid;
+
 
 #[derive(Default)]
-struct ServerState {
+pub struct ServerState {
     pub db: Database,
-}
-
-impl ServerState {
-    pub fn get_authenticated_session(&self, cookies: &CookieJar) -> Result<UserSessionId, ApiError> {
-        match cookies.get("session").map(|c| c.value()) {
-            Some(session_id) => {
-                let user = self
-                    .db
-                    .get_user_for_session(session_id.to_string())
-                    .map_err(|_| ApiError::Unauthorized)?;
-                Ok(UserSessionId { user_id : user.id, session_id: session_id.to_string()})
-            }
-            None => Err(ApiError::MissingCookie),
-        }
-    }
 }
 
 /// The endpoint to authenticate with GitHub.
 #[post("/login", data = "<request>")]
 async fn login(
-    state: &State<ServerState>,
+    db: &State<Database>,
     cookies: &CookieJar<'_>,
     request: Json<LoginRequest>,
-) -> Json<LoginResponse> {
-    match handle_login(request.code.clone()).await {
-        Ok((user, expires_in)) => match state.db.insert_user_session(&user, expires_in) {
-            Ok(session_id) => {
-                cookies.add(Cookie::build("session", session_id.clone()).expires(None).finish());
-
-                Json(LoginResponse {
-                    user: Some(user),
-                    session_id: Some(session_id),
-                    error: None,
-                })
-            }
-            Err(e) => Json(LoginResponse {
-                user: None,
-                session_id: None,
-                error: Some(e.to_string()),
-            }),
-        },
-        Err(e) => Json(LoginResponse {
-            user: None,
-            session_id: None,
-            error: Some(e.to_string()),
-        }),
-    }
+) -> ApiResult<LoginResponse> {
+    let (user, expires_in) = handle_login(request.code.clone()).await?;
+    let session = db.insert_user_session(&user, expires_in)?;
+    let session_id = session.id.to_string();
+    cookies.add(
+        Cookie::build(SESSION_COOKIE_NAME, session_id.clone())
+            .finish(),
+    );
+    Ok(Json(LoginResponse { user, session_id }))
 }
 
 /// The endpoint to log out.
 #[post("/logout")]
-async fn logout(
-    state: &State<ServerState>,
-    cookies: &CookieJar<'_>,
-) -> Json<LogoutResponse> {
-
-    match state.get_authenticated_session(cookies) {
-        Ok(UserSessionId { session_id, ..}) => {
-            match state.db.delete_session(session_id.to_string()) {
-                Ok(_) => {
-                    cookies.remove(Cookie::named("session"));
-                    Json(LogoutResponse { error: None })
-                }
-                Err(e) => Json(LogoutResponse {
-                    error: Some(e.to_string()),
-                }),
-            }
-        }
-        Err(_) => Json(LogoutResponse {
-            error: None
-        }),
-    }
-
-
+async fn logout(db: &State<Database>, auth: SessionAuth) -> ApiResult<EmptyResponse> {
+    let session_id = auth.session_id;
+    let _ = db.delete_session(session_id)?;
+    Ok(Json(EmptyResponse))
 }
 
 /// The endpoint to authenticate with GitHub.
 #[get("/user")]
-async fn user(
-    state: &State<ServerState>,
-    cookies: &CookieJar<'_>,
-) -> Json<UserResponse> {
-    // cookies.add(Cookie::build("session", id.clone()).expires(None).finish());
-
-    // match state.db.get_user_for_session(id) {
-    //     Ok(user) => Json(SessionResponse {
-    //         user: Some(User::from(user)),
-    //         error: None,
-    //     }),
-
-    //     Err(error) => Json(SessionResponse {
-    //         user: None,
-    //         error: Some(error.to_string()),
-    //     }),
-    // }
-
-    match state.get_authenticated_session(cookies) { 
-        Ok(UserSessionId {user_id, ..}) => match state.db.get_user(user_id) {
-            Ok(user) => Json(UserResponse {
-                user: Some(User::from(user)),
-                error: None,
-            }),
-
-            Err(error) => Json(UserResponse {
-                user: None,
-                error: Some(error.to_string()),
-            }),
-        },
-
-        Err(error) => Json(UserResponse {
-            user: None,
-            error: Some(error.to_string()),
-        }),
-    
-    }
+fn user(auth: SessionAuth) -> Json<UserResponse> {
+    Json(UserResponse {
+        user: auth.user.into(),
+    })
 }
 
 #[post("/new_token", data = "<request>")]
 fn new_token(
-    state: &State<ServerState>,
-    cookies: &CookieJar<'_>,
+    db: &State<Database>,
+    auth: SessionAuth,
     request: Json<CreateTokenRequest>,
-) -> Json<CreateTokenResponse> {
-    match state.get_authenticated_session(cookies) {
-        Ok(UserSessionId { user_id, ..}) => match state.db.new_token(user_id, request.name.clone()) {
-            Ok((token, plain_token)) => Json(CreateTokenResponse {
-                token: Some(Token {
-                    // The only time we return the plain token is when it's created.
-                    token: Some(plain_token),
-                    ..token.into()
-                }
-                ),
-                error: None,
-            }),
-            Err(e) => Json(CreateTokenResponse {
-                token: None,
-                error: Some(e.to_string()),
-            }),
+) -> ApiResult<CreateTokenResponse> {
+    let user = auth.user;
+    let (token, plain_token) = db.new_token(user.id, request.name.clone())?;
+    Ok(Json(CreateTokenResponse {
+        token: Token {
+            // The only time we return the plain token is when it's created.
+            token: Some(plain_token),
+            ..token.into()
         },
-
-        Err(e) => Json(CreateTokenResponse {
-            token: None,
-            error: Some(e.to_string()),
-        }),
-    }
+    }))
 }
 
 #[delete("/token/<id>")]
 fn delete_token(
-    state: &State<ServerState>,
-    cookies: &CookieJar<'_>,
+    db: &State<Database>,
+    auth: SessionAuth,
     id: String,
-) -> Json<DeleteTokenResponse> {
-    match state.get_authenticated_session(cookies) {
-        Ok(UserSessionId { user_id, ..}) => match state.db.delete_token(user_id, id.clone()) {
-            Ok(_) => Json(DeleteTokenResponse {
-                error: None,
-            }),
-            Err(e) => Json(DeleteTokenResponse {
-                error: Some(e.to_string()),
-            }),
-        },
-
-        Err(e) => Json(DeleteTokenResponse {
-            error: Some(e.to_string()),
-        }),
-    }
+) -> ApiResult<EmptyResponse> {
+    let user_id = auth.user.id;
+    let _ = db.delete_token(user_id, id.clone())?;
+    Ok(Json(EmptyResponse))
 }
 
 #[get("/tokens")]
-fn tokens(state: &State<ServerState>, cookies: &CookieJar<'_>) -> Json<TokensResponse> {
-    match state.get_authenticated_session(cookies) {
-        Ok(UserSessionId { user_id, ..}) => match state.db.get_tokens_for_user(user_id) {
-            Ok(tokens) => Json(TokensResponse {
-                tokens: tokens.into_iter().map(|t| t.into()).collect(),
-                error: None,
-            }),
-            Err(e) => Json(TokensResponse {
-                tokens: vec![],
-                error: Some(e.to_string()),
-            }),
-        },
-
-        Err(e) => Json(TokensResponse {
-            tokens: vec![],
-            error: Some(e.to_string()),
-        }),
-    }
-}
-
-/// The endpoint to publish a package version.
-#[post("/publish", data = "<request>")]
-fn publish(request: Json<PublishRequest>) -> Json<PublishResponse> {
-    eprintln!("Received request: {:?}", request);
-    Json(PublishResponse { error: None })
+fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> {
+    let user_id = auth.user.id;
+    let tokens = db.get_tokens_for_user(user_id)?;
+    Ok(Json(TokensResponse {
+        tokens: tokens.into_iter().map(|t| t.into()).collect(),
+    }))
 }
 
 /// Catches all OPTION requests in order to get the CORS related Fairing triggered.
@@ -240,7 +116,7 @@ fn health() -> String {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .manage(ServerState::default())
+        .manage(Database::default())
         .attach(Cors)
         .mount(
             "/",
@@ -251,7 +127,6 @@ fn rocket() -> _ {
                 new_token,
                 delete_token,
                 tokens,
-                publish,
                 all_options,
                 health
             ],

@@ -32,23 +32,7 @@ pub struct CreateTokenRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTokenResponse {
-    pub token: Option<Token>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-/// The CreateToken request.
-#[derive(Deserialize, Debug)]
-pub struct DeleteTokenRequest {
-    pub id: String,
-}
-
-/// The response to a CreateToken request.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteTokenResponse {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+    pub token: Token,
 }
 
 /// The response to a CreateToken request.
@@ -56,6 +40,4 @@ pub struct DeleteTokenResponse {
 #[serde(rename_all = "camelCase")]
 pub struct TokensResponse {
     pub tokens: Vec<Token>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
 }

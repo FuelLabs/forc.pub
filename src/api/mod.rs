@@ -1,28 +1,30 @@
 pub mod auth;
 pub mod api_token;
 
-use rocket::serde::{Deserialize, Serialize};
+use rocket::{http::Status, response::Responder, serde::{json::Json, Deserialize, Serialize}, Request};
 use thiserror::Error;
+
+/// A wrapper for API responses that can return errors.
+pub type ApiResult<T> = Result<Json<T>, ApiError>;
+
+/// An empty response.
+#[derive(Serialize)]
+pub struct EmptyResponse;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
-    #[error("Unauthorized request")]
-    Unauthorized,
-    #[error("Missing session cookie")]
-    MissingCookie,
+    #[error("Database error: {0}")]
+    Database(#[from] crate::db::error::DatabaseError),
+    #[error("GitHub error: {0}")]
+    Github(#[from] crate::github::GithubError),
 }
 
-/// The publish request.
-#[derive(Deserialize, Debug)]
-pub struct PublishRequest {
-    pub name: String,
-    pub version: String,
+impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
+	fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
+        match self {
+            ApiError::Database(_) => Err(Status::InternalServerError),
+            ApiError::Github(_) => Err(Status::Unauthorized),
+        }
+	}
 }
 
-/// The response to a publish request.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PublishResponse {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}

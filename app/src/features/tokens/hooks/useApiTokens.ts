@@ -5,7 +5,6 @@ import { useGithubAuth } from '../../toolbar/hooks/useGithubAuth';
 import axios from 'axios';
 import HTTP, {
   CreateTokenResponse,
-  DeleteTokenResponse,
   RawToken,
   TokensResponse,
 } from '../../../utils/http';

@@ -16,19 +16,13 @@ export interface LoginRequest {
   }
 
 export interface LoginResponse {
-  sessionId?: string;
-  user?: AuthenticatedUser;
-  error?: string;
+  sessionId: string;
+  user: AuthenticatedUser;
 }
 
 export interface UserResponse {
-  user?: AuthenticatedUser;
-  error?: string;
+  user: AuthenticatedUser;
 }
-
-export interface GenericResponse {
-    error?: string;
-  }
 
   export interface RawToken {
     id: string,
@@ -45,10 +39,6 @@ export interface GenericResponse {
     error?: string;
   }
 
-  export interface DeleteTokenResponse {
-    error?: string;
-  }
-  
   export interface TokensResponse {
     tokens: RawToken[];
     error?: string;
@@ -69,7 +59,6 @@ type Routes = [
   {
     route: '/logout';
     method: 'POST';
-    jsonResponse: GenericResponse;
   },
   {
     route: '/new_token';
@@ -85,7 +74,6 @@ type Routes = [
   {
     route: '/token/[id]';
     method: 'DELETE';
-    jsonResponse: DeleteTokenResponse;
   }
 ];
 
@@ -97,12 +85,10 @@ const HTTP: TypedAxios<Routes> = axios.create({
 // Intercept the response and log any errors.
 HTTP.interceptors.response.use(function (response) {
     // Any status code that lie within the range of 2xx cause this function to trigger
-    if (response.data.error) {
-      console.log(`[${response.config.method}] API error: `, response.data.error);
-    }
     return response;
   }, function (error) {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
+    console.error('HTTP Error:', error);
     return Promise.reject(error);
   });
 export default HTTP;

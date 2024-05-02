@@ -68,9 +68,6 @@ impl Database {
             .select(models::Token::as_returning())
             .load(connection)
             .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
-        // // TODO: fix return type
-        // eprintln!("res: {:?}", res);
-        // Err(DatabaseError::NotFound(user_id.to_string()))
     }
 }
 

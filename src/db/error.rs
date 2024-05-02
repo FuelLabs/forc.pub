@@ -8,8 +8,8 @@ pub enum DatabaseError {
     NotFound(String),
     #[error("Failed to save user: {0}")]
     InsertUserFailed(String),
-    #[error("Failed to save session for user; {0}")]
+    #[error("Failed to save session for user: {0}")]
     InsertSessionFailed(String),
-    #[error("Failed to save session for user; {0}")]
+    #[error("Failed to save token for user: {0}")]
     InsertTokenFailed(String),
 }

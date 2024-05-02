@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 mod user_session;
 mod api_token;
 
@@ -19,6 +19,7 @@ pub struct Database {
     pub pool: DbPool,
 }
 
+
 impl Default for Database {
     fn default() -> Self {
         Database::new()
@@ -27,6 +28,7 @@ impl Default for Database {
 
 impl Database {
     pub fn new() -> Self {
+
         // Create a connection pool
         let pool = Pool::builder()
             .build(ConnectionManager::<PgConnection>::new(db_url()))

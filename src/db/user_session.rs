@@ -14,7 +14,7 @@ impl Database {
         &self,
         user: &api::auth::User,
         expires_in: u32,
-    ) -> Result<String, DatabaseError> {
+    ) -> Result<models::Session, DatabaseError> {
         let connection = &mut self.connection();
 
         // Insert or update a user
@@ -51,7 +51,7 @@ impl Database {
             .get_result(connection)
             .map_err(|_| DatabaseError::InsertSessionFailed(user.github_login.clone()))?;
 
-        Ok(saved_session.id.to_string())
+        Ok(saved_session)
     }
 
     /// Fetch a user given the user ID.
@@ -63,6 +63,16 @@ impl Database {
             .first::<models::User>(connection)
             .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
     }
+
+    /// Fetch a user given the user ID.
+    pub fn get_session(&self, session_id: Uuid) -> Result<models::Session, DatabaseError> {
+        let connection = &mut self.connection();
+        schema::sessions::table
+            .filter(schema::sessions::id.eq(session_id))
+            .select(models::Session::as_returning())
+            .first::<models::Session>(connection)
+            .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
+    }    
 
     /// Fetch a user from the database for a given session ID.
     pub fn get_user_for_session(&self, session_id: String) -> Result<models::User, DatabaseError> {
@@ -77,12 +87,11 @@ impl Database {
     }
 
     /// Delete a session given its ID.
-    pub fn delete_session(&self, session_id: String) -> Result<(), DatabaseError> {
-        let session_uuid = string_to_uuid(session_id.clone())?;
+    pub fn delete_session(&self, session_id: Uuid) -> Result<(), DatabaseError> {
         let connection = &mut self.connection();
-        diesel::delete(schema::sessions::table.filter(schema::sessions::id.eq(session_uuid)))
+        diesel::delete(schema::sessions::table.filter(schema::sessions::id.eq(session_id)))
             .execute(connection)
-            .map_err(|_| DatabaseError::NotFound(session_id))?;
+            .map_err(|_| DatabaseError::NotFound(session_id.to_string()))?;
         Ok(())
     }
 }
