@@ -1,11 +1,11 @@
-use std::env;
-
 use dotenvy::dotenv;
 use regex::Regex;
+use reqwest::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::hyper::header;
 use rocket::http::{Header, HeaderMap};
 use rocket::{Request, Response};
+use std::env;
 
 // Build an open cors module so this server can be used accross many locations on the web.
 pub struct Cors;
@@ -46,24 +46,25 @@ impl Fairing for Cors {
     // Build an Access-Control-Allow-Origin policy Response header.
     async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
         if let Some(origin) = get_allowed_origin(request.headers()) {
-            response.set_header(Header::new("Access-Control-Allow-Origin", origin));
+            response.set_header(Header::new(ACCESS_CONTROL_ALLOW_ORIGIN.as_str(), origin));
         }
         response.set_header(Header::new(
-            "Access-Control-Allow-Methods",
+            header::ACCESS_CONTROL_ALLOW_METHODS.as_str(),
             "POST, PATCH, PUT, DELETE, HEAD, OPTIONS, GET",
         ));
         response.set_header(Header::new(
-            "Access-Control-Allow-Headers",
+            header::ACCESS_CONTROL_ALLOW_HEADERS.as_str(),
             "*, Access-Control-Request-Headers, Content-Type",
         ));
-        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
+        response.set_header(Header::new(
+            header::ACCESS_CONTROL_ALLOW_CREDENTIALS.as_str(),
+            "true",
+        ));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rocket::http::hyper::header;
-
     use super::*;
 
     #[test]

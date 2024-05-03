@@ -6,7 +6,7 @@ use rocket::Request;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-pub const SESSION_COOKIE_NAME: &str = "session";
+pub const SESSION_COOKIE_NAME: &str = "fp_session";
 
 pub struct SessionAuth {
     pub user: models::User,

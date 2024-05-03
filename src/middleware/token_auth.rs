@@ -1,11 +1,10 @@
 use crate::db::api_token::PlainToken;
 use crate::db::Database;
 use crate::models;
+use rocket::http::hyper::header;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
-
-pub const SESSION_COOKIE_NAME: &str = "session";
 
 pub struct TokenAuth {
     pub token: models::ApiToken,
@@ -36,7 +35,7 @@ impl<'r> FromRequest<'r> for TokenAuth {
             }
         };
 
-        if let Some(auth_header) = request.headers().get_one("Authorization") {
+        if let Some(auth_header) = request.headers().get_one(header::AUTHORIZATION.as_str()) {
             if auth_header.starts_with("Bearer ") {
                 let token = auth_header.trim_start_matches("Bearer ");
                 if let Ok(token) = db.get_token(PlainToken::from(token.to_string())) {

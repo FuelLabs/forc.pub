@@ -8,7 +8,7 @@ export function useGithubAuth(): [
   AuthenticatedUser | null,
   () => Promise<void>
 ] {
-  const [sessionId, setSessionId] = useCookie('session');
+  const [sessionId, setSessionId] = useCookie('fp_session');
   const [githubUser, setGithubUser] = useState<AuthenticatedUser | null>(null);
   const { githubCode, saveGithubCode, clearGithubCode } = useLocalSession();
   const [searchParams, setSearchParams] = useSearchParams();
