@@ -118,3 +118,21 @@ impl DbConn {
             .map_err(|_| DatabaseError::NotFound("API Token".to_string()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_plain_token_new() {
+        let token = PlainToken::new();
+        assert!(token.0.starts_with(TOKEN_PREFIX));
+        assert_eq!(token.hash(), Sha256::digest(token.0.as_bytes()).as_slice());
+    }
+
+    #[test]
+    fn test_plain_token_from() {
+        let token = PlainToken::from("123456".to_string());
+        assert_eq!(token.hash(), Sha256::digest(token.0.as_bytes()).as_slice());
+    }
+}
