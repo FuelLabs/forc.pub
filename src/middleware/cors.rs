@@ -3,6 +3,7 @@ use std::env;
 use dotenvy::dotenv;
 use regex::Regex;
 use rocket::fairing::{Fairing, Info, Kind};
+use rocket::http::hyper::header;
 use rocket::http::{Header, HeaderMap};
 use rocket::{Request, Response};
 
@@ -12,7 +13,7 @@ pub struct Cors;
 fn get_allowed_origin(headers: &HeaderMap<'_>) -> Option<String> {
     dotenv().ok();
 
-    if let Some(req_origin) = headers.get_one("Origin") {
+    if let Some(req_origin) = headers.get_one(header::ORIGIN.as_str()) {
         // If the environment variable CORS_HTTP_ORIGIN is set, only allow that origin.
         if let Ok(env_origin) = env::var("CORS_HTTP_ORIGIN") {
             if req_origin == env_origin.as_str() {
@@ -56,5 +57,43 @@ impl Fairing for Cors {
             "*, Access-Control-Request-Headers, Content-Type",
         ));
         response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rocket::http::hyper::header;
+
+    use super::*;
+
+    #[test]
+    fn test_get_allowed_origin() {
+        let mut headers = HeaderMap::new();
+
+        let test_cases = vec![
+            ("https://forc.pub", true),
+            ("https://forc-pub.vercel.app", true),
+            ("https://forc-pub-git-api-tokens-fuel-labs.vercel.app", true),
+            ("https://forc.pub/", false),
+            ("https://forc.pub/tokens", false),
+            ("https://forc.com.pub", false),
+            ("https://forc-spub.vercel.app", false),
+        ];
+
+        env::remove_var("CORS_HTTP_ORIGIN");
+        test_cases.iter().for_each(|(origin, expected)| {
+            headers.add(Header::new(header::ORIGIN.as_str(), *origin));
+            match expected {
+                true => assert_eq!(get_allowed_origin(&headers), Some(origin.to_string())),
+                false => assert!(get_allowed_origin(&headers).is_none()),
+            }
+            headers.remove(header::ORIGIN.as_str());
+        });
+
+        // Test with CORS_HTTP_ORIGIN set.
+        let origin = "http://localhost:3000";
+        env::set_var("CORS_HTTP_ORIGIN", origin);
+        headers.add(Header::new(header::ORIGIN.as_str(), origin));
+        assert_eq!(get_allowed_origin(&headers), Some(origin.to_string()))
     }
 }
