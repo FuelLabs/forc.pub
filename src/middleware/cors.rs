@@ -71,7 +71,7 @@ mod tests {
     fn test_get_allowed_origin() {
         let mut headers = HeaderMap::new();
 
-        let test_cases = vec![
+        let test_cases = [
             ("https://forc.pub", true),
             ("https://forc-pub.vercel.app", true),
             ("https://forc-pub-git-api-tokens-fuel-labs.vercel.app", true),
