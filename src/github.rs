@@ -1,6 +1,6 @@
 extern crate reqwest;
 
-use crate::api::User;
+use crate::api::auth::User;
 use serde::Deserialize;
 use std::env;
 use thiserror::Error;

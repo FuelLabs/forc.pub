@@ -1,44 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLocalSession } from '../../../utils/localStorage';
-import { SERVER_URI } from '../../../constants';
+import useCookie from 'react-use-cookie';
+import HTTP, { AuthenticatedUser } from '../../../utils/http';
 
-interface AuthenticatedUser {
-  fullName: string;
-  email?: string;
-  githubUrl: string;
-  githubLogin: string;
-  isAdmin: boolean;
-  avatarUrl?: string;
-}
-
-interface LoginResponse {
-  sessionId?: string;
-  user?: AuthenticatedUser;
-  error?: string;
-}
-
-interface SessionResponse {
-  user?: AuthenticatedUser;
-  error?: string;
-}
-
-export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
+export function useGithubAuth(): [
+  AuthenticatedUser | null,
+  () => Promise<void>
+] {
+  const [sessionId, setSessionId] = useCookie('fp_session');
   const [githubUser, setGithubUser] = useState<AuthenticatedUser | null>(null);
-  const {
-    githubCode,
-    saveGithubCode,
-    clearGithubCode,
-    sessionId,
-    saveSessionId,
-    clearSessionId,
-  } = useLocalSession();
+  const { githubCode, saveGithubCode, clearGithubCode } = useLocalSession();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await HTTP.post(`/logout`);
+    setSessionId('');
     setGithubUser(null);
-    clearSessionId();
-  }, [setGithubUser, clearSessionId]);
+  }, [setGithubUser, setSessionId]);
 
   // If this was a redirect from Github, we have a code to log in with.
   useEffect(() => {
@@ -55,70 +34,29 @@ export function useGithubAuth(): [AuthenticatedUser | null, () => void] {
     if (!githubCode) {
       return;
     }
-    const params = {
-      code: githubCode,
-    };
-    const request = new Request(`${SERVER_URI}/login`, {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
-    fetch(request)
-      .then((response) => {
-        if (response.status < 400) {
-          clearGithubCode();
-          return response.json();
-        } else {
-          console.log('Error: ', response.status);
-        }
-      })
-      .then((response: LoginResponse) => {
-        response.sessionId
-          ? saveSessionId(response.sessionId)
-          : clearSessionId();
-        response.user && setGithubUser(response.user);
-        if (response.error) {
-          console.log('login error: ', response.error);
-        }
-      })
-      .catch((error) => {
-        console.log('Unexpected error: ', error);
-      });
-  }, [
-    githubCode,
-    setGithubUser,
-    clearGithubCode,
-    clearSessionId,
-    saveSessionId,
-  ]);
 
-  // If there's a session id, attempt to fetch the user info from the session.
+    HTTP.post(`/login`, { code: githubCode })
+      .then(({ data }) => {
+        clearGithubCode();
+        if (data.user) {
+          setGithubUser(data.user);
+        }
+      })
+      .catch(() => clearGithubCode());
+  }, [githubCode, setGithubUser, clearGithubCode]);
+
   useEffect(() => {
+    // Attempt to fetch the logged in user info if the session cookie is set and the user hasn't been fetched.
     if (!!githubUser || !sessionId) {
       return;
     }
 
-    const request = new Request(`${SERVER_URI}/session?id=${sessionId}`, {
-      method: 'GET',
-    });
-    fetch(request)
-      .then((response) => {
-        if (response.status < 400) {
-          return response.json();
-        } else {
-          console.log('Error: ', response.status);
-        }
+    HTTP.get(`/user`)
+      .then(({ data }) => {
+        setGithubUser(data.user);
       })
-      .then((response: SessionResponse) => {
-        response.user && setGithubUser(response.user);
-        if (response.error) {
-          console.log('session error: ', response.error);
-          clearSessionId();
-        }
-      })
-      .catch((error) => {
-        console.log('Unexpected error: ', error);
-      });
-  }, [githubUser, sessionId, setGithubUser, clearSessionId]);
+      .catch(() => setSessionId(''));
+  }, [githubUser, setGithubUser, setSessionId, sessionId]);
 
   return [githubUser, logout];
 }

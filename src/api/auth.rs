@@ -36,32 +36,13 @@ pub struct LoginRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
-    pub user: Option<User>,
-    pub session_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+    pub user: User,
+    pub session_id: String,
 }
 
-/// The response to a session request.
+/// The response to a user GET request.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SessionResponse {
-    pub user: Option<User>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-/// The publish request.
-#[derive(Deserialize, Debug)]
-pub struct PublishRequest {
-    pub name: String,
-    pub version: String,
-}
-
-/// The response to a publish request.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PublishResponse {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+pub struct UserResponse {
+    pub user: User,
 }

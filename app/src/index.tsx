@@ -5,7 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Home from './pages/Home';
-import AccountSettings from './pages/AccountSettings';
+import ApiTokens from './pages/ApiTokens';
 import SearchResults from './pages/SearchResults';
 
 const root = ReactDOM.createRoot(
@@ -18,8 +18,8 @@ const router = createBrowserRouter([
     element: <App><Home/></App>,
   },
   {
-    path: '/settings',
-    element: <App><AccountSettings/></App>,
+    path: '/tokens',
+    element: <App><ApiTokens/></App>,
   },
   {
     path: '/search',

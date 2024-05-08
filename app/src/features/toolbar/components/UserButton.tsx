@@ -6,7 +6,6 @@ import Menu from '@mui/material/Menu/Menu';
 import MenuItem from '@mui/material/MenuItem/MenuItem';
 import {  useNavigate } from 'react-router-dom';
 import { useGithubAuth } from '../hooks/useGithubAuth';
-import { useLocalSession } from '../../../utils/localStorage';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { REDIRECT_URI } from '../../../constants';
 
@@ -18,7 +17,6 @@ const StyledWrapper = styled.div`
 `;
 
 function UserButton() {
-  const { clearSessionId, sessionId } = useLocalSession();
   const navigate = useNavigate();
   const [user, logout] = useGithubAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -43,12 +41,11 @@ function UserButton() {
   );
 
   const handleLogout = useCallback(() => {
-    clearSessionId();
     logout();
     handleNavigate('/');
-  }, [handleNavigate, logout, clearSessionId]);
+  }, [handleNavigate, logout]);
 
-  if (user && sessionId) {
+  if (!!user) {
     return (
       <StyledWrapper>
         <Button color='inherit' onClick={handleMenu} endIcon={<ArrowDropDownIcon />}>
@@ -65,10 +62,10 @@ function UserButton() {
           keepMounted
           open={Boolean(anchorEl)}
           onClose={handleClose}>
-          <MenuItem key='profile' onClick={() => handleNavigate('/settings')}>
-            Account Settings
+          <MenuItem key='tokens' onClick={() => handleNavigate('/tokens')}>
+            API Tokens
           </MenuItem>
-          <MenuItem key='account' onClick={handleLogout}>
+          <MenuItem key='logout' onClick={handleLogout}>
             Log Out
           </MenuItem>
         </Menu>

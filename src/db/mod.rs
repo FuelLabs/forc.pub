@@ -1,4 +1,5 @@
-mod error;
+pub mod api_token;
+pub mod error;
 mod user_session;
 
 use self::error::DatabaseError;
@@ -24,6 +25,13 @@ impl Default for Database {
     }
 }
 
+pub struct DbConn(DbConnection);
+impl DbConn {
+    pub fn inner(&mut self) -> &mut PgConnection {
+        &mut self.0
+    }
+}
+
 impl Database {
     pub fn new() -> Self {
         // Create a connection pool
@@ -43,8 +51,8 @@ impl Database {
     }
 
     /// Get a connection from the pool.
-    pub fn connection(&self) -> DbConnection {
-        self.pool.get().expect("db connection")
+    pub fn conn(&self) -> DbConn {
+        DbConn(self.pool.get().expect("db connection"))
     }
 }
 

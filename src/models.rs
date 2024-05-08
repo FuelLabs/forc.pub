@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-#[derive(Queryable, Selectable, Debug)]
+#[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
@@ -42,4 +42,24 @@ pub struct Session {
 pub struct NewSession {
     pub user_id: Uuid,
     pub expires_at: SystemTime,
+}
+
+#[derive(Queryable, Selectable, Debug, PartialEq, Eq)]
+#[diesel(table_name = crate::schema::api_tokens)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ApiToken {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub friendly_name: String,
+    pub expires_at: Option<SystemTime>,
+    pub created_at: SystemTime,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::api_tokens)]
+pub struct NewApiToken {
+    pub user_id: Uuid,
+    pub friendly_name: String,
+    pub token: Vec<u8>,
+    pub expires_at: Option<SystemTime>,
 }
