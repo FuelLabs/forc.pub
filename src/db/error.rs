@@ -12,4 +12,6 @@ pub enum DatabaseError {
     InsertSessionFailed(String),
     #[error("Failed to save token for user: {0}")]
     InsertTokenFailed(String),
+    #[error("Failed to upload: {0}")]
+    InsertUploadFailed(String),
 }
