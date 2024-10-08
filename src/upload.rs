@@ -1,14 +1,15 @@
 use crate::models::NewUpload;
+use crate::pinata::{self, PinataClient, PinataClientImpl};
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use pinata_sdk::{PinByFile, PinataApi};
+use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::env;
 use tar::Archive;
 use thiserror::Error;
 use uuid::Uuid;
@@ -37,9 +38,8 @@ pub async fn handle_project_upload(
     orig_tarball_path: &PathBuf,
     forc_path: &PathBuf,
     forc_version: String,
+    pinata_client: &impl PinataClient,
 ) -> Result<NewUpload, UploadError> {
-    eprintln!("upload_id: {:?}", upload_id);
-
     let unpacked_dir = upload_dir.join("unpacked");
     let release_dir = unpacked_dir.join("out/release");
     let project_dir = upload_dir.join("project");
@@ -53,8 +53,6 @@ pub async fn handle_project_upload(
     // Remove `out` directory if it exists.
     let _ = fs::remove_dir_all(unpacked_dir.join("out"));
 
-    eprintln!("forc_path: {:?}", forc_path);
-
     let output = Command::new(format!("{}/bin/forc", forc_path.to_string_lossy()))
         .arg("build")
         .arg("--release")
@@ -62,9 +60,7 @@ pub async fn handle_project_upload(
         .output()
         .expect("Failed to execute forc build");
 
-    if output.status.success() {
-        println!("Successfully built project with forc");
-    } else {
+    if !output.status.success() {
         return Err(UploadError::InvalidProject);
     }
 
@@ -85,9 +81,7 @@ pub async fn handle_project_upload(
         .output()
         .expect("Failed to copy project files");
 
-    if output.status.success() {
-        println!("Successfully copied project files");
-    } else {
+    if !output.status.success() {
         return Err(UploadError::CopyFiles);
     }
 
@@ -108,7 +102,9 @@ pub async fn handle_project_upload(
     enc.finish().unwrap();
 
     // Store the tarball in IPFS.
-    let tarball_ipfs_hash = upload_file_to_ipfs(&final_tarball_path).await?;
+    let tarball_ipfs_hash = pinata_client
+        .upload_file_to_ipfs(&final_tarball_path)
+        .await?;
 
     fn find_abi_file_in_dir(dir: &Path) -> Option<PathBuf> {
         if let Ok(dir) = fs::read_dir(dir) {
@@ -136,7 +132,7 @@ pub async fn handle_project_upload(
     // Store the ABI in IPFS.
     let (abi_ipfs_hash, bytecode_identifier) =
         if let Some(abi_path) = find_abi_file_in_dir(&release_dir) {
-            let hash = upload_file_to_ipfs(&abi_path).await?;
+            let hash = pinata_client.upload_file_to_ipfs(&abi_path).await?;
 
             // TODO: https://github.com/FuelLabs/forc.pub/issues/16 Calculate the bytecode identifier and store in the database along with the ABI hash.
             let bytecode_identifier = None;
@@ -157,25 +153,39 @@ pub async fn handle_project_upload(
     Ok(upload)
 }
 
-async fn upload_file_to_ipfs(path: &PathBuf) -> Result<String, UploadError> {
-    match (env::var("PINATA_API_KEY"), env::var("PINATA_API_SECRET")) {
-        (Ok(api_key), Ok(secret_api_key)) => {
-            // TODO: move to server context
+#[cfg(test)]
+mod tests {
+    use crate::pinata::MockPinataClient;
 
-            let api =
-                PinataApi::new(api_key, secret_api_key).map_err(|_| UploadError::Authentication)?;
-            api.test_authentication()
-                .await
-                .map_err(|_| UploadError::Authentication)?;
+    use super::*;
 
-            match api.pin_file(PinByFile::new(path.to_string_lossy())).await {
-                Ok(pinned_object) => Ok(pinned_object.ipfs_hash),
-                Err(_) => Err(UploadError::Ipfs),
-            }
-        }
-        _ => {
-            // TODO: fallback to a local IPFS node for tests
-            Err(UploadError::Ipfs)
-        }
+    #[tokio::test]
+    async fn handle_project_upload_success() {
+        let upload_id = Uuid::new_v4();
+        let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
+        let orig_tarball_path = PathBuf::from("tests/fixtures/sway-project.tgz");
+        let forc_version = "0.63.4";
+        let forc_path = PathBuf::from("tests/fixtures/forc-0.63.4")
+            .canonicalize()
+            .unwrap();
+        let mock_client = MockPinataClient::new().await.expect("mock pinata client");
+
+        let result = handle_project_upload(
+            &upload_dir,
+            &upload_id,
+            &orig_tarball_path,
+            &forc_path,
+            forc_version.to_string(),
+            &mock_client,
+        )
+        .await
+        .expect("result ok");
+
+        assert!(result.id == upload_id);
+        assert_eq!(result.source_code_ipfs_hash, "ABC123".to_string());
+        assert_eq!(result.abi_ipfs_hash, Some("ABC123".to_string()));
+        assert!(result.forc_version == forc_version);
+        // TODO: https://github.com/FuelLabs/forc.pub/issues/16
+        // assert!(result.bytecode_identifier.is_some());
     }
 }

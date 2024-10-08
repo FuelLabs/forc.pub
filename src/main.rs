@@ -10,11 +10,12 @@ use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
     ApiResult, EmptyResponse,
 };
-use forc_pub::db::{Database};
+use forc_pub::db::Database;
 use forc_pub::github::handle_login;
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
+use forc_pub::pinata::{PinataClient, PinataClientImpl};
 use forc_pub::upload::{handle_project_upload, UploadError};
 use rocket::fs::TempFile;
 use rocket::http::{Cookie, CookieJar};
@@ -22,6 +23,7 @@ use rocket::{serde::json::Json, State};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -109,27 +111,29 @@ fn publish(request: Json<PublishRequest>, auth: TokenAuth) -> ApiResult<EmptyRes
 )]
 async fn upload_project(
     db: &State<Database>,
+    pinata_client: &State<PinataClientImpl>,
     forc_version: &str,
     mut tarball: TempFile<'_>,
 ) -> ApiResult<UploadResponse> {
-    // Install the forc version.
-    eprintln!("Forc version: {:?}", forc_version);
-
+    // Install the forc version if it's not already installed.
     let forc_path_str = format!("forc-{forc_version}");
-    let forc_path = fs::canonicalize(PathBuf::from(&forc_path_str)).unwrap();
+    let forc_path = PathBuf::from(&forc_path_str);
+    fs::create_dir_all(forc_path.clone()).unwrap();
+    let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
+
     let output = Command::new("cargo")
-        .arg("install")
-        .arg("forc")
-        .arg("--version")
-        .arg(forc_version)
+        .arg("binstall")
+        .arg("--no-confirm")
         .arg("--root")
         .arg(&forc_path)
+        .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/{forc_version}/forc-binaries-linux_arm64.tar.gz"))
+        .arg("--bin-dir=forc-binaries/forc")
+        .arg("--pkg-fmt=tgz")
+        .arg("forc")
         .output()
         .expect("Failed to execute cargo install");
 
-    if output.status.success() {
-        println!("Successfully installed forc with tag {}", forc_version);
-    } else {
+    if !output.status.success() {
         return Err(ApiError::Upload(UploadError::InvalidForcVersion(
             forc_version.to_string(),
         )));
@@ -156,6 +160,7 @@ async fn upload_project(
         &orig_tarball_path,
         &forc_path,
         forc_version.to_string(),
+        pinata_client.inner(),
     )
     .await?;
     let _ = db.conn().insert_upload(&upload)?;
@@ -186,9 +191,12 @@ fn health() -> String {
 
 // Launch the rocket server.
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
+    let pinata_client = PinataClientImpl::new().await.expect("pinata client");
+
     rocket::build()
         .manage(Database::default())
+        .manage(pinata_client)
         .attach(Cors)
         .mount(
             "/",
