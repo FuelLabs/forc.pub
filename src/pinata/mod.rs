@@ -27,10 +27,10 @@ impl PinataClient for PinataClientImpl {
                 api.test_authentication()
                     .await
                     .map_err(|_| UploadError::Authentication)?;
-                return Ok(PinataClientImpl { pinata_api: api });
+                Ok(PinataClientImpl { pinata_api: api })
             }
             _ => {
-                return Err(UploadError::Ipfs);
+                Err(UploadError::Ipfs)
             }
         }
     }
@@ -51,14 +51,10 @@ impl PinataClient for PinataClientImpl {
 pub struct MockPinataClient;
 
 impl PinataClient for MockPinataClient {
-    fn new() -> impl std::future::Future<Output = Result<Self, UploadError>> + Send {
-        async { Ok(MockPinataClient) }
-    }
+    async fn new() -> Result<Self, UploadError> { Ok(MockPinataClient) }
 
-    fn upload_file_to_ipfs(
+    async fn upload_file_to_ipfs(
         &self,
         _path: &PathBuf,
-    ) -> impl std::future::Future<Output = Result<String, UploadError>> + Send {
-        async { Ok("ABC123".to_string()) }
-    }
+    ) -> Result<String, UploadError> { Ok("ABC123".to_string()) }
 }

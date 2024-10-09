@@ -1,10 +1,8 @@
 use crate::models::NewUpload;
-use crate::pinata::{self, PinataClient, PinataClientImpl};
+use crate::pinata::{PinataClient};
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use pinata_sdk::{PinByFile, PinataApi};
-use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
