@@ -23,6 +23,8 @@ pub enum ApiError {
     Database(#[from] crate::db::error::DatabaseError),
     #[error("GitHub error: {0}")]
     Github(#[from] crate::github::GithubError),
+    #[error("GitHub error: {0}")]
+    Upload(#[from] crate::upload::UploadError),
 }
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
@@ -30,6 +32,7 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
         match self {
             ApiError::Database(_) => Err(Status::InternalServerError),
             ApiError::Github(_) => Err(Status::Unauthorized),
+            ApiError::Upload(_) => Err(Status::BadRequest),
         }
     }
 }

@@ -1,5 +1,6 @@
 pub mod api_token;
 pub mod error;
+pub mod upload;
 mod user_session;
 
 use self::error::DatabaseError;

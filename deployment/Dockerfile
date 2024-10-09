@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM lukemathwalker/cargo-chef:latest-rust-1.76 as chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.79 as chef
 WORKDIR /build/
 # hadolint ignore=DL3008
 
@@ -18,6 +18,15 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef as builder
+
+# Install the latest 20 versions of forc with cargo-binstall
+RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+RUN tags=$(curl -s "https://api.github.com/repos/FuelLabs/sway/tags?per_page=20" | grep '"name"' | sed -E 's/.*"name": "v?([^"]+)".*/\1/') && \
+    echo "Tags fetched from the repository:" && \
+    for tag in $tags; do \
+      echo "Tag: $tag" && \
+      cargo binstall --no-confirm --root "/usr/local/cargo/bin/forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v$tag/forc-binaries-linux_arm64.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
+    done
 
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 COPY --from=planner /build/recipe.json recipe.json
@@ -40,6 +49,7 @@ RUN apt-get update -y \
 
 WORKDIR /root/
 
+COPY --from=builder /usr/local/cargo/bin/forc-* .
 COPY --from=builder /build/target/debug/forc_pub .
 COPY --from=builder /build/target/debug/forc_pub.d .
 COPY --from=builder /build/Rocket.toml .

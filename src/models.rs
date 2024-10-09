@@ -63,3 +63,25 @@ pub struct NewApiToken {
     pub token: Vec<u8>,
     pub expires_at: Option<SystemTime>,
 }
+
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = crate::schema::uploads)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Upload {
+    pub id: Uuid,
+    pub source_code_ipfs_hash: String,
+    pub forc_version: String,
+    pub abi_ipfs_hash: Option<String>,
+    pub bytecode_identifier: Option<String>,
+    pub created_at: SystemTime,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::uploads)]
+pub struct NewUpload {
+    pub id: Uuid,
+    pub source_code_ipfs_hash: String,
+    pub forc_version: String,
+    pub abi_ipfs_hash: Option<String>,
+    pub bytecode_identifier: Option<String>,
+}

@@ -7,3 +7,6 @@ build
 node_modules
 tmp
 .vscode/*
+
+# Forc binaries installed by the server.
+forc-*

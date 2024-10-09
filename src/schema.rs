@@ -21,6 +21,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    uploads (id) {
+        id -> Uuid,
+        source_code_ipfs_hash -> Varchar,
+        forc_version -> Varchar,
+        abi_ipfs_hash -> Nullable<Varchar>,
+        bytecode_identifier -> Nullable<Varchar>,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Uuid,
         full_name -> Varchar,
@@ -36,4 +47,4 @@ diesel::table! {
 diesel::joinable!(api_tokens -> users (user_id));
 diesel::joinable!(sessions -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(api_tokens, sessions, users,);
+diesel::allow_tables_to_appear_in_same_query!(api_tokens, sessions, uploads, users,);
