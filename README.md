@@ -103,7 +103,9 @@ Alternatively, the server can be run locally with Docker, as it is in the deploy
 You can manually trigger the APIs with curl, for example:
 
 ```bash
-curl -X POST "http://localhost:8080/upload_project?forc_version=0.66.5"  --data-binary "@tests/fixtures/sway-project.tgz"
+curl -X POST "http://localhost:8080/upload_project?forc_version=0.66.5" \
+  -H "Content-Type: application/gzip" \
+  --data-binary "@tests/fixtures/sway-project.tgz"
 ```
 
 ### Running the Frontend

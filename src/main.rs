@@ -104,7 +104,7 @@ fn publish(request: Json<PublishRequest>, auth: TokenAuth) -> ApiResult<EmptyRes
 
 #[post(
     "/upload_project?<forc_version>",
-    format = "application/x-www-form-urlencoded",
+    format = "application/gzip",
     data = "<tarball>"
 )]
 async fn upload_project(
