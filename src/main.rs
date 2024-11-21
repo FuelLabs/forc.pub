@@ -16,13 +16,12 @@ use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::pinata::{PinataClient, PinataClientImpl};
-use forc_pub::upload::{handle_project_upload, UploadError};
+use forc_pub::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use rocket::fs::TempFile;
 use rocket::http::{Cookie, CookieJar};
 use rocket::{serde::json::Json, State};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -120,23 +119,7 @@ async fn upload_project(
     fs::create_dir_all(forc_path.clone()).unwrap();
     let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
 
-    let output = Command::new("cargo")
-        .arg("binstall")
-        .arg("--no-confirm")
-        .arg("--root")
-        .arg(&forc_path)
-        .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/{forc_version}/forc-binaries-linux_arm64.tar.gz"))
-        .arg("--bin-dir=forc-binaries/forc")
-        .arg("--pkg-fmt=tgz")
-        .arg("forc")
-        .output()
-        .map_err(|_| ApiError::Upload(UploadError::InvalidForcVersion(forc_version.to_string())))?;
-
-    if !output.status.success() {
-        return Err(ApiError::Upload(UploadError::InvalidForcVersion(
-            forc_version.to_string(),
-        )));
-    }
+    install_forc_at_path(forc_version, &forc_path)?;
 
     // Create an upload ID and temporary directory.
     let upload_id = Uuid::new_v4();
@@ -165,7 +148,7 @@ async fn upload_project(
 
     let _ = db.conn().insert_upload(&upload)?;
 
-    // Clean up the temp directory.
+    // Clean up the temporary directory.
     fs::remove_dir_all(upload_dir).unwrap();
 
     Ok(Json(UploadResponse { upload_id }))

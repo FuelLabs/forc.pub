@@ -12,7 +12,7 @@ use tar::Archive;
 use thiserror::Error;
 use uuid::Uuid;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum UploadError {
     #[error("The project is too large to be uploaded.")]
     TooLarge,
@@ -22,8 +22,8 @@ pub enum UploadError {
     CopyFiles,
     #[error("Invalid Forc version: {0}")]
     InvalidForcVersion(String),
-    #[error("Not a Sway project.")]
-    InvalidProject,
+    #[error("Failed to compile project.")]
+    FailedToCompile,
     #[error("Failed to authenticate.")]
     Authentication,
     #[error("Failed to upload to IPFS.")]
@@ -61,7 +61,7 @@ pub async fn handle_project_upload(
         .expect("Failed to execute forc build");
 
     if !output.status.success() {
-        return Err(UploadError::InvalidProject);
+        return Err(UploadError::FailedToCompile);
     }
 
     // Copy files that are part of the Sway project to a new directory.
@@ -106,7 +106,7 @@ pub async fn handle_project_upload(
         .upload_file_to_ipfs(&final_tarball_path)
         .await?;
 
-    fn find_abi_file_in_dir(dir: &Path) -> Option<PathBuf> {
+    fn find_file_in_dir_by_suffix(dir: &Path, suffix: &str) -> Option<PathBuf> {
         let dir = fs::read_dir(dir).ok()?;
         dir.flatten()
             .filter_map(|entry| {
@@ -114,28 +114,8 @@ pub async fn handle_project_upload(
                 if path.is_file() {
                     if let Some(file_name) = path.file_name() {
                         if let Some(file_name_str) = file_name.to_str() {
-                            // Check if the path is a file and ends with "-abi.json"
-                            if file_name_str.ends_with("-abi.json") {
-                                return Some(path); // Return the first found file
-                            }
-                        }
-                    }
-                }
-                None
-            })
-            .next()
-    }
-
-    fn find_binary_file_in_dir(dir: &Path) -> Option<PathBuf> {
-        let dir = fs::read_dir(dir).ok()?;
-        dir.flatten()
-            .filter_map(|entry| {
-                let path = entry.path();
-                if path.is_file() {
-                    if let Some(file_name) = path.file_name() {
-                        if let Some(file_name_str) = file_name.to_str() {
-                            // Check if the path is a file and ends with ".bin"
-                            if file_name_str.ends_with(".bin") {
+                            // Check if the path is a file and ends with the suffix
+                            if file_name_str.ends_with(suffix) {
                                 return Some(path); // Return the first found file
                             }
                         }
@@ -147,13 +127,13 @@ pub async fn handle_project_upload(
     }
 
     // Store the ABI in IPFS.
-    let abi_ipfs_hash = match find_abi_file_in_dir(&release_dir) {
+    let abi_ipfs_hash = match find_file_in_dir_by_suffix(&release_dir, "-abi.json") {
         Some(abi_path) => Some(pinata_client.upload_file_to_ipfs(&abi_path).await?),
         None => None,
     };
 
     // Generate the bytecode identifier and store in the database along with the ABI hash.
-    let bytecode_identifier = match find_binary_file_in_dir(&release_dir) {
+    let bytecode_identifier = match find_file_in_dir_by_suffix(&release_dir, ".bin") {
         Some(bin_path) => Some(
             get_bytecode_id(&bin_path).map_err(|err| UploadError::BytecodeId(err.to_string()))?,
         ),
@@ -171,6 +151,27 @@ pub async fn handle_project_upload(
     Ok(upload)
 }
 
+/// Installs the given version of forc at the specific root path using cargo-binstall.
+pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), UploadError> {
+    let output = Command::new("cargo")
+    .arg("binstall")
+    .arg("--no-confirm")
+    .arg("--root")
+    .arg(forc_path)
+    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/{forc_version}/forc-binaries-linux_arm64.tar.gz"))
+    .arg("--bin-dir=forc-binaries/forc")
+    .arg("--pkg-fmt=tgz")
+    .arg(format!("forc@{forc_version}"))
+    .output()
+    .map_err(|_| UploadError::InvalidForcVersion(forc_version.to_string()))?;
+
+    if !output.status.success() {
+        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::pinata::MockPinataClient;
@@ -183,9 +184,12 @@ mod tests {
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
         let orig_tarball_path = PathBuf::from("tests/fixtures/sway-project.tgz");
         let forc_version = "0.66.5";
-        let forc_path = PathBuf::from("tests/fixtures/forc-0.66.5")
-            .canonicalize()
-            .unwrap();
+        let forc_path_str = format!("forc-{forc_version}");
+        let forc_path = PathBuf::from(&forc_path_str);
+        fs::create_dir_all(forc_path.clone()).unwrap();
+        let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
+        install_forc_at_path(forc_version, &forc_path).expect("forc installed");
+
         let mock_client = MockPinataClient::new().await.expect("mock pinata client");
 
         let result = handle_project_upload(

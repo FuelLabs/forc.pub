@@ -29,6 +29,7 @@ pub enum ApiError {
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
     fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
+        println!("API error: {}", self);
         match self {
             ApiError::Database(_) => Err(Status::InternalServerError),
             ApiError::Github(_) => Err(Status::Unauthorized),

@@ -76,7 +76,7 @@ pub struct Upload {
     pub created_at: SystemTime,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[diesel(table_name = crate::schema::uploads)]
 pub struct NewUpload {
     pub id: Uuid,
