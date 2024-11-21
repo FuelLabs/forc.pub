@@ -9,4 +9,4 @@ tmp
 .vscode/*
 
 # Forc binaries installed by the server.
-forc-*
+/forc-*
