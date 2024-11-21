@@ -130,7 +130,7 @@ async fn upload_project(
         .arg("--pkg-fmt=tgz")
         .arg("forc")
         .output()
-        .expect("Failed to execute cargo install");
+        .map_err(|_| ApiError::Upload(UploadError::InvalidForcVersion(forc_version.to_string())))?;
 
     if !output.status.success() {
         return Err(ApiError::Upload(UploadError::InvalidForcVersion(
@@ -162,6 +162,7 @@ async fn upload_project(
         pinata_client.inner(),
     )
     .await?;
+
     let _ = db.conn().insert_upload(&upload)?;
 
     // Clean up the temp directory.

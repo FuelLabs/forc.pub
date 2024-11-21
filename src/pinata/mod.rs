@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::{env, path::Path};
 
 use dotenvy::dotenv;
 use pinata_sdk::{PinByFile, PinataApi};
@@ -9,7 +9,7 @@ pub trait PinataClient: Sized {
     fn new() -> impl std::future::Future<Output = Result<Self, UploadError>> + Send;
     fn upload_file_to_ipfs(
         &self,
-        path: &PathBuf,
+        path: &Path,
     ) -> impl std::future::Future<Output = Result<String, UploadError>> + Send;
 }
 
@@ -29,14 +29,12 @@ impl PinataClient for PinataClientImpl {
                     .map_err(|_| UploadError::Authentication)?;
                 Ok(PinataClientImpl { pinata_api: api })
             }
-            _ => {
-                Err(UploadError::Ipfs)
-            }
+            _ => Err(UploadError::Ipfs),
         }
     }
 
     /// Uploads a file at the given path to a Pinata IPFS gateway.
-    async fn upload_file_to_ipfs(&self, path: &PathBuf) -> Result<String, UploadError> {
+    async fn upload_file_to_ipfs(&self, path: &Path) -> Result<String, UploadError> {
         match self
             .pinata_api
             .pin_file(PinByFile::new(path.to_string_lossy()))
@@ -51,10 +49,11 @@ impl PinataClient for PinataClientImpl {
 pub struct MockPinataClient;
 
 impl PinataClient for MockPinataClient {
-    async fn new() -> Result<Self, UploadError> { Ok(MockPinataClient) }
+    async fn new() -> Result<Self, UploadError> {
+        Ok(MockPinataClient)
+    }
 
-    async fn upload_file_to_ipfs(
-        &self,
-        _path: &PathBuf,
-    ) -> Result<String, UploadError> { Ok("ABC123".to_string()) }
+    async fn upload_file_to_ipfs(&self, _path: &Path) -> Result<String, UploadError> {
+        Ok("ABC123".to_string())
+    }
 }

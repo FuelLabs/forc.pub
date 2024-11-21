@@ -1,10 +1,10 @@
 use crate::models::NewUpload;
-use crate::pinata::{PinataClient};
+use crate::pinata::PinataClient;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use forc_util::bytecode::get_bytecode_id;
 use std::fs::{self, File};
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -28,13 +28,15 @@ pub enum UploadError {
     Authentication,
     #[error("Failed to upload to IPFS.")]
     Ipfs,
+    #[error("Failed to generate bytecode ID. Err: {0}")]
+    BytecodeId(String),
 }
 
 pub async fn handle_project_upload(
     upload_dir: &Path,
     upload_id: &Uuid,
     orig_tarball_path: &PathBuf,
-    forc_path: &PathBuf,
+    forc_path: &Path,
     forc_version: String,
     pinata_client: &impl PinataClient,
 ) -> Result<NewUpload, UploadError> {
@@ -105,40 +107,58 @@ pub async fn handle_project_upload(
         .await?;
 
     fn find_abi_file_in_dir(dir: &Path) -> Option<PathBuf> {
-        if let Ok(dir) = fs::read_dir(dir) {
-            // Iterate over the directory's contents
-            for entry in dir {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-
-                    // Check if the path is a file and ends with "-abi.json"
-                    if path.is_file() {
-                        if let Some(file_name) = path.file_name() {
-                            if let Some(file_name_str) = file_name.to_str() {
-                                if file_name_str.ends_with("-abi.json") {
-                                    return Some(path); // Return the first found file
-                                }
+        let dir = fs::read_dir(dir).ok()?;
+        dir.flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(file_name) = path.file_name() {
+                        if let Some(file_name_str) = file_name.to_str() {
+                            // Check if the path is a file and ends with "-abi.json"
+                            if file_name_str.ends_with("-abi.json") {
+                                return Some(path); // Return the first found file
                             }
                         }
                     }
                 }
-            }
-        }
-        None
+                None
+            })
+            .next()
+    }
+
+    fn find_binary_file_in_dir(dir: &Path) -> Option<PathBuf> {
+        let dir = fs::read_dir(dir).ok()?;
+        dir.flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(file_name) = path.file_name() {
+                        if let Some(file_name_str) = file_name.to_str() {
+                            // Check if the path is a file and ends with ".bin"
+                            if file_name_str.ends_with(".bin") {
+                                return Some(path); // Return the first found file
+                            }
+                        }
+                    }
+                }
+                None
+            })
+            .next()
     }
 
     // Store the ABI in IPFS.
-    let (abi_ipfs_hash, bytecode_identifier) =
-        if let Some(abi_path) = find_abi_file_in_dir(&release_dir) {
-            let hash = pinata_client.upload_file_to_ipfs(&abi_path).await?;
+    let abi_ipfs_hash = match find_abi_file_in_dir(&release_dir) {
+        Some(abi_path) => Some(pinata_client.upload_file_to_ipfs(&abi_path).await?),
+        None => None,
+    };
 
-            // TODO: https://github.com/FuelLabs/forc.pub/issues/16 Calculate the bytecode identifier and store in the database along with the ABI hash.
-            let bytecode_identifier = None;
-
-            (Some(hash), bytecode_identifier)
-        } else {
-            (None, None)
-        };
+    // Generate the bytecode identifier and store in the database along with the ABI hash.
+    let bytecode_identifier = match find_binary_file_in_dir(&release_dir) {
+        Some(bin_path) => Some(
+            get_bytecode_id(&bin_path).map_err(|err| UploadError::BytecodeId(err.to_string()))?,
+        ),
+        None => None,
+    };
 
     let upload = NewUpload {
         id: *upload_id,
@@ -162,8 +182,8 @@ mod tests {
         let upload_id = Uuid::new_v4();
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
         let orig_tarball_path = PathBuf::from("tests/fixtures/sway-project.tgz");
-        let forc_version = "0.63.4";
-        let forc_path = PathBuf::from("tests/fixtures/forc-0.63.4")
+        let forc_version = "0.66.5";
+        let forc_path = PathBuf::from("tests/fixtures/forc-0.66.5")
             .canonicalize()
             .unwrap();
         let mock_client = MockPinataClient::new().await.expect("mock pinata client");
@@ -179,11 +199,13 @@ mod tests {
         .await
         .expect("result ok");
 
-        assert!(result.id == upload_id);
+        assert_eq!(result.id, upload_id);
         assert_eq!(result.source_code_ipfs_hash, "ABC123".to_string());
         assert_eq!(result.abi_ipfs_hash, Some("ABC123".to_string()));
-        assert!(result.forc_version == forc_version);
-        // TODO: https://github.com/FuelLabs/forc.pub/issues/16
-        // assert!(result.bytecode_identifier.is_some());
+        assert_eq!(result.forc_version, forc_version);
+        assert_eq!(
+            result.bytecode_identifier.unwrap(),
+            "325030b9e3b9b8b52401c48221ccff609acc0b91695f57852a3fd7a7f3ccb687"
+        );
     }
 }
