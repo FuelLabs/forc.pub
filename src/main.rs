@@ -17,6 +17,7 @@ use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::pinata::{PinataClient, PinataClientImpl};
 use forc_pub::upload::{handle_project_upload, install_forc_at_path, UploadError};
+use forc_pub::util::validate_or_format_semver;
 use rocket::fs::TempFile;
 use rocket::http::{Cookie, CookieJar};
 use rocket::{serde::json::Json, State};
@@ -113,13 +114,17 @@ async fn upload_project(
     forc_version: &str,
     mut tarball: TempFile<'_>,
 ) -> ApiResult<UploadResponse> {
+    // Sanitize the forc version.
+    let forc_version = validate_or_format_semver(forc_version)
+        .ok_or_else(|| ApiError::Upload(UploadError::InvalidForcVersion(forc_version.into())))?;
+
     // Install the forc version if it's not already installed.
     let forc_path_str = format!("forc-{forc_version}");
     let forc_path = PathBuf::from(&forc_path_str);
     fs::create_dir_all(forc_path.clone()).unwrap();
     let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
 
-    install_forc_at_path(forc_version, &forc_path)?;
+    install_forc_at_path(&forc_version, &forc_path)?;
 
     // Create an upload ID and temporary directory.
     let upload_id = Uuid::new_v4();

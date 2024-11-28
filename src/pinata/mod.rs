@@ -20,17 +20,20 @@ pub struct PinataClientImpl {
 impl PinataClient for PinataClientImpl {
     async fn new() -> Result<Self, UploadError> {
         dotenv().ok();
-        match (env::var("PINATA_API_KEY"), env::var("PINATA_API_SECRET")) {
-            (Ok(api_key), Ok(secret_api_key)) => {
-                let api = PinataApi::new(api_key, secret_api_key)
-                    .map_err(|_| UploadError::Authentication)?;
-                api.test_authentication()
-                    .await
-                    .map_err(|_| UploadError::Authentication)?;
-                Ok(PinataClientImpl { pinata_api: api })
-            }
-            _ => Err(UploadError::Ipfs),
-        }
+
+        let (api_key, secret_api_key) =
+            match (env::var("PINATA_API_KEY"), env::var("PINATA_API_SECRET")) {
+                (Ok(key), Ok(secret)) => (key, secret),
+                _ => return Err(UploadError::Ipfs),
+            };
+        let api =
+            PinataApi::new(api_key, secret_api_key).map_err(|_| UploadError::Authentication)?;
+
+        api.test_authentication()
+            .await
+            .map_err(|_| UploadError::Authentication)?;
+
+        Ok(PinataClientImpl { pinata_api: api })
     }
 
     /// Uploads a file at the given path to a Pinata IPFS gateway.

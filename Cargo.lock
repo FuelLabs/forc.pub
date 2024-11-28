@@ -1375,6 +1375,7 @@ dependencies = [
  "regex",
  "reqwest 0.12.2",
  "rocket",
+ "semver",
  "serde",
  "serde_json",
  "serial_test",

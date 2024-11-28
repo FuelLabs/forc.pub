@@ -30,6 +30,10 @@ pub enum UploadError {
     Ipfs,
     #[error("Failed to generate bytecode ID. Err: {0}")]
     BytecodeId(String),
+    #[error("Architecture '{0}' not supported.")]
+    UnsupportedArch(String),
+    #[error("OS '{0}' not supported.")]
+    UnsupportedOs(String),
 }
 
 pub async fn handle_project_upload(
@@ -153,12 +157,27 @@ pub async fn handle_project_upload(
 
 /// Installs the given version of forc at the specific root path using cargo-binstall.
 pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), UploadError> {
+    let os = match std::env::consts::OS {
+        "linux" => "linux",
+        "macos" => "darwin",
+        _ => return Err(UploadError::UnsupportedOs(std::env::consts::OS.to_string())),
+    };
+    let arch = match std::env::consts::ARCH {
+        "x86_64" => "amd64",
+        "aarch64" => "arm64",
+        _ => {
+            return Err(UploadError::UnsupportedArch(
+                std::env::consts::ARCH.to_string(),
+            ))
+        }
+    };
+
     let output = Command::new("cargo")
     .arg("binstall")
     .arg("--no-confirm")
     .arg("--root")
     .arg(forc_path)
-    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/{forc_version}/forc-binaries-linux_arm64.tar.gz"))
+    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/{forc_version}/forc-binaries-{os}_{arch}.tar.gz"))
     .arg("--bin-dir=forc-binaries/forc")
     .arg("--pkg-fmt=tgz")
     .arg(format!("forc@{forc_version}"))
