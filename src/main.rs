@@ -121,8 +121,9 @@ async fn upload_project(
     // Install the forc version if it's not already installed.
     let forc_path_str = format!("forc-{forc_version}");
     let forc_path = PathBuf::from(&forc_path_str);
-    fs::create_dir_all(forc_path.clone()).unwrap();
-    let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
+    fs::create_dir_all(forc_path.clone()).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
+    let forc_path =
+        fs::canonicalize(forc_path.clone()).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     install_forc_at_path(&forc_version, &forc_path)?;
 
@@ -131,7 +132,7 @@ async fn upload_project(
     let upload_dir_str = format!("tmp/uploads/{}", upload_id);
     let upload_dir = Path::new(&upload_dir_str);
 
-    fs::create_dir_all(upload_dir).unwrap();
+    fs::create_dir_all(upload_dir).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     // Persist the file to disk.
     let orig_tarball_path = upload_dir.join("original.tgz");
@@ -154,7 +155,7 @@ async fn upload_project(
     let _ = db.conn().insert_upload(&upload)?;
 
     // Clean up the temporary directory.
-    fs::remove_dir_all(upload_dir).unwrap();
+    fs::remove_dir_all(upload_dir).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     Ok(Json(UploadResponse { upload_id }))
 }

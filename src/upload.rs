@@ -18,6 +18,8 @@ pub enum UploadError {
     TooLarge,
     #[error("Failed to save zip file.")]
     SaveFile,
+    #[error("Failed to open file.")]
+    OpenFile,
     #[error("Failed to copy files.")]
     CopyFiles,
     #[error("Invalid Forc version: {0}")]
@@ -49,10 +51,12 @@ pub async fn handle_project_upload(
     let project_dir = upload_dir.join("project");
 
     // Unpack the tarball.
-    let tarball = File::open(orig_tarball_path).unwrap();
+    let tarball = File::open(orig_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let decompressed = GzDecoder::new(tarball);
     let mut archive = Archive::new(decompressed);
-    archive.unpack(&unpacked_dir).unwrap();
+    archive
+        .unpack(&unpacked_dir)
+        .map_err(|_| UploadError::OpenFile)?;
 
     // Remove `out` directory if it exists.
     let _ = fs::remove_dir_all(unpacked_dir.join("out"));
@@ -91,19 +95,20 @@ pub async fn handle_project_upload(
 
     // Pack the new tarball.
     let final_tarball_path = upload_dir.join("project.tgz");
-    let tar_gz = File::create(&final_tarball_path).unwrap();
+    let tar_gz = File::create(&final_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = tar::Builder::new(enc);
 
     // Add files to the tar archive
-    tar.append_dir_all(".", &project_dir).unwrap();
+    tar.append_dir_all(".", &project_dir)
+        .map_err(|_| UploadError::CopyFiles)?;
 
     // Finish writing the tar archive
-    tar.finish().unwrap();
+    tar.finish().map_err(|_| UploadError::CopyFiles)?;
 
     // Make sure the GzEncoder finishes and flushes all data
-    let enc = tar.into_inner().unwrap();
-    enc.finish().unwrap();
+    let enc = tar.into_inner().map_err(|_| UploadError::CopyFiles)?;
+    enc.finish().map_err(|_| UploadError::CopyFiles)?;
 
     // Store the tarball in IPFS.
     let tarball_ipfs_hash = pinata_client
