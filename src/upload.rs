@@ -38,6 +38,9 @@ pub enum UploadError {
     UnsupportedOs(String),
 }
 
+/// Handles the project upload process by unpacking the tarball, compiling the project, copying the
+/// necessary files to a new directory, and storing the source code tarball and ABI file in IPFS.
+/// Returns a NewUpload struct with the necessary information to store in the database.
 pub async fn handle_project_upload(
     upload_dir: &Path,
     upload_id: &Uuid,

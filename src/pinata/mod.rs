@@ -49,8 +49,11 @@ impl PinataClient for PinataClientImpl {
     }
 }
 
+/// A mock implementation of the PinataClient trait for testing.
+#[cfg(test)]
 pub struct MockPinataClient;
 
+#[cfg(test)]
 impl PinataClient for MockPinataClient {
     async fn new() -> Result<Self, UploadError> {
         Ok(MockPinataClient)
