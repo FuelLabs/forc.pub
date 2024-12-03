@@ -24,8 +24,10 @@ struct GithubUserResponse {
 pub enum GithubError {
     #[error("Failed to connect to GitHub")]
     Network(#[from] reqwest::Error),
+
     #[error("Failed to authenticate with GitHub. Status code: {0}")]
     Auth(String),
+
     #[error("Failed to fetch {name:?} from GitHub. Status code: {status:?})")]
     Api { name: String, status: String },
 }

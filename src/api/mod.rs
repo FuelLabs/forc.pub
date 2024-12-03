@@ -9,6 +9,7 @@ use rocket::{
     Request,
 };
 use thiserror::Error;
+use tracing::error;
 
 /// A wrapper for API responses that can return errors.
 pub type ApiResult<T> = Result<Json<T>, ApiError>;
@@ -21,15 +22,17 @@ pub struct EmptyResponse;
 pub enum ApiError {
     #[error("Database error: {0}")]
     Database(#[from] crate::db::error::DatabaseError),
+
     #[error("GitHub error: {0}")]
     Github(#[from] crate::github::GithubError),
+
     #[error("GitHub error: {0}")]
     Upload(#[from] crate::upload::UploadError),
 }
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
     fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
-        println!("API error: {}", self);
+        error!("API error: {}", self);
         match self {
             ApiError::Database(_) => Err(Status::InternalServerError),
             ApiError::Github(_) => Err(Status::Unauthorized),

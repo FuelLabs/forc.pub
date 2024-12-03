@@ -18,12 +18,21 @@ use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::pinata::{PinataClient, PinataClientImpl};
 use forc_pub::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::util::validate_or_format_semver;
-use rocket::fs::TempFile;
-use rocket::http::{Cookie, CookieJar};
-use rocket::{serde::json::Json, State};
+use rocket::{
+    data::Capped,
+    fs::TempFile,
+    http::{Cookie, CookieJar},
+    serde::json::Json,
+    State,
+};
 use std::fs::{self};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use tempfile::tempdir;
+use tracing::info;
+use tracing::level_filters::LevelFilter;
 use uuid::Uuid;
+
+const ORIGINAL_TARBALL_NAME: &str = "original.tgz";
 
 #[derive(Default)]
 pub struct ServerState {
@@ -95,7 +104,7 @@ fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> 
 
 #[post("/publish", data = "<request>")]
 fn publish(request: Json<PublishRequest>, auth: TokenAuth) -> ApiResult<EmptyResponse> {
-    println!(
+    info!(
         "Publishing: {:?} for token: {:?}",
         request, auth.token.friendly_name
     );
@@ -112,8 +121,13 @@ async fn upload_project(
     db: &State<Database>,
     pinata_client: &State<PinataClientImpl>,
     forc_version: &str,
-    mut tarball: TempFile<'_>,
+    mut tarball: Capped<TempFile<'_>>,
 ) -> ApiResult<UploadResponse> {
+    // Ensure that the tarball was fully uploaded.
+    if !tarball.is_complete() {
+        return Err(ApiError::Upload(UploadError::TooLarge));
+    }
+
     // Sanitize the forc version.
     let forc_version = validate_or_format_semver(forc_version)
         .ok_or_else(|| ApiError::Upload(UploadError::InvalidForcVersion(forc_version.into())))?;
@@ -129,21 +143,21 @@ async fn upload_project(
 
     // Create an upload ID and temporary directory.
     let upload_id = Uuid::new_v4();
-    let upload_dir_str = format!("tmp/uploads/{}", upload_id);
-    let upload_dir = Path::new(&upload_dir_str);
+    let tmp_dir = tempdir().map_err(|_| ApiError::Upload(UploadError::CreateTempDir))?;
+    let upload_dir = tmp_dir.path().join(upload_id.to_string());
 
-    fs::create_dir_all(upload_dir).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
+    fs::create_dir(upload_dir.clone()).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     // Persist the file to disk.
-    let orig_tarball_path = upload_dir.join("original.tgz");
+    let orig_tarball_path = upload_dir.join(ORIGINAL_TARBALL_NAME);
     tarball
         .persist_to(&orig_tarball_path)
         .await
         .map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     // Handle the project upload and store the metadata in the database.
-    let upload = handle_project_upload(
-        upload_dir,
+    let upload_entry = handle_project_upload(
+        &upload_dir,
         &upload_id,
         &orig_tarball_path,
         &forc_path,
@@ -152,10 +166,12 @@ async fn upload_project(
     )
     .await?;
 
-    let _ = db.conn().insert_upload(&upload)?;
+    let _ = db.conn().insert_upload(&upload_entry)?;
 
     // Clean up the temporary directory.
-    fs::remove_dir_all(upload_dir).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
+    tmp_dir
+        .close()
+        .map_err(|_| ApiError::Upload(UploadError::RemoveTempDir))?;
 
     Ok(Json(UploadResponse { upload_id }))
 }
@@ -181,7 +197,13 @@ fn health() -> String {
 // Launch the rocket server.
 #[launch]
 async fn rocket() -> _ {
+    tracing_subscriber::fmt()
+        .with_max_level(LevelFilter::INFO)
+        .init();
+
     let pinata_client = PinataClientImpl::new().await.expect("pinata client");
+
+    info!("Starting forc.pub server");
 
     rocket::build()
         .manage(Database::default())

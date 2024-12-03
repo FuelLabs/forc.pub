@@ -1,39 +1,60 @@
 use crate::models::NewUpload;
 use crate::pinata::PinataClient;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
-use flate2::Compression;
+use flate2::{
+    Compression,
+    {read::GzDecoder, write::GzEncoder},
+};
 use forc_util::bytecode::get_bytecode_id;
 use std::fs::{self, File};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tar::Archive;
 use thiserror::Error;
+use tracing::error;
 use uuid::Uuid;
+
+const UNPACKED_DIR: &str = "unpacked";
+const RELEASE_DIR: &str = "out/release";
+const PROJECT_DIR: &str = "project";
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum UploadError {
+    #[error("Failed to create temporary directory.")]
+    CreateTempDir,
+
+    #[error("Failed to remove temporary directory.")]
+    RemoveTempDir,
+
     #[error("The project is too large to be uploaded.")]
     TooLarge,
+
     #[error("Failed to save zip file.")]
     SaveFile,
+
     #[error("Failed to open file.")]
     OpenFile,
+
     #[error("Failed to copy files.")]
     CopyFiles,
+
     #[error("Invalid Forc version: {0}")]
     InvalidForcVersion(String),
+
     #[error("Failed to compile project.")]
     FailedToCompile,
+
     #[error("Failed to authenticate.")]
     Authentication,
+
     #[error("Failed to upload to IPFS.")]
     Ipfs,
+
     #[error("Failed to generate bytecode ID. Err: {0}")]
     BytecodeId(String),
+
     #[error("Architecture '{0}' not supported.")]
     UnsupportedArch(String),
+
     #[error("OS '{0}' not supported.")]
     UnsupportedOs(String),
 }
@@ -49,9 +70,9 @@ pub async fn handle_project_upload(
     forc_version: String,
     pinata_client: &impl PinataClient,
 ) -> Result<NewUpload, UploadError> {
-    let unpacked_dir = upload_dir.join("unpacked");
-    let release_dir = unpacked_dir.join("out/release");
-    let project_dir = upload_dir.join("project");
+    let unpacked_dir = upload_dir.join(UNPACKED_DIR);
+    let release_dir = unpacked_dir.join(RELEASE_DIR);
+    let project_dir = upload_dir.join(PROJECT_DIR);
 
     // Unpack the tarball.
     let tarball = File::open(orig_tarball_path).map_err(|_| UploadError::OpenFile)?;
@@ -193,6 +214,7 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
     .map_err(|_| UploadError::InvalidForcVersion(forc_version.to_string()))?;
 
     if !output.status.success() {
+        error!("Failed to install forc: {:?}", output);
         Err(UploadError::InvalidForcVersion(forc_version.to_string()))
     } else {
         Ok(())

@@ -17,7 +17,7 @@ pub fn validate_or_format_semver(version: &str) -> Option<String> {
     match Version::parse(version_trimmed) {
         Ok(parsed_version) => {
             // Return the version in the format with a leading 'v'
-            Some(format!("v{}", parsed_version))
+            Some(format!("{}", parsed_version))
         }
         Err(_) => None,
     }
@@ -31,16 +31,16 @@ mod tests {
     fn test_validate_or_format_semver() {
         let test_cases = vec![
             // Valid cases
-            ("v1.2.3", Some("v1.2.3".to_string())),
-            ("1.2.3", Some("v1.2.3".to_string())),
-            ("v999.999.999", Some("v999.999.999".to_string())),
+            ("v1.2.3", Some("1.2.3".to_string())),
+            ("1.2.3", Some("1.2.3".to_string())),
+            ("v999.999.999", Some("999.999.999".to_string())),
             // Invalid cases
             ("1.2", None),
             ("v1.2", None),
             ("invalid", None),
             ("", None),
             // Edge cases
-            (" 1.2.3 ", Some("v1.2.3".to_string())),
+            (" 1.2.3 ", Some("1.2.3".to_string())),
         ];
 
         for (input, expected) in test_cases {
