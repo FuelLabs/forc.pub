@@ -1,5 +1,6 @@
 pub mod api_token;
 pub mod error;
+pub mod upload;
 mod user_session;
 
 use self::error::DatabaseError;
@@ -9,6 +10,7 @@ use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 use std::env;
+use tracing::info;
 use uuid::Uuid;
 
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
@@ -45,7 +47,7 @@ impl Database {
         let migrations = connection
             .run_pending_migrations(MIGRATIONS)
             .expect("diesel migrations");
-        println!("Ran {} migrations", migrations.len());
+        info!("Ran {} migrations", migrations.len());
 
         Database { pool }
     }

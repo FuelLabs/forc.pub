@@ -77,6 +77,11 @@ jobs:
       - uses: docker-practice/actions-setup-docker@master
         timeout-minutes: 12
       - run: ./scripts/start_local_db.sh
+      - name: setup binstall
+        uses: taiki-e/install-action@cargo-binstall
+      - name: Install forc for tests
+        run: |
+          cargo binstall --no-confirm --root tests/fixtures/forc-0.65.0 forc@0.65.0
       - uses: Swatinem/rust-cache@v1
       - name: Run tests
         uses: actions-rs/cargo@v1

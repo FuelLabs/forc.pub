@@ -81,6 +81,8 @@ Before starting the server, the local database must be up and running.
 ./scripts/start_local_db.sh
 ```
 
+Next, set up the environment by filling in the `.env` file with your Pinata test gateway details.
+
 Now we can run the server with:
 
 ```sh
@@ -94,6 +96,16 @@ Alternatively, the server can be run locally with Docker, as it is in the deploy
 
 # Force the server image to be rebuilt
 ./scripts/start_local_server.sh -f
+```
+
+### Manually trigger the APIs
+
+You can manually trigger the APIs with curl, for example:
+
+```bash
+curl -X POST "http://localhost:8080/upload_project?forc_version=0.66.5" \
+  -H "Content-Type: application/gzip" \
+  --data-binary "@tests/fixtures/sway-project.tgz"
 ```
 
 ### Running the Frontend
