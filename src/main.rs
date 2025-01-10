@@ -15,6 +15,7 @@ use forc_pub::github::handle_login;
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
+use forc_pub::models::NewPackageVersion;
 use forc_pub::pinata::{PinataClient, PinataClientImpl};
 use forc_pub::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::util::validate_or_format_semver;
@@ -47,7 +48,7 @@ async fn login(
     request: Json<LoginRequest>,
 ) -> ApiResult<LoginResponse> {
     let (user, expires_in) = handle_login(request.code.clone()).await?;
-    let session = db.conn().insert_user_session(&user, expires_in)?;
+    let session = db.conn().new_user_session(&user, expires_in)?;
     let session_id = session.id.to_string();
     cookies.add(Cookie::build(SESSION_COOKIE_NAME, session_id.clone()).finish());
     Ok(Json(LoginResponse { user, session_id }))
@@ -103,12 +104,14 @@ fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> 
 }
 
 #[post("/publish", data = "<request>")]
-fn publish(request: Json<PublishRequest>, auth: TokenAuth) -> ApiResult<EmptyResponse> {
-    info!(
-        "Publishing: {:?} for token: {:?}",
-        request, auth.token.friendly_name
-    );
-
+fn publish(
+    db: &State<Database>,
+    request: Json<PublishRequest>,
+    auth: TokenAuth,
+) -> ApiResult<EmptyResponse> {
+    let _ = db.conn().new_package_version(&auth.token, &request)?;
+    // TODO: Publish to GitHub index repo.
+    // TODO: Publish to block explorer API.
     Ok(Json(EmptyResponse))
 }
 
@@ -166,7 +169,7 @@ async fn upload_project(
     )
     .await?;
 
-    let _ = db.conn().insert_upload(&upload_entry)?;
+    let _ = db.conn().new_upload(&upload_entry)?;
 
     // Clean up the temporary directory.
     tmp_dir

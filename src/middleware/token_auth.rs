@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use crate::db::api_token::PlainToken;
 use crate::db::Database;
 use crate::models;
@@ -14,6 +16,7 @@ pub struct TokenAuth {
 pub enum TokenAuthError {
     Missing,
     Invalid,
+    Expired,
     DatabaseConnection,
 }
 
@@ -39,7 +42,13 @@ impl<'r> FromRequest<'r> for TokenAuth {
             if auth_header.starts_with("Bearer ") {
                 let token = auth_header.trim_start_matches("Bearer ");
                 if let Ok(token) = db.get_token(PlainToken::from(token.to_string())) {
-                    return Outcome::Success(TokenAuth { token });
+                    if token
+                        .expires_at
+                        .map_or(true, |expires_at| expires_at > SystemTime::now())
+                    {
+                        return Outcome::Success(TokenAuth { token });
+                    }
+                    return Outcome::Failure((Status::Unauthorized, TokenAuthError::Expired));
                 }
             }
             return Outcome::Failure((Status::Unauthorized, TokenAuthError::Invalid));

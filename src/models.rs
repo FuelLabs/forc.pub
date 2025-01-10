@@ -85,3 +85,57 @@ pub struct NewUpload {
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
 }
+
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = crate::schema::packages)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Package {
+    pub id: Uuid,
+    pub user_owner: Uuid,
+    pub package_name: String,
+    pub default_version: Option<Uuid>,
+    pub created_at: SystemTime,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::packages)]
+pub struct NewPackage {
+    pub user_owner: Uuid,
+    pub package_name: String,
+}
+
+#[derive(Queryable, Selectable, Debug, Clone, Eq, PartialEq)]
+#[diesel(table_name = crate::schema::package_versions)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PackageVersion {
+    pub id: Uuid,
+    pub package_id: Uuid,
+    pub published_by: Uuid,
+    pub upload_id: Uuid,
+    pub num: String,
+    pub package_description: Option<String>,
+    pub repository: Option<String>,
+    pub documentation: Option<String>,
+    pub homepage: Option<String>,
+    pub urls: Vec<Option<String>>,
+    pub readme: Option<String>,
+    pub license: Option<String>,
+    pub created_at: SystemTime,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::package_versions)]
+pub struct NewPackageVersion {
+    pub package_id: Uuid,
+    pub publish_token: Uuid,
+    pub published_by: Uuid,
+    pub upload_id: Uuid,
+    pub num: String,
+    pub package_description: Option<String>,
+    pub repository: Option<String>,
+    pub documentation: Option<String>,
+    pub homepage: Option<String>,
+    pub urls: Vec<Option<String>>,
+    pub readme: Option<String>,
+    pub license: Option<String>,
+}

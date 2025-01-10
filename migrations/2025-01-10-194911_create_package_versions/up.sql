@@ -9,10 +9,13 @@ CREATE TABLE package_versions (
   repository VARCHAR,
   documentation VARCHAR,
   homepage VARCHAR,
-  urls TEXT[] NOT NULL DEFAULT '{}',
+  urls non_null_text_array NOT NULL DEFAULT '{}',
   readme VARCHAR,
   license VARCHAR,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- There can only be one version with the same number per package
+  UNIQUE (package_id, num),
+  -- FK constraints
   FOREIGN KEY (package_id) REFERENCES packages(id) ON DELETE CASCADE,
   FOREIGN KEY (publish_token) REFERENCES api_tokens(id) ON DELETE RESTRICT,
   FOREIGN KEY (published_by) REFERENCES users(id) ON DELETE RESTRICT,

@@ -1,6 +1,7 @@
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::db::{Database, DbConn};
+use forc_pub::models::{NewUpload, PackageVersion};
 use serial_test::serial;
 
 /// Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
@@ -16,6 +17,12 @@ const TEST_TOKEN_NAME_1: &str = "test token 1";
 const TEST_TOKEN_NAME_2: &str = "test token 2";
 
 fn clear_tables(db: &mut DbConn) {
+    diesel::delete(forc_pub::schema::package_versions::table)
+        .execute(db.inner())
+        .expect("clear package_versions table");
+    diesel::delete(forc_pub::schema::packages::table)
+        .execute(db.inner())
+        .expect("clear packages table");
     diesel::delete(forc_pub::schema::api_tokens::table)
         .execute(db.inner())
         .expect("clear api_tokens table");
@@ -53,13 +60,13 @@ fn test_user_sessions() {
     let user1 = mock_user_1();
     let user2 = mock_user_2();
 
-    let session1 = db.insert_user_session(&user1, 1000).expect("result is ok");
+    let session1 = db.new_user_session(&user1, 1000).expect("result is ok");
 
     // Insert an existing user
-    let session2 = db.insert_user_session(&user1, 1000).expect("result is ok");
+    let session2 = db.new_user_session(&user1, 1000).expect("result is ok");
 
     // Insert another user
-    let session3 = db.insert_user_session(&user2, 1000).expect("result is ok");
+    let session3 = db.new_user_session(&user2, 1000).expect("result is ok");
 
     let result = db.get_user_for_session(session1.id).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_1);
@@ -84,7 +91,7 @@ fn test_api_tokens() {
     let db = &mut Database::default().conn();
 
     let session = db
-        .insert_user_session(&mock_user_1(), 1000)
+        .new_user_session(&mock_user_1(), 1000)
         .expect("result is ok");
     let user = db.get_user_for_session(session.id).expect("result is ok");
 
@@ -118,6 +125,115 @@ fn test_api_tokens() {
         .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 0);
+
+    clear_tables(db);
+}
+
+#[test]
+#[serial]
+fn test_package_versions() {
+    let db = &mut Database::default().conn();
+
+    // Set up session, user, token, and upload.
+    let session = db
+        .new_user_session(&mock_user_1(), 1000)
+        .expect("result is ok");
+    let user = db.get_user_for_session(session.id).expect("user is ok");
+    let (token, _) = db
+        .new_token(user.id, "test token".to_string())
+        .expect("token is ok");
+    let upload = db
+        .new_upload(&NewUpload {
+            id: uuid::Uuid::new_v4(),
+            forc_version: "0.1.0".into(),
+            source_code_ipfs_hash: "test-ipfs-hash".into(),
+            abi_ipfs_hash: None,
+            bytecode_identifier: None,
+        })
+        .expect("result is ok");
+
+    // Insert a package version for a package that doesn't exist
+    let request = api::publish::PublishRequest {
+        package_name: "test-package".into(),
+        upload_id: upload.id,
+        num: "0.1.0".into(),
+        package_description: Some("test description".into()),
+        repository: Some("test repository".into()),
+        documentation: Some("test documentation".into()),
+        homepage: Some("test homepage".into()),
+        urls: vec![Some("test url".into())],
+        readme: Some("test readme".into()),
+        license: Some("test license".into()),
+    };
+    let version_result = db
+        .new_package_version(&token, &request)
+        .expect("version result is ok");
+    assert_eq!(
+        version_result,
+        PackageVersion {
+            id: version_result.id,
+            package_id: version_result.package_id,
+            published_by: user.id,
+            upload_id: upload.id,
+            num: request.num,
+            package_description: request.package_description,
+            repository: request.repository,
+            documentation: request.documentation,
+            homepage: request.homepage,
+            urls: request.urls,
+            readme: request.readme,
+            license: request.license,
+            created_at: version_result.created_at,
+        }
+    );
+    let pkg_result = db
+        .get_package_by_id(version_result.package_id)
+        .expect("result is ok");
+    assert_eq!(pkg_result.package_name, request.package_name);
+    assert_eq!(pkg_result.user_owner, user.id);
+    assert_eq!(pkg_result.default_version, Some(version_result.id));
+
+    // Insert a package version for a package that already exists
+    let request = api::publish::PublishRequest {
+        package_name: "test-package".into(),
+        upload_id: upload.id,
+        num: "0.2.0".into(),
+        package_description: Some("test description 2".into()),
+        repository: Some("test repository 2".into()),
+        documentation: Some("test documentation 2".into()),
+        homepage: Some("test homepage 2".into()),
+        urls: vec![Some("test url 2".into())],
+        readme: Some("test readme 2".into()),
+        license: Some("test licens 2".into()),
+    };
+
+    let version_result = db
+        .new_package_version(&token, &request)
+        .expect("version result is ok");
+    assert_eq!(
+        version_result,
+        PackageVersion {
+            id: version_result.id,
+            package_id: version_result.package_id,
+            published_by: user.id,
+            upload_id: upload.id,
+            num: request.num,
+            package_description: request.package_description,
+            repository: request.repository,
+            documentation: request.documentation,
+            homepage: request.homepage,
+            urls: request.urls,
+            readme: request.readme,
+            license: request.license,
+            created_at: version_result.created_at,
+        }
+    );
+    let pkg_result = db
+        .get_package_by_id(version_result.package_id)
+        .expect("result is ok");
+    assert_eq!(pkg_result.package_name, request.package_name);
+    assert_eq!(pkg_result.user_owner, user.id);
+    assert_eq!(pkg_result.default_version, Some(version_result.id));
 
     clear_tables(db);
 }
