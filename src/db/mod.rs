@@ -4,11 +4,11 @@ pub mod upload;
 mod user_session;
 
 use self::error::DatabaseError;
+use crate::util::load_env;
 use crate::{api, models, schema};
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use dotenvy::dotenv;
 use std::env;
 use tracing::info;
 use uuid::Uuid;
@@ -63,7 +63,7 @@ pub(crate) fn string_to_uuid(s: String) -> Result<Uuid, DatabaseError> {
 }
 
 fn db_url() -> String {
-    dotenv().ok();
+    load_env();
     let user = env::var("POSTGRES_USER").expect("POSTGRES_USER must be set");
     let password = env::var("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD must be set");
     let uri = env::var("POSTGRES_URI").expect("POSTGRES_URI must be set");

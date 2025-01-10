@@ -55,7 +55,7 @@ cargo install diesel_cli --no-default-features --features postgres
 RUSTFLAGS='-L /opt/homebrew/opt/libpq/lib' cargo install diesel_cli --no-default-features --features postgres
 ```
 
-It is also recommended to install a Postgres client like [DBeaver](https://dbeaver.io/) to connect and inspect the database while developing locally.
+See [docs/database.md](database.md) for more information about working with the database.
 
 ### Building the `forc.pub` server
 
