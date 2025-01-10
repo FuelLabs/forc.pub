@@ -70,6 +70,9 @@ mod tests {
 
     #[test]
     fn test_load_env() {
+        // Save the current directory
+        let original_dir = env::current_dir().unwrap();
+
         // Create a temporary directory
         let dir = tempdir().unwrap();
         let env_path = dir.path().join(".env");
@@ -92,5 +95,6 @@ mod tests {
 
         // Cleanup
         env::remove_var("TEST_VAR");
+        env::set_current_dir(&original_dir).unwrap();
     }
 }

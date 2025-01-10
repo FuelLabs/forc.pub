@@ -15,7 +15,6 @@ use forc_pub::github::handle_login;
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::models::NewPackageVersion;
 use forc_pub::pinata::{PinataClient, PinataClientImpl};
 use forc_pub::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::util::validate_or_format_semver;

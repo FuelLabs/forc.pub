@@ -1,14 +1,9 @@
+use super::error::DatabaseError;
+use super::{models, schema, DbConn};
 use crate::api::publish::PublishRequest;
 use crate::models::ApiToken;
-use crate::schema::api_tokens::expires_at;
-use crate::schema::package_versions::{package_description, urls};
 use crate::schema::packages::package_name;
-
-use super::error::DatabaseError;
-use super::{api, models, schema, DbConn};
 use diesel::prelude::*;
-use diesel::upsert::excluded;
-use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 impl DbConn {
@@ -22,13 +17,13 @@ impl DbConn {
         // Check if the package exists.
         let pkg_name = request.package_name.clone();
         let package = if let Some(existing_package) = schema::packages::table
-            .filter(schema::packages::package_name.eq(package_name.clone()))
+            .filter(schema::packages::package_name.eq(package_name))
             .select(schema::packages::all_columns)
             .first::<models::Package>(self.inner())
             .optional()
             .map_err(|err| DatabaseError::QueryFailed(pkg_name.clone(), err))?
         {
-            if existing_package.user_owner != api_token.user_id.clone() {
+            if existing_package.user_owner != api_token.user_id {
                 // The package exists but the user is not the owner.
                 return Err(DatabaseError::InvalidPublishToken);
             }
@@ -36,7 +31,7 @@ impl DbConn {
         } else {
             // Insert a new package.
             let new_package: models::NewPackage = models::NewPackage {
-                user_owner: api_token.user_id.clone(),
+                user_owner: api_token.user_id,
                 package_name: pkg_name.clone(),
             };
 
@@ -51,8 +46,8 @@ impl DbConn {
         // Insert a new package version.
         let new_version = models::NewPackageVersion {
             package_id: package.id,
-            publish_token: api_token.id.clone(),
-            published_by: api_token.user_id.clone(),
+            publish_token: api_token.id,
+            published_by: api_token.user_id,
             upload_id: request.upload_id,
             num: request.num.clone(),
             package_description: request.package_description.clone(),
@@ -105,34 +100,4 @@ impl DbConn {
             .first::<models::Package>(self.inner())
             .map_err(|err| DatabaseError::NotFound(name.clone(), err))
     }
-
-    // /// Fetch a user given the user ID.
-    // pub fn get_session(&mut self, session_id: Uuid) -> Result<models::Session, DatabaseError> {
-    //     schema::sessions::table
-    //         .filter(schema::sessions::id.eq(session_id))
-    //         .select(models::Session::as_returning())
-    //         .first::<models::Session>(self.inner())
-    //         .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
-    // }
-
-    // /// Fetch a user from the database for a given session ID.
-    // pub fn get_user_for_session(
-    //     &mut self,
-    //     session_id: Uuid,
-    // ) -> Result<models::User, DatabaseError> {
-    //     schema::sessions::table
-    //         .inner_join(schema::users::table)
-    //         .filter(schema::sessions::id.eq(session_id))
-    //         .select(models::User::as_returning())
-    //         .first::<models::User>(self.inner())
-    //         .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
-    // }
-
-    // /// Delete a session given its ID.
-    // pub fn delete_session(&mut self, session_id: Uuid) -> Result<(), DatabaseError> {
-    //     diesel::delete(schema::sessions::table.filter(schema::sessions::id.eq(session_id)))
-    //         .execute(self.inner())
-    //         .map_err(|_| DatabaseError::NotFound(session_id.to_string()))?;
-    //     Ok(())
-    // }
 }
