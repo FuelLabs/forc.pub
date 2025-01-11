@@ -31,7 +31,7 @@ impl<'r> FromRequest<'r> for TokenAuth {
         let mut db = match request.rocket().state::<Database>() {
             Some(db) => db.conn(),
             None => {
-                return Outcome::Failure((
+                return Outcome::Error((
                     Status::InternalServerError,
                     TokenAuthError::DatabaseConnection,
                 ))
@@ -48,11 +48,11 @@ impl<'r> FromRequest<'r> for TokenAuth {
                     {
                         return Outcome::Success(TokenAuth { token });
                     }
-                    return Outcome::Failure((Status::Unauthorized, TokenAuthError::Expired));
+                    return Outcome::Error((Status::Unauthorized, TokenAuthError::Expired));
                 }
             }
-            return Outcome::Failure((Status::Unauthorized, TokenAuthError::Invalid));
+            return Outcome::Error((Status::Unauthorized, TokenAuthError::Invalid));
         }
-        return Outcome::Failure((Status::Unauthorized, TokenAuthError::Missing));
+        return Outcome::Error((Status::Unauthorized, TokenAuthError::Missing));
     }
 }

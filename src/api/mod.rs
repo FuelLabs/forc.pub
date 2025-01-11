@@ -1,13 +1,17 @@
 pub mod api_token;
 pub mod auth;
 pub mod publish;
+pub mod search;
+
+use std::io::Cursor;
 
 use rocket::{
-    http::Status,
+    http::{ContentType, Status},
     response::Responder,
     serde::{json::Json, Serialize},
     Request,
 };
+use serde_json::json;
 use thiserror::Error;
 use tracing::error;
 
@@ -33,10 +37,24 @@ pub enum ApiError {
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
     fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
         error!("API error: {}", self);
-        match self {
-            ApiError::Database(_) => Err(Status::InternalServerError),
-            ApiError::Github(_) => Err(Status::Unauthorized),
-            ApiError::Upload(_) => Err(Status::BadRequest),
-        }
+        let (status, message) = match self {
+            ApiError::Database(ref err) => (
+                Status::InternalServerError,
+                format!("Database error: {}", err),
+            ),
+            ApiError::Github(ref err) => (Status::Unauthorized, format!("GitHub error: {}", err)),
+            ApiError::Upload(ref err) => (Status::BadRequest, format!("Upload error: {}", err)),
+        };
+        let body = json!({
+            "status": status.code,
+            "error": message,
+        })
+        .to_string();
+
+        rocket::Response::build()
+            .status(status)
+            .sized_body(body.len(), Cursor::new(body))
+            .header(ContentType::JSON)
+            .ok()
     }
 }

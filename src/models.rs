@@ -1,5 +1,9 @@
 use diesel::prelude::*;
+use diesel::sql_types::{Nullable, Text, Timestamptz};
+use diesel::QueryableByName;
+use serde::Serialize;
 use std::time::SystemTime;
+use time::PrimitiveDateTime;
 use uuid::Uuid;
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -94,7 +98,7 @@ pub struct Package {
     pub user_owner: Uuid,
     pub package_name: String,
     pub default_version: Option<Uuid>,
-    pub created_at: SystemTime,
+    pub created_at: PrimitiveDateTime,
 }
 
 #[derive(Insertable, Debug)]
@@ -120,7 +124,7 @@ pub struct PackageVersion {
     pub urls: Vec<Option<String>>,
     pub readme: Option<String>,
     pub license: Option<String>,
-    pub created_at: SystemTime,
+    pub created_at: PrimitiveDateTime,
 }
 
 #[derive(Insertable, Debug)]
@@ -138,4 +142,18 @@ pub struct NewPackageVersion {
     pub urls: Vec<Option<String>>,
     pub readme: Option<String>,
     pub license: Option<String>,
+}
+
+#[derive(QueryableByName, Serialize, Debug)]
+pub struct RecentPackage {
+    #[sql_type = "Text"]
+    pub name: String, // Corresponds to `p.package_name as name`
+    #[sql_type = "Text"]
+    pub version: String, // Corresponds to `pv.num as version`
+    #[sql_type = "Nullable<Text>"]
+    pub description: Option<String>, // Corresponds to `pv.package_description as description`, which might be nullable
+    #[sql_type = "Timestamptz"]
+    pub created_at: PrimitiveDateTime, // Corresponds to `p.created_at as created_at`
+    #[sql_type = "Timestamptz"]
+    pub updated_at: PrimitiveDateTime, // Corresponds to `pv.created_at as updated_at`
 }

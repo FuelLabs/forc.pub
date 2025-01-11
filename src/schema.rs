@@ -26,7 +26,7 @@ diesel::table! {
         urls -> Array<Nullable<Text>>,
         readme -> Nullable<Varchar>,
         license -> Nullable<Varchar>,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
@@ -36,7 +36,7 @@ diesel::table! {
         user_owner -> Uuid,
         package_name -> Varchar,
         default_version -> Nullable<Uuid>,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 

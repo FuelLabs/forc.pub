@@ -5,6 +5,7 @@ extern crate rocket;
 
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::publish::{PublishRequest, UploadResponse};
+use forc_pub::api::search::RecentPackagesResponse;
 use forc_pub::api::ApiError;
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
@@ -49,7 +50,7 @@ async fn login(
     let (user, expires_in) = handle_login(request.code.clone()).await?;
     let session = db.conn().new_user_session(&user, expires_in)?;
     let session_id = session.id.to_string();
-    cookies.add(Cookie::build(SESSION_COOKIE_NAME, session_id.clone()).finish());
+    cookies.add(Cookie::build((SESSION_COOKIE_NAME, session_id.clone())));
     Ok(Json(LoginResponse { user, session_id }))
 }
 
@@ -178,6 +179,18 @@ async fn upload_project(
     Ok(Json(UploadResponse { upload_id }))
 }
 
+#[get("/recent_packages")]
+fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
+    let recently_created = db.conn().get_recently_created()?;
+    let recently_updated = db.conn().get_recently_updated()?;
+    // TODO: Publish to GitHub index repo.
+    // TODO: Publish to block explorer API.
+    Ok(Json(RecentPackagesResponse {
+        recently_created,
+        recently_updated,
+    }))
+}
+
 /// Catches all OPTION requests in order to get the CORS related Fairing triggered.
 #[options("/<_..>")]
 fn all_options() {
@@ -222,6 +235,7 @@ async fn rocket() -> _ {
                 publish,
                 upload_project,
                 tokens,
+                recent_packages,
                 all_options,
                 health
             ],

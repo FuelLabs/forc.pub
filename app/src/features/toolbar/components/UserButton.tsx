@@ -4,7 +4,7 @@ import Button from '@mui/material/Button/Button';
 import styled from '@emotion/styled';
 import Menu from '@mui/material/Menu/Menu';
 import MenuItem from '@mui/material/MenuItem/MenuItem';
-import {  useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useGithubAuth } from '../hooks/useGithubAuth';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { REDIRECT_URI } from '../../../constants';

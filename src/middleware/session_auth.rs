@@ -31,7 +31,7 @@ impl<'r> FromRequest<'r> for SessionAuth {
         let mut db = match request.rocket().state::<Database>() {
             Some(db) => db.conn(),
             None => {
-                return Outcome::Failure((
+                return Outcome::Error((
                     Status::InternalServerError,
                     SessionAuthError::DatabaseConnection,
                 ))
@@ -49,8 +49,8 @@ impl<'r> FromRequest<'r> for SessionAuth {
                     }
                 }
             }
-            return Outcome::Failure((Status::Unauthorized, SessionAuthError::Invalid));
+            return Outcome::Error((Status::Unauthorized, SessionAuthError::Invalid));
         }
-        return Outcome::Failure((Status::Unauthorized, SessionAuthError::Missing));
+        return Outcome::Error((Status::Unauthorized, SessionAuthError::Missing));
     }
 }

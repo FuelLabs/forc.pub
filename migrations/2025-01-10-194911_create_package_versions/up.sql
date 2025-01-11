@@ -9,10 +9,10 @@ CREATE TABLE package_versions (
   repository VARCHAR,
   documentation VARCHAR,
   homepage VARCHAR,
-  urls non_null_text_array NOT NULL DEFAULT '{}',
+  urls TEXT[] NOT NULL DEFAULT '{}',
   readme VARCHAR,
   license VARCHAR,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- There can only be one version with the same number per package
   UNIQUE (package_id, num),
   -- FK constraints

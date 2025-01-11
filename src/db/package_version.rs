@@ -1,7 +1,7 @@
 use super::error::DatabaseError;
 use super::{models, schema, DbConn};
 use crate::api::publish::PublishRequest;
-use crate::models::ApiToken;
+use crate::models::{ApiToken, RecentPackage};
 use crate::schema::packages::package_name;
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -99,5 +99,45 @@ impl DbConn {
             .select(models::Package::as_returning())
             .first::<models::Package>(self.inner())
             .map_err(|err| DatabaseError::NotFound(name.clone(), err))
+    }
+
+    /// Fetch the most recently updated packages.
+    pub fn get_recently_updated(&mut self) -> Result<Vec<RecentPackage>, DatabaseError> {
+        let packages = diesel::sql_query(
+            r#"SELECT 
+                p.package_name as name, 
+                pv.num as version, 
+                pv.package_description as description, 
+                p.created_at as created_at, 
+                pv.created_at as updated_at 
+            FROM package_versions pv 
+            JOIN packages p on pv.package_id = p.id
+            ORDER BY pv.created_at DESC
+            LIMIT 10"#,
+        )
+        .load::<RecentPackage>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("recently updated".to_string(), err))?;
+
+        Ok(packages)
+    }
+
+    /// Fetch the most recently created packages.
+    pub fn get_recently_created(&mut self) -> Result<Vec<RecentPackage>, DatabaseError> {
+        let packages = diesel::sql_query(
+            r#"SELECT 
+                p.package_name as name, 
+                pv.num as version, 
+                pv.package_description as description, 
+                p.created_at as created_at, 
+                pv.created_at as updated_at 
+            FROM package_versions pv 
+            JOIN packages p on pv.package_id = p.id
+            ORDER BY p.created_at DESC
+            LIMIT 10"#,
+        )
+        .load::<RecentPackage>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("recently created".to_string(), err))?;
+
+        Ok(packages)
     }
 }

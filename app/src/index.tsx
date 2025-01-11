@@ -7,6 +7,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Home from './pages/Home';
 import ApiTokens from './pages/ApiTokens';
 import SearchResults from './pages/SearchResults';
+import PackageDetail from './features/detail/components/PackageDetail';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -25,6 +26,10 @@ const router = createBrowserRouter([
     path: '/search',
     element: <App><SearchResults/></App>,
   },
+  {
+    path: '/package/:name',
+    element: <App><PackageDetail/></App>,
+  }
 ]);
 
 root.render(
