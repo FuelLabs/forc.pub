@@ -7,6 +7,7 @@ use serial_test::serial;
 /// Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
 /// This should be done by running `./scripts/start_local_db.sh` before running the tests.
 
+// Test constants
 const TEST_LOGIN_1: &str = "AliceBobbins";
 const TEST_FULL_NAME_1: &str = "Alice Bobbins";
 const TEST_EMAIL_1: &str = "alice@bob.com";
