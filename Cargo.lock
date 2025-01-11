@@ -375,8 +375,10 @@ checksum = "7e36cc9d416881d2e24f9a963be5fb1cd90966419ac844274161d10488b3e825"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
@@ -825,11 +827,11 @@ checksum = "ccf1bedf64cdb9643204a36dd15b19a6ce8e7aa7f7b105868e9f1fad5ffa7d12"
 dependencies = [
  "bitflags 2.7.0",
  "byteorder",
+ "chrono",
  "diesel_derives",
  "itoa",
  "pq-sys",
  "r2d2",
- "time",
  "uuid",
 ]
 
@@ -1328,6 +1330,7 @@ dependencies = [
 name = "forc_pub"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "diesel",
  "diesel_migrations",
  "dotenvy",
@@ -1348,7 +1351,6 @@ dependencies = [
  "tar",
  "tempfile",
  "thiserror 1.0.69",
- "time",
  "tokio",
  "tracing",
  "tracing-subscriber",

@@ -6,8 +6,8 @@ export interface RecentPackage {
   name: string;
   version: string;
   description: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RecentPackagesResponse {

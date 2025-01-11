@@ -62,8 +62,8 @@ const PackageDashboard: React.FC = () => {
               </Typography>
               <Typography variant='body2' color='textSecondary' gutterBottom>
                 {type === 'Just Updated'
-                  ? `Updated: ${new Date(pkg.updated_at!).toLocaleString()}`
-                  : `Added: ${new Date(pkg.updated_at!).toLocaleString()}`}
+                  ? `Updated: ${new Date(pkg.updatedAt!).toLocaleString()}`
+                  : `Added: ${new Date(pkg.createdAt!).toLocaleString()}`}
               </Typography>
               <Typography variant='body1' paragraph>
                 {pkg.description || 'No description available.'}

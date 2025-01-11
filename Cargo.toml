@@ -17,7 +17,7 @@ rocket = { version = "0.5.0-rc.2", features = ["tls", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 reqwest = { version = "0.12.2", features = ["json"] }
 thiserror = "1.0.58"
-diesel = { version = "2.1.6", features = ["postgres", "uuid", "r2d2", "time"] }
+diesel = { version = "2.1.6", features = ["postgres", "uuid", "r2d2", "chrono"] }
 dotenvy = "0.15"
 uuid = { version = "1.8.0", features = ["v4", "serde"] }
 diesel_migrations = "2.1.0"
@@ -32,4 +32,4 @@ semver = "1.0.23"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 tempfile = "3.14.0"
-time = { version = "0.3.37", features = ["serde"] }
+chrono = { version = "0.4.39", features = ["serde"] }
