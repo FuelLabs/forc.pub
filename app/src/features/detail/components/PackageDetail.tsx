@@ -139,13 +139,13 @@ const PackageDetail: React.FC = () => {
                   Links
                 </Typography>
                 <Typography>
-                  Repository: <a href="#">https://github.com/example/{name}</a>
+                  Repository: <a href="https://github.com/">https://github.com/</a>
                 </Typography>
                 <Typography>
-                  Documentation: <a href="#">https://docs.example.com/{name}</a>
+                  Documentation: <a href="https://github.com/">https://github.com/</a>
                 </Typography>
                 <Typography>
-                  Homepage: <a href="#">https://www.example.com/{name}</a>
+                  Homepage: <a href="https://github.com/">https://github.com/</a>
                 </Typography>
               </CardContent>
             </Card>
