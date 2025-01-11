@@ -10,83 +10,13 @@ import {
 } from '@mui/material';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { useNavigate } from 'react-router-dom';
-
-type Package = {
-  id: string;
-  packageName: string;
-  version: string;
-  description: string;
-  repository: string;
-  updatedAt?: string;
-  createdAt?: string;
-};
-
-type PackageData = { justUpdated: Package[]; newPackages: Package[] };
-
-// Example API fetch function (replace with your actual API call)
-const fetchPackages = async (): Promise<PackageData> => {
-  return {
-    justUpdated: [
-      {
-        id: '1',
-        packageName: 'example-package',
-        version: '1.0.1',
-        description: 'An example package with a recent update.',
-        repository: 'https://github.com/example/example-package',
-        updatedAt: '2025-01-10T15:34:56Z',
-      },
-      {
-        id: '2',
-        packageName: 'another-package',
-        version: '2.1.0',
-        description: 'Another package with cool features recently updated.',
-        repository: 'https://github.com/example/another-package',
-        updatedAt: '2025-01-09T12:20:30Z',
-      },
-    ],
-    newPackages: [
-      {
-        id: '3',
-        packageName: 'new-package',
-        version: '1.0.0',
-        description: 'A brand new package for demonstration purposes.',
-        repository: 'https://github.com/example/new-package',
-        createdAt: '2025-01-10T10:00:00Z',
-      },
-      {
-        id: '4',
-        packageName: 'cool-package',
-        version: '0.1.0',
-        description: 'A cool new package to explore.',
-        repository: 'https://github.com/example/cool-package',
-        createdAt: '2025-01-09T18:45:30Z',
-      },
-    ],
-  };
-};
+import useFetchRecentPackages, {
+  RecentPackage,
+} from '../hooks/useFetchRecentPackages';
 
 const PackageDashboard: React.FC = () => {
-  const [data, setData] = useState<PackageData>({
-    justUpdated: [],
-    newPackages: [],
-  });
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const loadPackages = async () => {
-      try {
-        const result = await fetchPackages();
-        setData(result);
-      } catch (error) {
-        console.error('Failed to fetch packages:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPackages();
-  }, []);
+  const { data, loading } = useFetchRecentPackages();
 
   if (loading) {
     return (
@@ -100,7 +30,7 @@ const PackageDashboard: React.FC = () => {
     );
   }
 
-  const renderPackages = (packages: Package[], type: string) => (
+  const renderPackages = (packages: RecentPackage[], type: string) => (
     <>
       <Typography
         variant='h5'
@@ -108,9 +38,9 @@ const PackageDashboard: React.FC = () => {
         style={{ borderBottom: '2px solid #1976d2', paddingBottom: '8px' }}>
         {type}
       </Typography>
-      {packages.map((pkg) => (
+      {packages.map((pkg, i) => (
         <Card
-          key={pkg.id}
+          key={i}
           style={{
             marginBottom: '16px',
             borderRadius: '8px',
@@ -118,7 +48,7 @@ const PackageDashboard: React.FC = () => {
             cursor: 'pointer',
             transition: 'transform 0.2s, background-color 0.2s',
           }}
-          onClick={() => navigate('/package/' + pkg.packageName)}
+          onClick={() => navigate('/package/' + pkg.name)}
           onMouseEnter={(e) =>
             (e.currentTarget.style.backgroundColor = '#f0f8ff')
           }
@@ -128,12 +58,12 @@ const PackageDashboard: React.FC = () => {
           <CardContent style={{ display: 'flex', alignItems: 'center' }}>
             <Box flex={1}>
               <Typography variant='h6' gutterBottom>
-                {pkg.packageName} (v{pkg.version})
+                {pkg.name} (v{pkg.version})
               </Typography>
               <Typography variant='body2' color='textSecondary' gutterBottom>
                 {type === 'Just Updated'
-                  ? `Updated: ${new Date(pkg.updatedAt!).toLocaleString()}`
-                  : `Added: ${new Date(pkg.createdAt!).toLocaleString()}`}
+                  ? `Updated: ${new Date(pkg.updated_at!).toLocaleString()}`
+                  : `Added: ${new Date(pkg.updated_at!).toLocaleString()}`}
               </Typography>
               <Typography variant='body1' paragraph>
                 {pkg.description || 'No description available.'}
@@ -150,10 +80,10 @@ const PackageDashboard: React.FC = () => {
     <Container maxWidth='md' style={{ marginTop: '24px' }}>
       <Grid container spacing={4}>
         <Grid item xs={12} md={6}>
-          {renderPackages(data.justUpdated, 'Just Updated')}
+          {renderPackages(data.recently_updated, 'Just Updated')}
         </Grid>
         <Grid item xs={12} md={6}>
-          {renderPackages(data.newPackages, 'New Packages')}
+          {renderPackages(data.recently_created, 'New Packages')}
         </Grid>
       </Grid>
     </Container>

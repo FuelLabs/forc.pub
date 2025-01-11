@@ -2,7 +2,6 @@ use super::error::DatabaseError;
 use super::{models, schema, DbConn};
 use crate::api::publish::PublishRequest;
 use crate::models::{ApiToken, RecentPackage};
-use crate::schema::packages::package_name;
 use diesel::prelude::*;
 use uuid::Uuid;
 
@@ -17,7 +16,7 @@ impl DbConn {
         // Check if the package exists.
         let pkg_name = request.package_name.clone();
         let package = if let Some(existing_package) = schema::packages::table
-            .filter(schema::packages::package_name.eq(package_name))
+            .filter(schema::packages::package_name.eq(pkg_name.clone()))
             .select(schema::packages::all_columns)
             .first::<models::Package>(self.inner())
             .optional()
@@ -104,16 +103,29 @@ impl DbConn {
     /// Fetch the most recently updated packages.
     pub fn get_recently_updated(&mut self) -> Result<Vec<RecentPackage>, DatabaseError> {
         let packages = diesel::sql_query(
-            r#"SELECT 
-                p.package_name as name, 
-                pv.num as version, 
-                pv.package_description as description, 
-                p.created_at as created_at, 
-                pv.created_at as updated_at 
-            FROM package_versions pv 
-            JOIN packages p on pv.package_id = p.id
-            ORDER BY pv.created_at DESC
-            LIMIT 10"#,
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1
+            ORDER BY updated_at DESC
+            LIMIT 10;
+            "#,
         )
         .load::<RecentPackage>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("recently updated".to_string(), err))?;
@@ -124,16 +136,29 @@ impl DbConn {
     /// Fetch the most recently created packages.
     pub fn get_recently_created(&mut self) -> Result<Vec<RecentPackage>, DatabaseError> {
         let packages = diesel::sql_query(
-            r#"SELECT 
-                p.package_name as name, 
-                pv.num as version, 
-                pv.package_description as description, 
-                p.created_at as created_at, 
-                pv.created_at as updated_at 
-            FROM package_versions pv 
-            JOIN packages p on pv.package_id = p.id
-            ORDER BY p.created_at DESC
-            LIMIT 10"#,
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1
+            ORDER BY created_at DESC
+            LIMIT 10;
+            "#,
         )
         .load::<RecentPackage>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("recently created".to_string(), err))?;
