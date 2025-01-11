@@ -223,9 +223,9 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use serial_test::serial;
-    use crate::pinata::MockPinataClient;
     use super::*;
+    use crate::pinata::MockPinataClient;
+    use serial_test::serial;
 
     #[tokio::test]
     #[serial]
