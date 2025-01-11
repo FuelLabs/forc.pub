@@ -1,11 +1,11 @@
+//! Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
+//! This should be done by running `./scripts/start_local_db.sh` before running the tests.
+
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::db::{Database, DbConn};
 use forc_pub::models::{NewUpload, PackageVersion};
 use serial_test::serial;
-
-/// Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
-/// This should be done by running `./scripts/start_local_db.sh` before running the tests.
 
 // Test constants
 const TEST_LOGIN_1: &str = "AliceBobbins";
