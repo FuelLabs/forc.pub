@@ -1,13 +1,5 @@
 use semver::Version;
-use std::{path::Path, time::SystemTime};
-
-pub fn sys_time_to_epoch(sys_time: SystemTime) -> u64 {
-    sys_time
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("convert time to epoch")
-        .as_secs()
-        * 1000
-}
+use std::path::Path;
 
 pub fn validate_or_format_semver(version: &str) -> Option<String> {
     // Remove the leading 'v' if it exists
@@ -40,6 +32,7 @@ mod tests {
     use super::*;
     use std::env;
     use std::fs;
+    use serial_test::serial;
     use tempfile::tempdir;
 
     #[test]
@@ -69,6 +62,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_load_env() {
         // Save the current directory
         let original_dir = env::current_dir().unwrap();

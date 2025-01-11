@@ -223,11 +223,12 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
     use crate::pinata::MockPinataClient;
-
     use super::*;
 
     #[tokio::test]
+    #[serial]
     async fn handle_project_upload_success() {
         let upload_id = Uuid::new_v4();
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());

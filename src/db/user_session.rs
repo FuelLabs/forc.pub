@@ -1,5 +1,6 @@
 use super::error::DatabaseError;
 use super::{api, models, schema, DbConn};
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::upsert::excluded;
 use std::time::{Duration, SystemTime};
@@ -38,7 +39,9 @@ impl DbConn {
 
         let new_session = models::NewSession {
             user_id: saved_user.id,
-            expires_at: SystemTime::now() + Duration::from_secs(u64::from(expires_in)),
+            expires_at: DateTime::<Utc>::from(
+                SystemTime::now() + Duration::from_secs(u64::from(expires_in)),
+            ),
         };
 
         // Insert new session

@@ -1,5 +1,6 @@
 use crate::db::Database;
 use crate::models;
+use chrono::{DateTime, Utc};
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
@@ -44,7 +45,7 @@ impl<'r> FromRequest<'r> for SessionAuth {
         {
             if let Ok(session) = db.get_session(session_id) {
                 if let Ok(user) = db.get_user_for_session(session_id) {
-                    if session.expires_at > SystemTime::now() {
+                    if session.expires_at > DateTime::<Utc>::from(SystemTime::now()) {
                         return Outcome::Success(SessionAuth { user, session_id });
                     }
                 }

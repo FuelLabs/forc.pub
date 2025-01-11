@@ -1,8 +1,8 @@
-use crate::models::RecentPackage;
+use crate::models::PackagePreview;
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]
 pub struct RecentPackagesResponse {
-    pub recently_created: Vec<RecentPackage>,
-    pub recently_updated: Vec<RecentPackage>,
+    pub recently_created: Vec<PackagePreview>,
+    pub recently_updated: Vec<PackagePreview>,
 }

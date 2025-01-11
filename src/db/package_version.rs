@@ -1,7 +1,7 @@
 use super::error::DatabaseError;
 use super::{models, schema, DbConn};
 use crate::api::publish::PublishRequest;
-use crate::models::{ApiToken, RecentPackage};
+use crate::models::{ApiToken, PackagePreview};
 use diesel::prelude::*;
 use uuid::Uuid;
 
@@ -101,7 +101,7 @@ impl DbConn {
     }
 
     /// Fetch the most recently updated packages.
-    pub fn get_recently_updated(&mut self) -> Result<Vec<RecentPackage>, DatabaseError> {
+    pub fn get_recently_updated(&mut self) -> Result<Vec<PackagePreview>, DatabaseError> {
         let packages = diesel::sql_query(
             r#"WITH ranked_versions AS (
                 SELECT 
@@ -127,14 +127,14 @@ impl DbConn {
             LIMIT 10;
             "#,
         )
-        .load::<RecentPackage>(self.inner())
+        .load::<PackagePreview>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("recently updated".to_string(), err))?;
 
         Ok(packages)
     }
 
     /// Fetch the most recently created packages.
-    pub fn get_recently_created(&mut self) -> Result<Vec<RecentPackage>, DatabaseError> {
+    pub fn get_recently_created(&mut self) -> Result<Vec<PackagePreview>, DatabaseError> {
         let packages = diesel::sql_query(
             r#"WITH ranked_versions AS (
                 SELECT 
@@ -160,7 +160,7 @@ impl DbConn {
             LIMIT 10;
             "#,
         )
-        .load::<RecentPackage>(self.inner())
+        .load::<PackagePreview>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("recently created".to_string(), err))?;
 
         Ok(packages)

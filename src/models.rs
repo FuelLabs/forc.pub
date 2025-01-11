@@ -3,7 +3,6 @@ use diesel::prelude::*;
 use diesel::sql_types::{Nullable, Text, Timestamptz};
 use diesel::QueryableByName;
 use serde::Serialize;
-use std::time::SystemTime;
 use uuid::Uuid;
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -17,7 +16,7 @@ pub struct User {
     pub avatar_url: Option<String>,
     pub email: Option<String>,
     pub is_admin: bool,
-    pub created_at: SystemTime,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
@@ -37,15 +36,15 @@ pub struct NewUser {
 pub struct Session {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub expires_at: SystemTime,
-    pub created_at: SystemTime,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::sessions)]
 pub struct NewSession {
     pub user_id: Uuid,
-    pub expires_at: SystemTime,
+    pub expires_at: DateTime<Utc>,
 }
 
 #[derive(Queryable, Selectable, Debug, PartialEq, Eq)]
@@ -55,8 +54,8 @@ pub struct ApiToken {
     pub id: Uuid,
     pub user_id: Uuid,
     pub friendly_name: String,
-    pub expires_at: Option<SystemTime>,
-    pub created_at: SystemTime,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
@@ -65,7 +64,7 @@ pub struct NewApiToken {
     pub user_id: Uuid,
     pub friendly_name: String,
     pub token: Vec<u8>,
-    pub expires_at: Option<SystemTime>,
+    pub expires_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -77,7 +76,7 @@ pub struct Upload {
     pub forc_version: String,
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
-    pub created_at: SystemTime,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable, Debug)]
@@ -146,15 +145,15 @@ pub struct NewPackageVersion {
 
 #[derive(QueryableByName, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct RecentPackage {
-    #[sql_type = "Text"]
-    pub name: String, // Corresponds to `p.package_name as name`
-    #[sql_type = "Text"]
-    pub version: String, // Corresponds to `pv.num as version`
-    #[sql_type = "Nullable<Text>"]
-    pub description: Option<String>, // Corresponds to `pv.package_description as description`, which might be nullable
-    #[sql_type = "Timestamptz"]
-    pub created_at: DateTime<Utc>, // Corresponds to `p.created_at as created_at`
-    #[sql_type = "Timestamptz"]
-    pub updated_at: DateTime<Utc>, // Corresponds to `pv.created_at as updated_at`
+pub struct PackagePreview {
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = Text)]
+    pub version: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub description: Option<String>,
+    #[diesel(sql_type = Timestamptz)]
+    pub created_at: DateTime<Utc>,
+    #[diesel(sql_type = Timestamptz)]
+    pub updated_at: DateTime<Utc>,
 }

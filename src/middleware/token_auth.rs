@@ -1,12 +1,12 @@
-use std::time::SystemTime;
-
 use crate::db::api_token::PlainToken;
 use crate::db::Database;
 use crate::models;
+use chrono::{DateTime, Utc};
 use rocket::http::hyper::header;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
+use std::time::SystemTime;
 
 pub struct TokenAuth {
     pub token: models::ApiToken,
@@ -42,10 +42,9 @@ impl<'r> FromRequest<'r> for TokenAuth {
             if auth_header.starts_with("Bearer ") {
                 let token = auth_header.trim_start_matches("Bearer ");
                 if let Ok(token) = db.get_token(PlainToken::from(token.to_string())) {
-                    if token
-                        .expires_at
-                        .map_or(true, |expires_at| expires_at > SystemTime::now())
-                    {
+                    if token.expires_at.map_or(true, |expires_at| {
+                        expires_at > DateTime::<Utc>::from(SystemTime::now())
+                    }) {
                         return Outcome::Success(TokenAuth { token });
                     }
                     return Outcome::Error((Status::Unauthorized, TokenAuthError::Expired));

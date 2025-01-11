@@ -6,8 +6,8 @@ diesel::table! {
         user_id -> Uuid,
         friendly_name -> Varchar,
         token -> Bytea,
-        expires_at -> Nullable<Timestamp>,
-        created_at -> Timestamp,
+        expires_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -44,8 +44,8 @@ diesel::table! {
     sessions (id) {
         id -> Uuid,
         user_id -> Uuid,
-        expires_at -> Timestamp,
-        created_at -> Timestamp,
+        expires_at -> Timestamptz,
+        created_at -> Timestamptz,
     }
 }
 
@@ -56,7 +56,7 @@ diesel::table! {
         forc_version -> Varchar,
         abi_ipfs_hash -> Nullable<Varchar>,
         bytecode_identifier -> Nullable<Varchar>,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
@@ -69,7 +69,7 @@ diesel::table! {
         avatar_url -> Nullable<Varchar>,
         email -> Nullable<Varchar>,
         is_admin -> Bool,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
