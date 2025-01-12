@@ -93,7 +93,7 @@ fn test_api_tokens() {
 
     let session = db
         .new_user_session(&mock_user_1(), 1000)
-        .expect("result is ok");
+        .expect("session is ok");
     let user = db.get_user_for_session(session.id).expect("result is ok");
 
     // Insert tokens
@@ -138,7 +138,7 @@ fn test_package_versions() {
     // Set up session, user, token, and upload.
     let session = db
         .new_user_session(&mock_user_1(), 1000)
-        .expect("result is ok");
+        .expect("session is ok");
     let user = db.get_user_for_session(session.id).expect("user is ok");
     let (token, _) = db
         .new_token(user.id, "test token".to_string())
@@ -151,7 +151,7 @@ fn test_package_versions() {
             abi_ipfs_hash: None,
             bytecode_identifier: None,
         })
-        .expect("result is ok");
+        .expect("upload is ok");
 
     // Insert a package version for a package that doesn't exist
     let request = api::publish::PublishRequest {
@@ -189,7 +189,7 @@ fn test_package_versions() {
     );
     let pkg_result = db
         .get_package_by_id(version_result.package_id)
-        .expect("result is ok");
+        .expect("pkg result is ok");
     assert_eq!(pkg_result.package_name, request.package_name);
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
@@ -231,7 +231,7 @@ fn test_package_versions() {
     );
     let pkg_result = db
         .get_package_by_id(version_result.package_id)
-        .expect("result is ok");
+        .expect("pkg result is ok");
     assert_eq!(pkg_result.package_name, request.package_name);
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
