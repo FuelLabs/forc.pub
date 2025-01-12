@@ -81,7 +81,7 @@ Before starting the server, the local database must be up and running.
 ./scripts/start_local_db.sh
 ```
 
-Next, set up the environment by filling in the `.env` file with your Pinata test gateway details.
+Next, set up the environment by copying `.env` to `.env.local`, and modifying `.env.local` with your Pinata test gateway details and Github App env (if testing github login functionality).
 
 Now we can run the server with:
 
