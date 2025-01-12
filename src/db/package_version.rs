@@ -42,6 +42,12 @@ impl DbConn {
             Ok(saved_package)
         }?;
 
+        let urls = request
+            .urls
+            .iter()
+            .map(|url| Some(url.to_string()))
+            .collect();
+
         // Insert a new package version.
         let new_version = models::NewPackageVersion {
             package_id: package.id,
@@ -50,10 +56,10 @@ impl DbConn {
             upload_id: request.upload_id,
             num: request.num.clone(),
             package_description: request.package_description.clone(),
-            repository: request.repository.clone(),
-            documentation: request.documentation.clone(),
-            homepage: request.homepage.clone(),
-            urls: request.urls.clone(),
+            repository: request.repository.clone().map(|url| url.to_string()),
+            documentation: request.documentation.clone().map(|url| url.to_string()),
+            homepage: request.homepage.clone().map(|url| url.to_string()),
+            urls,
             readme: request.readme.clone(),
             license: request.license.clone(),
         };

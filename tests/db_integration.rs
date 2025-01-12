@@ -1,11 +1,14 @@
 //! Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
 //! This should be done by running `./scripts/start_local_db.sh` before running the tests.
 
+use std::vec;
+
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::db::{Database, DbConn};
 use forc_pub::models::{NewUpload, PackageVersion};
 use serial_test::serial;
+use url::Url;
 
 // Test constants
 const TEST_LOGIN_1: &str = "AliceBobbins";
@@ -16,6 +19,10 @@ const TEST_URL_2: &str = "url2.url";
 const TEST_LOGIN_2: &str = "foobar";
 const TEST_TOKEN_NAME_1: &str = "test token 1";
 const TEST_TOKEN_NAME_2: &str = "test token 2";
+const TEST_URL_REPO: &str = "https://example.com/repository";
+const TEST_URL_DOC: &str = "https://example.com/documentation";
+const TEST_URL_HOME: &str = "https://example.com/homepage";
+const TEST_URL_OTHER: &str = "https://example.com/other";
 
 fn clear_tables(db: &mut DbConn) {
     diesel::delete(forc_pub::schema::package_versions::table)
@@ -159,10 +166,10 @@ fn test_package_versions() {
         upload_id: upload.id,
         num: "0.1.0".into(),
         package_description: Some("test description".into()),
-        repository: Some("test repository".into()),
-        documentation: Some("test documentation".into()),
-        homepage: Some("test homepage".into()),
-        urls: vec![Some("test url".into())],
+        repository: Url::parse(TEST_URL_REPO).ok(),
+        documentation: Url::parse(TEST_URL_DOC).ok(),
+        homepage: Url::parse(TEST_URL_HOME).ok(),
+        urls: vec![Url::parse(TEST_URL_OTHER).expect("other url")],
         readme: Some("test readme".into()),
         license: Some("test license".into()),
     };
@@ -178,10 +185,10 @@ fn test_package_versions() {
             upload_id: upload.id,
             num: request.num,
             package_description: request.package_description,
-            repository: request.repository,
-            documentation: request.documentation,
-            homepage: request.homepage,
-            urls: request.urls,
+            repository: Some(TEST_URL_REPO.into()),
+            documentation: Some(TEST_URL_DOC.into()),
+            homepage: Some(TEST_URL_HOME.into()),
+            urls: vec![Some(TEST_URL_OTHER.into())],
             readme: request.readme,
             license: request.license,
             created_at: version_result.created_at,
@@ -200,10 +207,10 @@ fn test_package_versions() {
         upload_id: upload.id,
         num: "0.2.0".into(),
         package_description: Some("test description 2".into()),
-        repository: Some("test repository 2".into()),
-        documentation: Some("test documentation 2".into()),
-        homepage: Some("test homepage 2".into()),
-        urls: vec![Some("test url 2".into())],
+        repository: Url::parse(TEST_URL_REPO).ok(),
+        documentation: Url::parse(TEST_URL_DOC).ok(),
+        homepage: Url::parse(TEST_URL_HOME).ok(),
+        urls: vec![Url::parse(TEST_URL_OTHER).expect("other url")],
         readme: Some("test readme 2".into()),
         license: Some("test licens 2".into()),
     };
@@ -220,10 +227,10 @@ fn test_package_versions() {
             upload_id: upload.id,
             num: request.num,
             package_description: request.package_description,
-            repository: request.repository,
-            documentation: request.documentation,
-            homepage: request.homepage,
-            urls: request.urls,
+            repository: Some(TEST_URL_REPO.into()),
+            documentation: Some(TEST_URL_DOC.into()),
+            homepage: Some(TEST_URL_HOME.into()),
+            urls: vec![Some(TEST_URL_OTHER.into())],
             readme: request.readme,
             license: request.license,
             created_at: version_result.created_at,
