@@ -55,7 +55,7 @@ cargo install diesel_cli --no-default-features --features postgres
 RUSTFLAGS='-L /opt/homebrew/opt/libpq/lib' cargo install diesel_cli --no-default-features --features postgres
 ```
 
-It is also recommended to install a Postgres client like [DBeaver](https://dbeaver.io/) to connect and inspect the database while developing locally.
+See [docs/database.md](database.md) for more information about working with the database.
 
 ### Building the `forc.pub` server
 
@@ -81,7 +81,7 @@ Before starting the server, the local database must be up and running.
 ./scripts/start_local_db.sh
 ```
 
-Next, set up the environment by filling in the `.env` file with your Pinata test gateway details.
+Next, set up the environment by copying `.env` to `.env.local`, and modifying `.env.local` with your Pinata test gateway details and Github App env (if testing github login functionality).
 
 Now we can run the server with:
 

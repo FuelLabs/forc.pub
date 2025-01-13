@@ -1,5 +1,8 @@
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use std::time::SystemTime;
+use diesel::sql_types::{Nullable, Text, Timestamptz};
+use diesel::QueryableByName;
+use serde::Serialize;
 use uuid::Uuid;
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -13,7 +16,7 @@ pub struct User {
     pub avatar_url: Option<String>,
     pub email: Option<String>,
     pub is_admin: bool,
-    pub created_at: SystemTime,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
@@ -33,15 +36,15 @@ pub struct NewUser {
 pub struct Session {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub expires_at: SystemTime,
-    pub created_at: SystemTime,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::sessions)]
 pub struct NewSession {
     pub user_id: Uuid,
-    pub expires_at: SystemTime,
+    pub expires_at: DateTime<Utc>,
 }
 
 #[derive(Queryable, Selectable, Debug, PartialEq, Eq)]
@@ -51,8 +54,8 @@ pub struct ApiToken {
     pub id: Uuid,
     pub user_id: Uuid,
     pub friendly_name: String,
-    pub expires_at: Option<SystemTime>,
-    pub created_at: SystemTime,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
@@ -61,7 +64,7 @@ pub struct NewApiToken {
     pub user_id: Uuid,
     pub friendly_name: String,
     pub token: Vec<u8>,
-    pub expires_at: Option<SystemTime>,
+    pub expires_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -73,7 +76,7 @@ pub struct Upload {
     pub forc_version: String,
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
-    pub created_at: SystemTime,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable, Debug)]
@@ -84,4 +87,73 @@ pub struct NewUpload {
     pub forc_version: String,
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
+}
+
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = crate::schema::packages)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Package {
+    pub id: Uuid,
+    pub user_owner: Uuid,
+    pub package_name: String,
+    pub default_version: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::packages)]
+pub struct NewPackage {
+    pub user_owner: Uuid,
+    pub package_name: String,
+}
+
+#[derive(Queryable, Selectable, Debug, Clone, Eq, PartialEq)]
+#[diesel(table_name = crate::schema::package_versions)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PackageVersion {
+    pub id: Uuid,
+    pub package_id: Uuid,
+    pub published_by: Uuid,
+    pub upload_id: Uuid,
+    pub num: String,
+    pub package_description: Option<String>,
+    pub repository: Option<String>,
+    pub documentation: Option<String>,
+    pub homepage: Option<String>,
+    pub urls: Vec<Option<String>>,
+    pub readme: Option<String>,
+    pub license: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::package_versions)]
+pub struct NewPackageVersion {
+    pub package_id: Uuid,
+    pub publish_token: Uuid,
+    pub published_by: Uuid,
+    pub upload_id: Uuid,
+    pub num: String,
+    pub package_description: Option<String>,
+    pub repository: Option<String>,
+    pub documentation: Option<String>,
+    pub homepage: Option<String>,
+    pub urls: Vec<Option<String>>,
+    pub readme: Option<String>,
+    pub license: Option<String>,
+}
+
+#[derive(QueryableByName, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PackagePreview {
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = Text)]
+    pub version: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub description: Option<String>,
+    #[diesel(sql_type = Timestamptz)]
+    pub created_at: DateTime<Utc>,
+    #[diesel(sql_type = Timestamptz)]
+    pub updated_at: DateTime<Utc>,
 }

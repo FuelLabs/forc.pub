@@ -1,4 +1,5 @@
 import React from 'react';
+import PackageDashboard from '../features/dahboard/components/PackageDashboard';
 
 function Home() {
   return (
@@ -6,7 +7,7 @@ function Home() {
       <div style={{ width: '100%' }}>
         <h1>{"The Sway community's package registry"}</h1>
       </div>
-      <div style={{ color: 'red' }}>{'Under construction'}</div>
+      <PackageDashboard />
     </div>
   );
 }

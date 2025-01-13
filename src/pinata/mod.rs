@@ -1,9 +1,6 @@
-use std::{env, path::Path};
-
-use dotenvy::dotenv;
+use crate::{upload::UploadError, util::load_env};
 use pinata_sdk::{PinByFile, PinataApi};
-
-use crate::upload::UploadError;
+use std::{env, path::Path};
 
 pub trait PinataClient: Sized {
     fn new() -> impl std::future::Future<Output = Result<Self, UploadError>> + Send;
@@ -19,7 +16,7 @@ pub struct PinataClientImpl {
 
 impl PinataClient for PinataClientImpl {
     async fn new() -> Result<Self, UploadError> {
-        dotenv().ok();
+        load_env();
 
         let (api_key, secret_api_key) =
             match (env::var("PINATA_API_KEY"), env::var("PINATA_API_SECRET")) {

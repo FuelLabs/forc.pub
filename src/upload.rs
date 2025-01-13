@@ -223,11 +223,12 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use crate::pinata::MockPinataClient;
-
     use super::*;
+    use crate::pinata::MockPinataClient;
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn handle_project_upload_success() {
         let upload_id = Uuid::new_v4();
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
@@ -235,8 +236,8 @@ mod tests {
         let forc_version = "0.66.5";
         let forc_path_str = format!("forc-{forc_version}");
         let forc_path = PathBuf::from(&forc_path_str);
-        fs::create_dir_all(forc_path.clone()).unwrap();
-        let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
+        fs::create_dir_all(forc_path.clone()).ok();
+        let forc_path = fs::canonicalize(forc_path.clone()).expect("forc path ok");
         install_forc_at_path(forc_version, &forc_path).expect("forc installed");
 
         let mock_client = MockPinataClient::new().await.expect("mock pinata client");

@@ -6,8 +6,37 @@ diesel::table! {
         user_id -> Uuid,
         friendly_name -> Varchar,
         token -> Bytea,
-        expires_at -> Nullable<Timestamp>,
-        created_at -> Timestamp,
+        expires_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    package_versions (id) {
+        id -> Uuid,
+        package_id -> Uuid,
+        publish_token -> Uuid,
+        published_by -> Uuid,
+        upload_id -> Uuid,
+        num -> Varchar,
+        package_description -> Nullable<Varchar>,
+        repository -> Nullable<Varchar>,
+        documentation -> Nullable<Varchar>,
+        homepage -> Nullable<Varchar>,
+        urls -> Array<Nullable<Text>>,
+        readme -> Nullable<Varchar>,
+        license -> Nullable<Varchar>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    packages (id) {
+        id -> Uuid,
+        user_owner -> Uuid,
+        package_name -> Varchar,
+        default_version -> Nullable<Uuid>,
+        created_at -> Timestamptz,
     }
 }
 
@@ -15,8 +44,8 @@ diesel::table! {
     sessions (id) {
         id -> Uuid,
         user_id -> Uuid,
-        expires_at -> Timestamp,
-        created_at -> Timestamp,
+        expires_at -> Timestamptz,
+        created_at -> Timestamptz,
     }
 }
 
@@ -27,7 +56,7 @@ diesel::table! {
         forc_version -> Varchar,
         abi_ipfs_hash -> Nullable<Varchar>,
         bytecode_identifier -> Nullable<Varchar>,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
@@ -40,11 +69,22 @@ diesel::table! {
         avatar_url -> Nullable<Varchar>,
         email -> Nullable<Varchar>,
         is_admin -> Bool,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
     }
 }
 
 diesel::joinable!(api_tokens -> users (user_id));
+diesel::joinable!(package_versions -> api_tokens (publish_token));
+diesel::joinable!(package_versions -> uploads (upload_id));
+diesel::joinable!(package_versions -> users (published_by));
+diesel::joinable!(packages -> users (user_owner));
 diesel::joinable!(sessions -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(api_tokens, sessions, uploads, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    api_tokens,
+    package_versions,
+    packages,
+    sessions,
+    uploads,
+    users,
+);

@@ -1,15 +1,16 @@
 use super::error::DatabaseError;
 use super::{api, models, schema, DbConn};
+use chrono::Utc;
 use diesel::prelude::*;
 use diesel::upsert::excluded;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 use uuid::Uuid;
 
 impl DbConn {
     /// Insert a user session into the database and return the session ID.
     /// If the user doesn't exist, insert the user as well.
     /// If the user does exist, update the user's full name and avatar URL if they have changed.
-    pub fn insert_user_session(
+    pub fn new_user_session(
         &mut self,
         user: &api::auth::User,
         expires_in: u32,
@@ -34,11 +35,11 @@ impl DbConn {
                 schema::users::avatar_url.eq(excluded(schema::users::avatar_url)),
             ))
             .get_result(self.inner())
-            .map_err(|_| DatabaseError::InsertUserFailed(user.github_login.clone()))?;
+            .map_err(|err| DatabaseError::InsertUserFailed(user.github_login.clone(), err))?;
 
         let new_session = models::NewSession {
             user_id: saved_user.id,
-            expires_at: SystemTime::now() + Duration::from_secs(u64::from(expires_in)),
+            expires_at: Utc::now() + Duration::from_secs(u64::from(expires_in)),
         };
 
         // Insert new session
@@ -46,7 +47,7 @@ impl DbConn {
             .values(&new_session)
             .returning(models::Session::as_returning())
             .get_result(self.inner())
-            .map_err(|_| DatabaseError::InsertSessionFailed(user.github_login.clone()))?;
+            .map_err(|err| DatabaseError::InsertSessionFailed(user.github_login.clone(), err))?;
 
         Ok(saved_session)
     }
@@ -57,7 +58,7 @@ impl DbConn {
             .filter(schema::users::id.eq(user_id))
             .select(models::User::as_returning())
             .first::<models::User>(self.inner())
-            .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
+            .map_err(|err| DatabaseError::NotFound(user_id.to_string(), err))
     }
 
     /// Fetch a user given the user ID.
@@ -66,7 +67,7 @@ impl DbConn {
             .filter(schema::sessions::id.eq(session_id))
             .select(models::Session::as_returning())
             .first::<models::Session>(self.inner())
-            .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
+            .map_err(|err| DatabaseError::NotFound(session_id.to_string(), err))
     }
 
     /// Fetch a user from the database for a given session ID.
@@ -79,14 +80,14 @@ impl DbConn {
             .filter(schema::sessions::id.eq(session_id))
             .select(models::User::as_returning())
             .first::<models::User>(self.inner())
-            .map_err(|_| DatabaseError::NotFound(session_id.to_string()))
+            .map_err(|err| DatabaseError::NotFound(session_id.to_string(), err))
     }
 
     /// Delete a session given its ID.
     pub fn delete_session(&mut self, session_id: Uuid) -> Result<(), DatabaseError> {
         diesel::delete(schema::sessions::table.filter(schema::sessions::id.eq(session_id)))
             .execute(self.inner())
-            .map_err(|_| DatabaseError::NotFound(session_id.to_string()))?;
+            .map_err(|err| DatabaseError::NotFound(session_id.to_string(), err))?;
         Ok(())
     }
 }

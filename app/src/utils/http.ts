@@ -1,6 +1,7 @@
 import type { TypedAxios } from 'typed-axios-instance';
 import axios from 'axios';
 import { SERVER_URI } from '../constants';
+import { RecentPackagesResponse } from '../features/dahboard/hooks/useFetchRecentPackages';
 
 export interface AuthenticatedUser {
   fullName: string;
@@ -74,6 +75,11 @@ type Routes = [
   {
     route: '/token/[id]';
     method: 'DELETE';
+  },
+  {
+    route: "/recent_packages",
+    method: "GET",
+    jsonResponse: RecentPackagesResponse;
   }
 ];
 

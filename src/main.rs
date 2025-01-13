@@ -5,6 +5,7 @@ extern crate rocket;
 
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::publish::{PublishRequest, UploadResponse};
+use forc_pub::api::search::RecentPackagesResponse;
 use forc_pub::api::ApiError;
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
@@ -47,9 +48,9 @@ async fn login(
     request: Json<LoginRequest>,
 ) -> ApiResult<LoginResponse> {
     let (user, expires_in) = handle_login(request.code.clone()).await?;
-    let session = db.conn().insert_user_session(&user, expires_in)?;
+    let session = db.conn().new_user_session(&user, expires_in)?;
     let session_id = session.id.to_string();
-    cookies.add(Cookie::build(SESSION_COOKIE_NAME, session_id.clone()).finish());
+    cookies.add(Cookie::build((SESSION_COOKIE_NAME, session_id.clone())));
     Ok(Json(LoginResponse { user, session_id }))
 }
 
@@ -103,12 +104,14 @@ fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> 
 }
 
 #[post("/publish", data = "<request>")]
-fn publish(request: Json<PublishRequest>, auth: TokenAuth) -> ApiResult<EmptyResponse> {
-    info!(
-        "Publishing: {:?} for token: {:?}",
-        request, auth.token.friendly_name
-    );
-
+fn publish(
+    db: &State<Database>,
+    request: Json<PublishRequest>,
+    auth: TokenAuth,
+) -> ApiResult<EmptyResponse> {
+    let _ = db.conn().new_package_version(&auth.token, &request)?;
+    // TODO: Publish to GitHub index repo.
+    // TODO: Publish to block explorer API.
     Ok(Json(EmptyResponse))
 }
 
@@ -166,7 +169,7 @@ async fn upload_project(
     )
     .await?;
 
-    let _ = db.conn().insert_upload(&upload_entry)?;
+    let _ = db.conn().new_upload(&upload_entry)?;
 
     // Clean up the temporary directory.
     tmp_dir
@@ -174,6 +177,18 @@ async fn upload_project(
         .map_err(|_| ApiError::Upload(UploadError::RemoveTempDir))?;
 
     Ok(Json(UploadResponse { upload_id }))
+}
+
+#[get("/recent_packages")]
+fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
+    let recently_created = db.conn().get_recently_created()?;
+    let recently_updated = db.conn().get_recently_updated()?;
+    // TODO: Publish to GitHub index repo.
+    // TODO: Publish to block explorer API.
+    Ok(Json(RecentPackagesResponse {
+        recently_created,
+        recently_updated,
+    }))
 }
 
 /// Catches all OPTION requests in order to get the CORS related Fairing triggered.
@@ -220,6 +235,7 @@ async fn rocket() -> _ {
                 publish,
                 upload_project,
                 tokens,
+                recent_packages,
                 all_options,
                 health
             ],

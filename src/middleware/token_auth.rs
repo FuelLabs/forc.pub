@@ -1,10 +1,12 @@
 use crate::db::api_token::PlainToken;
 use crate::db::Database;
 use crate::models;
+use chrono::{DateTime, Utc};
 use rocket::http::hyper::header;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
+use std::time::SystemTime;
 
 pub struct TokenAuth {
     pub token: models::ApiToken,
@@ -14,6 +16,7 @@ pub struct TokenAuth {
 pub enum TokenAuthError {
     Missing,
     Invalid,
+    Expired,
     DatabaseConnection,
 }
 
@@ -28,7 +31,7 @@ impl<'r> FromRequest<'r> for TokenAuth {
         let mut db = match request.rocket().state::<Database>() {
             Some(db) => db.conn(),
             None => {
-                return Outcome::Failure((
+                return Outcome::Error((
                     Status::InternalServerError,
                     TokenAuthError::DatabaseConnection,
                 ))
@@ -39,11 +42,16 @@ impl<'r> FromRequest<'r> for TokenAuth {
             if auth_header.starts_with("Bearer ") {
                 let token = auth_header.trim_start_matches("Bearer ");
                 if let Ok(token) = db.get_token(PlainToken::from(token.to_string())) {
-                    return Outcome::Success(TokenAuth { token });
+                    if token.expires_at.map_or(true, |expires_at| {
+                        expires_at > DateTime::<Utc>::from(SystemTime::now())
+                    }) {
+                        return Outcome::Success(TokenAuth { token });
+                    }
+                    return Outcome::Error((Status::Unauthorized, TokenAuthError::Expired));
                 }
             }
-            return Outcome::Failure((Status::Unauthorized, TokenAuthError::Invalid));
+            return Outcome::Error((Status::Unauthorized, TokenAuthError::Invalid));
         }
-        return Outcome::Failure((Status::Unauthorized, TokenAuthError::Missing));
+        return Outcome::Error((Status::Unauthorized, TokenAuthError::Missing));
     }
 }
