@@ -3,9 +3,11 @@
 #[macro_use]
 extern crate rocket;
 
+use chrono::{DateTime, Utc};
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
+use forc_pub::api::pagination::{PaginatedResponse, Pagination};
 use forc_pub::api::publish::{PublishRequest, UploadResponse};
-use forc_pub::api::search::RecentPackagesResponse;
+use forc_pub::api::search::{FullPackage, RecentPackagesResponse};
 use forc_pub::api::ApiError;
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
@@ -28,6 +30,7 @@ use rocket::{
 };
 use std::fs::{self};
 use std::path::PathBuf;
+use std::str::FromStr;
 use tempfile::tempdir;
 use tracing::info;
 use tracing::level_filters::LevelFilter;
@@ -179,6 +182,27 @@ async fn upload_project(
     Ok(Json(UploadResponse { upload_id }))
 }
 
+#[get("/packages?<updated_after>&<pagination..>")]
+fn packages(
+    db: &State<Database>,
+    updated_after: Option<&str>,
+    pagination: Pagination,
+) -> ApiResult<PaginatedResponse<FullPackage>> {
+    let updated_after = updated_after.and_then(|date_str| DateTime::<Utc>::from_str(date_str).ok());
+    let db_data = db
+        .conn()
+        .get_full_packages(updated_after, pagination.clone())?;
+    let data = db_data.data.into_iter().map(FullPackage::from).collect();
+
+    Ok(Json(PaginatedResponse {
+        data,
+        total_count: db_data.total_count,
+        total_pages: db_data.total_pages,
+        current_page: db_data.current_page,
+        per_page: db_data.per_page,
+    }))
+}
+
 #[get("/recent_packages")]
 fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
     let recently_created = db.conn().get_recently_created()?;
@@ -235,6 +259,7 @@ async fn rocket() -> _ {
                 publish,
                 upload_project,
                 tokens,
+                packages,
                 recent_packages,
                 all_options,
                 health

@@ -80,10 +80,10 @@ const PackageDashboard: React.FC = () => {
     <Container maxWidth='md' style={{ marginTop: '24px' }}>
       <Grid container spacing={4}>
         <Grid item xs={12} md={6}>
-          {renderPackages(data.recently_updated, 'Just Updated')}
+          {renderPackages(data.recentlyUpdated, 'Just Updated')}
         </Grid>
         <Grid item xs={12} md={6}>
-          {renderPackages(data.recently_created, 'New Packages')}
+          {renderPackages(data.recentlyCreated, 'New Packages')}
         </Grid>
       </Grid>
     </Container>

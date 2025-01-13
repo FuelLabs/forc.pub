@@ -1,9 +1,8 @@
 pub mod api_token;
 pub mod auth;
+pub mod pagination;
 pub mod publish;
 pub mod search;
-
-use std::io::Cursor;
 
 use rocket::{
     http::{ContentType, Status},
@@ -12,6 +11,7 @@ use rocket::{
     Request,
 };
 use serde_json::json;
+use std::io::Cursor;
 use thiserror::Error;
 use tracing::error;
 

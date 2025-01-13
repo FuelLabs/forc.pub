@@ -11,14 +11,14 @@ export interface RecentPackage {
 }
 
 export interface RecentPackagesResponse {
-  recently_updated: RecentPackage[];
-  recently_created: RecentPackage[];
+  recentlyUpdated: RecentPackage[];
+  recentlyCreated: RecentPackage[];
 }
 
 const useFetchRecentPackages = () => {
   const [data, setData] = useState<RecentPackagesResponse>({
-    recently_updated: [],
-    recently_created: [],
+    recentlyUpdated: [],
+    recentlyCreated: [],
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

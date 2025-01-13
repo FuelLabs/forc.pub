@@ -3,8 +3,10 @@
 
 use std::vec;
 
+use chrono::Utc;
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
+use forc_pub::api::pagination::Pagination;
 use forc_pub::db::{Database, DbConn};
 use forc_pub::models::{NewUpload, PackageVersion};
 use serial_test::serial;
@@ -23,6 +25,14 @@ const TEST_URL_REPO: &str = "https://example.com/repository";
 const TEST_URL_DOC: &str = "https://example.com/documentation";
 const TEST_URL_HOME: &str = "https://example.com/homepage";
 const TEST_URL_OTHER: &str = "https://example.com/other";
+const TEST_VERSION_1: &str = "0.1.0";
+const TEST_VERSION_2: &str = "0.2.0";
+
+fn setup_db() -> DbConn {
+    let db = Database::new();
+    clear_tables(&mut db.conn());
+    db.conn()
+}
 
 fn clear_tables(db: &mut DbConn) {
     diesel::delete(forc_pub::schema::package_versions::table)
@@ -63,7 +73,7 @@ fn mock_user_2() -> api::auth::User {
 #[serial]
 #[test]
 fn test_user_sessions() {
-    let db = &mut Database::default().conn();
+    let db = &mut setup_db();
 
     let user1 = mock_user_1();
     let user2 = mock_user_2();
@@ -89,14 +99,12 @@ fn test_user_sessions() {
 
     let result = db.get_user_for_session(session3.id).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_2);
-
-    clear_tables(db);
 }
 
 #[test]
 #[serial]
 fn test_api_tokens() {
-    let db = &mut Database::default().conn();
+    let db = &mut setup_db();
 
     let session = db
         .new_user_session(&mock_user_1(), 1000)
@@ -133,14 +141,12 @@ fn test_api_tokens() {
         .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 0);
-
-    clear_tables(db);
 }
 
 #[test]
 #[serial]
 fn test_package_versions() {
-    let db = &mut Database::default().conn();
+    let db = &mut setup_db();
 
     // Set up session, user, token, and upload.
     let session = db
@@ -153,7 +159,7 @@ fn test_package_versions() {
     let upload = db
         .new_upload(&NewUpload {
             id: uuid::Uuid::new_v4(),
-            forc_version: "0.1.0".into(),
+            forc_version: TEST_VERSION_1.into(),
             source_code_ipfs_hash: "test-ipfs-hash".into(),
             abi_ipfs_hash: None,
             bytecode_identifier: None,
@@ -164,7 +170,7 @@ fn test_package_versions() {
     let request = api::publish::PublishRequest {
         package_name: "test-package".into(),
         upload_id: upload.id,
-        num: "0.1.0".into(),
+        num: TEST_VERSION_1.into(),
         package_description: Some("test description".into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
@@ -183,7 +189,7 @@ fn test_package_versions() {
             package_id: version_result.package_id,
             published_by: user.id,
             upload_id: upload.id,
-            num: request.num,
+            num: TEST_VERSION_1.into(),
             package_description: request.package_description,
             repository: Some(TEST_URL_REPO.into()),
             documentation: Some(TEST_URL_DOC.into()),
@@ -205,7 +211,7 @@ fn test_package_versions() {
     let request = api::publish::PublishRequest {
         package_name: "test-package".into(),
         upload_id: upload.id,
-        num: "0.2.0".into(),
+        num: TEST_VERSION_2.into(),
         package_description: Some("test description 2".into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
@@ -225,7 +231,7 @@ fn test_package_versions() {
             package_id: version_result.package_id,
             published_by: user.id,
             upload_id: upload.id,
-            num: request.num,
+            num: TEST_VERSION_2.into(),
             package_description: request.package_description,
             repository: Some(TEST_URL_REPO.into()),
             documentation: Some(TEST_URL_DOC.into()),
@@ -243,5 +249,53 @@ fn test_package_versions() {
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
 
-    clear_tables(db);
+    // Test get_full_packages page 1
+    let result = db
+        .get_full_packages(
+            None,
+            Pagination {
+                page: Some(1),
+                per_page: Some(1),
+            },
+        )
+        .expect("get_full_packages result is ok");
+    assert_eq!(result.current_page, 1);
+    assert_eq!(result.per_page, 1);
+    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.total_count, 2);
+    assert_eq!(result.data.len(), 1);
+    assert_eq!(result.data[0].version, TEST_VERSION_2); // latest version
+
+    // Test get_full_packages page 2
+    let result = db
+        .get_full_packages(
+            None,
+            Pagination {
+                page: Some(2),
+                per_page: Some(1),
+            },
+        )
+        .expect("get_full_packages result is ok");
+    assert_eq!(result.current_page, 2);
+    assert_eq!(result.per_page, 1);
+    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.total_count, 2);
+    assert_eq!(result.data.len(), 1);
+    assert_eq!(result.data[0].version, TEST_VERSION_1); // latest version
+
+    // Test get_full_packages date filter (should return no results)
+    let result = db
+        .get_full_packages(
+            Some(Utc::now()),
+            Pagination {
+                page: Some(1),
+                per_page: Some(1),
+            },
+        )
+        .expect("get_full_packages result is ok");
+    assert_eq!(result.current_page, 1);
+    assert_eq!(result.per_page, 1);
+    assert_eq!(result.total_pages, 0);
+    assert_eq!(result.total_count, 0);
+    assert_eq!(result.data.len(), 0);
 }

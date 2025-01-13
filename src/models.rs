@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use diesel::sql_types::{Nullable, Text, Timestamptz};
+use diesel::sql_types::BigInt;
+use diesel::sql_types::{Array, Nullable, Text, Timestamptz};
 use diesel::QueryableByName;
 use serde::Serialize;
 use uuid::Uuid;
@@ -156,4 +157,48 @@ pub struct PackagePreview {
     pub created_at: DateTime<Utc>,
     #[diesel(sql_type = Timestamptz)]
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(QueryableByName, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FullPackage {
+    // Everything from PackagePreview
+    #[diesel(sql_type = Text)]
+    pub name: String,
+    #[diesel(sql_type = Text)]
+    pub version: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub description: Option<String>,
+    #[diesel(sql_type = Timestamptz)]
+    pub created_at: DateTime<Utc>,
+    #[diesel(sql_type = Timestamptz)]
+    pub updated_at: DateTime<Utc>,
+
+    // Metadata from Uploads table
+    #[diesel(sql_type = Nullable<Text>)]
+    pub bytecode_identifier: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub forc_version: String,
+
+    // IPFS hashes
+    #[diesel(sql_type = Text)]
+    pub source_code_ipfs_hash: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub abi_ipfs_hash: Option<String>,
+
+    // Metadata URLs
+    #[diesel(sql_type = Nullable<Text>)]
+    pub repository: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub documentation: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub homepage: Option<String>,
+    #[diesel(sql_type = Array<Nullable<Text>>)]
+    pub urls: Vec<Option<String>>,
+}
+
+#[derive(QueryableByName)]
+pub struct CountResult {
+    #[diesel(sql_type = BigInt)]
+    pub count: i64,
 }
