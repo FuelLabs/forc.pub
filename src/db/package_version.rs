@@ -295,7 +295,7 @@ impl DbConn {
                 "#,
         )
         .bind::<diesel::sql_types::Text, _>(pkg_name.clone())
-        .bind::<diesel::sql_types::Text, _>(version.clone()) // TODO: input validation
+        .bind::<diesel::sql_types::Text, _>(version.clone())
         .load::<FullPackage>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("full package version".to_string(), err))?;
         let package = data.first().ok_or_else(|| {
