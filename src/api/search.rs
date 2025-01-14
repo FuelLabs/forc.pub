@@ -3,6 +3,7 @@ use crate::{
     pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url},
 };
 use serde::Serialize;
+use url::Url;
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -26,16 +27,20 @@ pub struct FullPackage {
     pub abi_ipfs_url: Option<String>,
 
     // Version Metadata
-    pub repository: Option<String>,
-    pub documentation: Option<String>,
-    pub homepage: Option<String>,
-    pub urls: Vec<String>,
+    pub repository: Option<Url>,
+    pub documentation: Option<Url>,
+    pub homepage: Option<Url>,
+    pub urls: Vec<Url>,
     pub readme: Option<String>,
     pub license: Option<String>,
 }
 
 impl From<crate::models::FullPackage> for FullPackage {
     fn from(full_package: crate::models::FullPackage) -> Self {
+        fn string_to_url(s: String) -> Option<Url> {
+            Url::parse(&s).ok()
+        }
+
         FullPackage {
             package_preview: PackagePreview {
                 name: full_package.name,
@@ -50,10 +55,15 @@ impl From<crate::models::FullPackage> for FullPackage {
             abi_ipfs_url: full_package
                 .abi_ipfs_hash
                 .map(|hash| ipfs_hash_to_abi_url(&hash)),
-            repository: full_package.repository,
-            documentation: full_package.documentation,
-            homepage: full_package.homepage,
-            urls: full_package.urls.into_iter().flatten().collect(),
+            repository: full_package.repository.and_then(string_to_url),
+            documentation: full_package.documentation.and_then(string_to_url),
+            homepage: full_package.homepage.and_then(string_to_url),
+            urls: full_package
+                .urls
+                .into_iter()
+                .flatten()
+                .filter_map(string_to_url)
+                .collect(),
             license: full_package.license,
             readme: full_package.readme,
         }
