@@ -159,7 +159,7 @@ pub struct PackagePreview {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(QueryableByName, Serialize, Debug)]
+#[derive(QueryableByName, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct FullPackage {
     // Everything from PackagePreview
@@ -186,7 +186,7 @@ pub struct FullPackage {
     #[diesel(sql_type = Nullable<Text>)]
     pub abi_ipfs_hash: Option<String>,
 
-    // Metadata URLs
+    // Version Metadata
     #[diesel(sql_type = Nullable<Text>)]
     pub repository: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
@@ -195,6 +195,10 @@ pub struct FullPackage {
     pub homepage: Option<String>,
     #[diesel(sql_type = Array<Nullable<Text>>)]
     pub urls: Vec<Option<String>>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub readme: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub license: Option<String>,
 }
 
 #[derive(QueryableByName)]

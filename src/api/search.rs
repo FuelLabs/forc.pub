@@ -25,11 +25,13 @@ pub struct FullPackage {
     pub source_code_ipfs_url: String,
     pub abi_ipfs_url: Option<String>,
 
-    // Metadata URLs
+    // Version Metadata
     pub repository: Option<String>,
     pub documentation: Option<String>,
     pub homepage: Option<String>,
     pub urls: Vec<String>,
+    pub readme: Option<String>,
+    pub license: Option<String>,
 }
 
 impl From<crate::models::FullPackage> for FullPackage {
@@ -52,6 +54,8 @@ impl From<crate::models::FullPackage> for FullPackage {
             documentation: full_package.documentation,
             homepage: full_package.homepage,
             urls: full_package.urls.into_iter().flatten().collect(),
+            license: full_package.license,
+            readme: full_package.readme,
         }
     }
 }

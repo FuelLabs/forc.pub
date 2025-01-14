@@ -219,7 +219,9 @@ impl DbConn {
                 pv.repository AS repository,
                 pv.documentation AS documentation,
                 pv.homepage AS homepage,
-                pv.urls AS urls
+                pv.urls AS urls,
+                pv.readme AS readme,
+                pv.license AS license
             FROM 
                 packages p
             INNER JOIN 
@@ -250,5 +252,56 @@ impl DbConn {
             current_page: page,
             per_page: limit,
         })
+    }
+
+    /// Fetch the [FullPackage] for the given package name and version string.
+    pub fn get_full_package_version(
+        &mut self,
+        pkg_name: String,
+        version: String,
+    ) -> Result<FullPackage, DatabaseError> {
+        let data = diesel::sql_query(
+            r#"
+                SELECT 
+                    p.package_name AS name,
+                    pv.num AS version,
+                    pv.package_description AS description,
+                    p.created_at AS created_at,
+                    pv.created_at AS updated_at,
+            
+                    u.bytecode_identifier AS bytecode_identifier,
+                    u.forc_version AS forc_version,
+            
+                    u.source_code_ipfs_hash AS source_code_ipfs_hash,
+                    u.abi_ipfs_hash AS abi_ipfs_hash,
+            
+                    pv.repository AS repository,
+                    pv.documentation AS documentation,
+                    pv.homepage AS homepage,
+                    pv.urls AS urls,
+                    pv.readme AS readme,
+                    pv.license AS license
+                FROM 
+                    packages p
+                INNER JOIN 
+                    package_versions pv ON pv.package_id = p.id
+                INNER JOIN 
+                    uploads u ON pv.upload_id = u.id
+                WHERE 
+                    p.package_name = $1 
+                    -- If version is not specified, use the default_version of the package.
+                    AND (pv.num = $2 OR ('' = $2 AND p.default_version = pv.id))
+                LIMIT 1
+                "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(pkg_name.clone())
+        .bind::<diesel::sql_types::Text, _>(version.clone()) // TODO: input validation
+        .load::<FullPackage>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("full package version".to_string(), err))?;
+        let package = data.first().ok_or_else(|| {
+            DatabaseError::NotFound(format!("{pkg_name}@{version}"), diesel::NotFound)
+        })?;
+
+        Ok(package.clone())
     }
 }

@@ -114,7 +114,6 @@ fn publish(
 ) -> ApiResult<EmptyResponse> {
     let _ = db.conn().new_package_version(&auth.token, &request)?;
     // TODO: Publish to GitHub index repo.
-    // TODO: Publish to block explorer API.
     Ok(Json(EmptyResponse))
 }
 
@@ -203,6 +202,15 @@ fn packages(
     }))
 }
 
+#[get("/package?<name>&<version>")]
+fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiResult<FullPackage> {
+    let db_data = db
+        .conn()
+        .get_full_package_version(name, version.unwrap_or_default())?;
+
+    Ok(Json(FullPackage::from(db_data)))
+}
+
 #[get("/recent_packages")]
 fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
     let recently_created = db.conn().get_recently_created()?;
@@ -259,6 +267,7 @@ async fn rocket() -> _ {
                 publish,
                 upload_project,
                 tokens,
+                package,
                 packages,
                 recent_packages,
                 all_options,

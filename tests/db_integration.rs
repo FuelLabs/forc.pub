@@ -8,7 +8,7 @@ use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::api::pagination::Pagination;
 use forc_pub::db::{Database, DbConn};
-use forc_pub::models::{NewUpload, PackageVersion};
+use forc_pub::models::{FullPackage, NewUpload, PackageVersion};
 use serial_test::serial;
 use url::Url;
 
@@ -27,6 +27,8 @@ const TEST_URL_HOME: &str = "https://example.com/homepage";
 const TEST_URL_OTHER: &str = "https://example.com/other";
 const TEST_VERSION_1: &str = "0.1.0";
 const TEST_VERSION_2: &str = "0.2.0";
+const TEST_PACKAGE_NAME: &str = "test-package";
+const TEST_DESCRIPTION: &str = "test-description";
 
 fn setup_db() -> DbConn {
     let db = Database::new();
@@ -168,10 +170,10 @@ fn test_package_versions() {
 
     // Insert a package version for a package that doesn't exist
     let request = api::publish::PublishRequest {
-        package_name: "test-package".into(),
+        package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
         num: TEST_VERSION_1.into(),
-        package_description: Some("test description".into()),
+        package_description: Some(TEST_DESCRIPTION.into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
         homepage: Url::parse(TEST_URL_HOME).ok(),
@@ -203,13 +205,38 @@ fn test_package_versions() {
     let pkg_result = db
         .get_package_by_id(version_result.package_id)
         .expect("pkg result is ok");
-    assert_eq!(pkg_result.package_name, request.package_name);
+    assert_eq!(pkg_result.package_name, TEST_PACKAGE_NAME);
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
 
+    // Test get_full_package_version
+    let result = db
+        .get_full_package_version(TEST_PACKAGE_NAME.into(), TEST_VERSION_1.into())
+        .expect("get_full_package_version result is ok");
+    assert_eq!(
+        result,
+        FullPackage {
+            name: TEST_PACKAGE_NAME.into(),
+            version: TEST_VERSION_1.into(),
+            description: Some(TEST_DESCRIPTION.into()),
+            repository: Some(TEST_URL_REPO.into()),
+            documentation: Some(TEST_URL_DOC.into()),
+            homepage: Some(TEST_URL_HOME.into()),
+            urls: vec![Some(TEST_URL_OTHER.into())],
+            readme: Some("test readme".into()),
+            license: Some("test license".into()),
+            created_at: result.created_at,
+            updated_at: version_result.created_at,
+            bytecode_identifier: upload.bytecode_identifier,
+            forc_version: upload.forc_version,
+            source_code_ipfs_hash: upload.source_code_ipfs_hash,
+            abi_ipfs_hash: upload.abi_ipfs_hash,
+        }
+    );
+
     // Insert a package version for a package that already exists
     let request = api::publish::PublishRequest {
-        package_name: "test-package".into(),
+        package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
         num: TEST_VERSION_2.into(),
         package_description: Some("test description 2".into()),
@@ -245,7 +272,7 @@ fn test_package_versions() {
     let pkg_result = db
         .get_package_by_id(version_result.package_id)
         .expect("pkg result is ok");
-    assert_eq!(pkg_result.package_name, request.package_name);
+    assert_eq!(pkg_result.package_name, TEST_PACKAGE_NAME);
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
 
