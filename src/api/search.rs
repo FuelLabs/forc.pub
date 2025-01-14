@@ -1,4 +1,7 @@
-use crate::models::PackagePreview;
+use crate::{
+    models::PackagePreview,
+    pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url},
+};
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]
@@ -41,14 +44,10 @@ impl From<crate::models::FullPackage> for FullPackage {
             },
             bytecode_identifier: full_package.bytecode_identifier,
             forc_version: full_package.forc_version,
-            source_code_ipfs_url: format!(
-                // TODO
-                "https://ipfs.io/ipfs/{}",
-                full_package.source_code_ipfs_hash
-            ),
+            source_code_ipfs_url: ipfs_hash_to_tgz_url(&full_package.source_code_ipfs_hash),
             abi_ipfs_url: full_package
                 .abi_ipfs_hash
-                .map(|hash| format!("https://ipfs.io/ipfs/{}", hash)), // TODO
+                .map(|hash| ipfs_hash_to_abi_url(&hash)),
             repository: full_package.repository,
             documentation: full_package.documentation,
             homepage: full_package.homepage,
