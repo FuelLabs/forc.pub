@@ -3,10 +3,12 @@
 
 use std::vec;
 
+use chrono::Utc;
 use diesel::RunQueryDsl as _;
 use forc_pub::api;
+use forc_pub::api::pagination::Pagination;
 use forc_pub::db::{Database, DbConn};
-use forc_pub::models::{NewUpload, PackageVersion};
+use forc_pub::models::{FullPackage, NewUpload, PackageVersion};
 use serial_test::serial;
 use url::Url;
 
@@ -23,6 +25,16 @@ const TEST_URL_REPO: &str = "https://example.com/repository";
 const TEST_URL_DOC: &str = "https://example.com/documentation";
 const TEST_URL_HOME: &str = "https://example.com/homepage";
 const TEST_URL_OTHER: &str = "https://example.com/other";
+const TEST_VERSION_1: &str = "0.1.0";
+const TEST_VERSION_2: &str = "0.2.0";
+const TEST_PACKAGE_NAME: &str = "test-package";
+const TEST_DESCRIPTION: &str = "test-description";
+
+fn setup_db() -> DbConn {
+    let db = Database::new();
+    clear_tables(&mut db.conn());
+    db.conn()
+}
 
 fn clear_tables(db: &mut DbConn) {
     diesel::delete(forc_pub::schema::package_versions::table)
@@ -63,7 +75,7 @@ fn mock_user_2() -> api::auth::User {
 #[serial]
 #[test]
 fn test_user_sessions() {
-    let db = &mut Database::default().conn();
+    let db = &mut setup_db();
 
     let user1 = mock_user_1();
     let user2 = mock_user_2();
@@ -89,14 +101,12 @@ fn test_user_sessions() {
 
     let result = db.get_user_for_session(session3.id).expect("result is ok");
     assert_eq!(result.github_login, TEST_LOGIN_2);
-
-    clear_tables(db);
 }
 
 #[test]
 #[serial]
 fn test_api_tokens() {
-    let db = &mut Database::default().conn();
+    let db = &mut setup_db();
 
     let session = db
         .new_user_session(&mock_user_1(), 1000)
@@ -133,14 +143,12 @@ fn test_api_tokens() {
         .expect("result is ok");
     let tokens = db.get_tokens_for_user(user.id).expect("result is ok");
     assert_eq!(tokens.len(), 0);
-
-    clear_tables(db);
 }
 
 #[test]
 #[serial]
 fn test_package_versions() {
-    let db = &mut Database::default().conn();
+    let db = &mut setup_db();
 
     // Set up session, user, token, and upload.
     let session = db
@@ -153,7 +161,7 @@ fn test_package_versions() {
     let upload = db
         .new_upload(&NewUpload {
             id: uuid::Uuid::new_v4(),
-            forc_version: "0.1.0".into(),
+            forc_version: TEST_VERSION_1.into(),
             source_code_ipfs_hash: "test-ipfs-hash".into(),
             abi_ipfs_hash: None,
             bytecode_identifier: None,
@@ -162,10 +170,10 @@ fn test_package_versions() {
 
     // Insert a package version for a package that doesn't exist
     let request = api::publish::PublishRequest {
-        package_name: "test-package".into(),
+        package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
-        num: "0.1.0".into(),
-        package_description: Some("test description".into()),
+        num: TEST_VERSION_1.into(),
+        package_description: Some(TEST_DESCRIPTION.into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
         homepage: Url::parse(TEST_URL_HOME).ok(),
@@ -183,7 +191,7 @@ fn test_package_versions() {
             package_id: version_result.package_id,
             published_by: user.id,
             upload_id: upload.id,
-            num: request.num,
+            num: TEST_VERSION_1.into(),
             package_description: request.package_description,
             repository: Some(TEST_URL_REPO.into()),
             documentation: Some(TEST_URL_DOC.into()),
@@ -197,15 +205,40 @@ fn test_package_versions() {
     let pkg_result = db
         .get_package_by_id(version_result.package_id)
         .expect("pkg result is ok");
-    assert_eq!(pkg_result.package_name, request.package_name);
+    assert_eq!(pkg_result.package_name, TEST_PACKAGE_NAME);
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
 
+    // Test get_full_package_version
+    let result = db
+        .get_full_package_version(TEST_PACKAGE_NAME.into(), TEST_VERSION_1.into())
+        .expect("get_full_package_version result is ok");
+    assert_eq!(
+        result,
+        FullPackage {
+            name: TEST_PACKAGE_NAME.into(),
+            version: TEST_VERSION_1.into(),
+            description: Some(TEST_DESCRIPTION.into()),
+            repository: Some(TEST_URL_REPO.into()),
+            documentation: Some(TEST_URL_DOC.into()),
+            homepage: Some(TEST_URL_HOME.into()),
+            urls: vec![Some(TEST_URL_OTHER.into())],
+            readme: Some("test readme".into()),
+            license: Some("test license".into()),
+            created_at: result.created_at,
+            updated_at: version_result.created_at,
+            bytecode_identifier: upload.bytecode_identifier,
+            forc_version: upload.forc_version,
+            source_code_ipfs_hash: upload.source_code_ipfs_hash,
+            abi_ipfs_hash: upload.abi_ipfs_hash,
+        }
+    );
+
     // Insert a package version for a package that already exists
     let request = api::publish::PublishRequest {
-        package_name: "test-package".into(),
+        package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
-        num: "0.2.0".into(),
+        num: TEST_VERSION_2.into(),
         package_description: Some("test description 2".into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
@@ -225,7 +258,7 @@ fn test_package_versions() {
             package_id: version_result.package_id,
             published_by: user.id,
             upload_id: upload.id,
-            num: request.num,
+            num: TEST_VERSION_2.into(),
             package_description: request.package_description,
             repository: Some(TEST_URL_REPO.into()),
             documentation: Some(TEST_URL_DOC.into()),
@@ -239,9 +272,57 @@ fn test_package_versions() {
     let pkg_result = db
         .get_package_by_id(version_result.package_id)
         .expect("pkg result is ok");
-    assert_eq!(pkg_result.package_name, request.package_name);
+    assert_eq!(pkg_result.package_name, TEST_PACKAGE_NAME);
     assert_eq!(pkg_result.user_owner, user.id);
     assert_eq!(pkg_result.default_version, Some(version_result.id));
 
-    clear_tables(db);
+    // Test get_full_packages page 1
+    let result = db
+        .get_full_packages(
+            None,
+            Pagination {
+                page: Some(1),
+                per_page: Some(1),
+            },
+        )
+        .expect("get_full_packages result is ok");
+    assert_eq!(result.current_page, 1);
+    assert_eq!(result.per_page, 1);
+    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.total_count, 2);
+    assert_eq!(result.data.len(), 1);
+    assert_eq!(result.data[0].version, TEST_VERSION_2); // latest version
+
+    // Test get_full_packages page 2
+    let result = db
+        .get_full_packages(
+            None,
+            Pagination {
+                page: Some(2),
+                per_page: Some(1),
+            },
+        )
+        .expect("get_full_packages result is ok");
+    assert_eq!(result.current_page, 2);
+    assert_eq!(result.per_page, 1);
+    assert_eq!(result.total_pages, 2);
+    assert_eq!(result.total_count, 2);
+    assert_eq!(result.data.len(), 1);
+    assert_eq!(result.data[0].version, TEST_VERSION_1); // latest version
+
+    // Test get_full_packages date filter (should return no results)
+    let result = db
+        .get_full_packages(
+            Some(Utc::now()),
+            Pagination {
+                page: Some(1),
+                per_page: Some(1),
+            },
+        )
+        .expect("get_full_packages result is ok");
+    assert_eq!(result.current_page, 1);
+    assert_eq!(result.per_page, 1);
+    assert_eq!(result.total_pages, 0);
+    assert_eq!(result.total_count, 0);
+    assert_eq!(result.data.len(), 0);
 }

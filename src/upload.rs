@@ -16,6 +16,7 @@ use uuid::Uuid;
 const UNPACKED_DIR: &str = "unpacked";
 const RELEASE_DIR: &str = "out/release";
 const PROJECT_DIR: &str = "project";
+pub const TARBALL_NAME: &str = "project.tgz";
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum UploadError {
@@ -118,7 +119,7 @@ pub async fn handle_project_upload(
     }
 
     // Pack the new tarball.
-    let final_tarball_path = upload_dir.join("project.tgz");
+    let final_tarball_path = upload_dir.join(TARBALL_NAME);
     let tar_gz = File::create(&final_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = tar::Builder::new(enc);

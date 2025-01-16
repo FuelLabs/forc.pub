@@ -1,3 +1,4 @@
+use crate::upload::TARBALL_NAME;
 use crate::{upload::UploadError, util::load_env};
 use pinata_sdk::{PinByFile, PinataApi};
 use std::{env, path::Path};
@@ -44,6 +45,16 @@ impl PinataClient for PinataClientImpl {
             Err(_) => Err(UploadError::Ipfs),
         }
     }
+}
+
+pub fn ipfs_hash_to_abi_url(hash: &str) -> String {
+    let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
+    format!("{pinata_domain}/ipfs/{hash}")
+}
+
+pub fn ipfs_hash_to_tgz_url(hash: &str) -> String {
+    let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
+    format!("{pinata_domain}/ipfs/{hash}?filename={TARBALL_NAME}")
 }
 
 /// A mock implementation of the PinataClient trait for testing.
