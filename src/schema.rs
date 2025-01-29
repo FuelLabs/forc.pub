@@ -12,6 +12,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    package_dependencies (id) {
+        id -> Uuid,
+        dependent_package_version_id -> Uuid,
+        dependency_package_name -> Varchar,
+        dependency_version_req -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     package_versions (id) {
         id -> Uuid,
         package_id -> Uuid,
@@ -24,7 +34,6 @@ diesel::table! {
         documentation -> Nullable<Varchar>,
         homepage -> Nullable<Varchar>,
         urls -> Array<Nullable<Text>>,
-        readme -> Nullable<Varchar>,
         license -> Nullable<Varchar>,
         created_at -> Timestamptz,
     }
@@ -57,6 +66,8 @@ diesel::table! {
         abi_ipfs_hash -> Nullable<Varchar>,
         bytecode_identifier -> Nullable<Varchar>,
         created_at -> Timestamptz,
+        readme -> Nullable<Varchar>,
+        forc_manifest -> Nullable<Varchar>,
     }
 }
 
@@ -74,6 +85,7 @@ diesel::table! {
 }
 
 diesel::joinable!(api_tokens -> users (user_id));
+diesel::joinable!(package_dependencies -> package_versions (dependent_package_version_id));
 diesel::joinable!(package_versions -> api_tokens (publish_token));
 diesel::joinable!(package_versions -> uploads (upload_id));
 diesel::joinable!(package_versions -> users (published_by));
@@ -82,6 +94,7 @@ diesel::joinable!(sessions -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     api_tokens,
+    package_dependencies,
     package_versions,
     packages,
     sessions,

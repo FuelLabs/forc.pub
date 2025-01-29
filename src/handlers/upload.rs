@@ -16,6 +16,9 @@ use uuid::Uuid;
 const UNPACKED_DIR: &str = "unpacked";
 const RELEASE_DIR: &str = "out/release";
 const PROJECT_DIR: &str = "project";
+const README_FILE: &str = "README.md";
+const FORC_MANIFEST_FILE: &str = "Forc.toml";
+const MAX_UPLOAD_SIZE_STR: &str = "10MB";
 pub const TARBALL_NAME: &str = "project.tgz";
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -26,7 +29,10 @@ pub enum UploadError {
     #[error("Failed to remove temporary directory.")]
     RemoveTempDir,
 
-    #[error("The project is too large to be uploaded.")]
+    #[error(
+        "The project exceeded the maximum upload size of {}.",
+        MAX_UPLOAD_SIZE_STR
+    )]
     TooLarge,
 
     #[error("Failed to save zip file.")]
@@ -60,9 +66,12 @@ pub enum UploadError {
     UnsupportedOs(String),
 }
 
-/// Handles the project upload process by unpacking the tarball, compiling the project, copying the
-/// necessary files to a new directory, and storing the source code tarball and ABI file in IPFS.
-/// Returns a NewUpload struct with the necessary information to store in the database.
+/// Handles the project upload process by:
+/// 1. Unpacking the tarball, compiling the project
+/// 2. Copying the necessary files to a new directory
+/// 3. Storing the source code tarball and ABI file in IPFS
+///
+/// Returns a [NewUpload] with the necessary information to store in the database.
 pub async fn handle_project_upload(
     upload_dir: &Path,
     upload_id: &Uuid,
@@ -174,12 +183,18 @@ pub async fn handle_project_upload(
         None => None,
     };
 
+    // Load the contents of readme and Forc.toml into memory for storage in the database.
+    let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
+    let forc_manifest = fs::read_to_string(project_dir.join(FORC_MANIFEST_FILE)).ok();
+
     let upload = NewUpload {
         id: *upload_id,
         source_code_ipfs_hash: tarball_ipfs_hash,
         forc_version,
         abi_ipfs_hash,
         bytecode_identifier,
+        readme,
+        forc_manifest,
     };
 
     Ok(upload)

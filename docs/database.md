@@ -26,14 +26,18 @@ The environment variables for connecting to the local database are set in `.env`
 
 1. **Generate a migration:**
    Run the following Diesel CLI command to create a new migration:
+
    ```bash
    diesel migration generate create_users
    ```
+
    This creates two files under `migrations/<timestamp>_create_users/`:
+
    - `up.sql`: Commands to apply the migration
    - `down.sql`: Commands to undo the migration
 
 2. **Define the table in the `up.sql` file:**
+
    ```sql
     CREATE TABLE users (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,6 +52,7 @@ The environment variables for connecting to the local database are set in `.env`
    ```
 
 3. **Define the rollback in the `down.sql` file:**
+
    ```sql
    DROP TABLE users;
    ```
@@ -63,6 +68,7 @@ The environment variables for connecting to the local database are set in `.env`
 Diesel generates a Rust representation of your database schema in `src/schema.rs`.
 
 The file will contain Rust definitions for your tables, like this:
+
 ```rust
 diesel::table! {
     users (id) {
@@ -88,6 +94,7 @@ For easier database management and visualization, you can use a database client 
    Download and install DBeaver from [dbeaver.io](https://dbeaver.io/).
 
 2. **Connect to your database:**
+
    - Open DBeaver and create a new database connection.
    - Select your database type (e.g., PostgreSQL).
    - Provide your database URL, username, and password (as specified in the `.env` file).

@@ -77,6 +77,8 @@ pub struct Upload {
     pub forc_version: String,
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
+    pub readme: Option<String>,
+    pub forc_manifest: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -88,6 +90,27 @@ pub struct NewUpload {
     pub forc_version: String,
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
+    pub readme: Option<String>,
+    pub forc_manifest: Option<String>,
+}
+
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = crate::schema::package_dependencies)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PackageDep {
+    pub id: Uuid,
+    pub dependent_package_version_id: Uuid,
+    pub dependency_package_name: String,
+    pub dependency_version_req: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::package_dependencies)]
+pub struct NewPackageDep {
+    pub dependent_package_version_id: Uuid,
+    pub dependency_package_name: String,
+    pub dependency_version_req: String,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -122,7 +145,6 @@ pub struct PackageVersion {
     pub documentation: Option<String>,
     pub homepage: Option<String>,
     pub urls: Vec<Option<String>>,
-    pub readme: Option<String>,
     pub license: Option<String>,
     pub created_at: DateTime<Utc>,
 }
@@ -140,7 +162,6 @@ pub struct NewPackageVersion {
     pub documentation: Option<String>,
     pub homepage: Option<String>,
     pub urls: Vec<Option<String>>,
-    pub readme: Option<String>,
     pub license: Option<String>,
 }
 

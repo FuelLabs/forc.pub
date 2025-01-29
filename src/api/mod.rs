@@ -30,8 +30,11 @@ pub enum ApiError {
     #[error("GitHub error: {0}")]
     Github(#[from] crate::github::GithubError),
 
-    #[error("GitHub error: {0}")]
-    Upload(#[from] crate::upload::UploadError),
+    #[error("Upload error: {0}")]
+    Upload(#[from] crate::handlers::upload::UploadError),
+
+    #[error("Publish error: {0}")]
+    Publish(#[from] crate::handlers::publish::PublishError),
 }
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
@@ -44,6 +47,7 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
             ),
             ApiError::Github(ref err) => (Status::Unauthorized, format!("GitHub error: {}", err)),
             ApiError::Upload(ref err) => (Status::BadRequest, format!("Upload error: {}", err)),
+            ApiError::Publish(ref err) => (Status::BadRequest, format!("Publish error: {}", err)),
         };
         let body = json!({
             "status": status.code,

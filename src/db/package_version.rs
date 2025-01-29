@@ -1,7 +1,7 @@
 use super::error::DatabaseError;
 use super::{models, schema, DbConn};
 use crate::api::pagination::{PaginatedResponse, Pagination};
-use crate::api::publish::PublishRequest;
+use crate::handlers::publish::PublishInfo;
 use crate::models::{ApiToken, CountResult, FullPackage, PackagePreview};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
@@ -14,10 +14,10 @@ impl DbConn {
     pub fn new_package_version(
         &mut self,
         api_token: &ApiToken,
-        request: &PublishRequest,
+        publish_info: &PublishInfo,
     ) -> Result<models::PackageVersion, DatabaseError> {
         // Check if the package exists.
-        let pkg_name = request.package_name.clone();
+        let pkg_name = publish_info.package_name.clone();
         let package = if let Some(existing_package) = schema::packages::table
             .filter(schema::packages::package_name.eq(pkg_name.clone()))
             .select(schema::packages::all_columns)
@@ -45,7 +45,7 @@ impl DbConn {
             Ok(saved_package)
         }?;
 
-        let urls = request
+        let urls = publish_info
             .urls
             .iter()
             .map(|url| Some(url.to_string()))
@@ -56,15 +56,17 @@ impl DbConn {
             package_id: package.id,
             publish_token: api_token.id,
             published_by: api_token.user_id,
-            upload_id: request.upload_id,
-            num: request.num.clone(),
-            package_description: request.package_description.clone(),
-            repository: request.repository.clone().map(|url| url.to_string()),
-            documentation: request.documentation.clone().map(|url| url.to_string()),
-            homepage: request.homepage.clone().map(|url| url.to_string()),
+            upload_id: publish_info.upload_id,
+            num: publish_info.num.clone(),
+            package_description: publish_info.package_description.clone(),
+            repository: publish_info.repository.clone().map(|url| url.to_string()),
+            documentation: publish_info
+                .documentation
+                .clone()
+                .map(|url| url.to_string()),
+            homepage: publish_info.homepage.clone().map(|url| url.to_string()),
+            license: publish_info.license.clone(),
             urls,
-            readme: request.readme.clone(),
-            license: request.license.clone(),
         };
 
         let saved_version = diesel::insert_into(schema::package_versions::table)
@@ -74,7 +76,7 @@ impl DbConn {
             .map_err(|err| {
                 DatabaseError::InsertPackageVersionFailed(
                     pkg_name.clone(),
-                    request.num.clone(),
+                    publish_info.num.clone(),
                     err,
                 )
             })?;
@@ -107,6 +109,26 @@ impl DbConn {
             .select(models::Package::as_returning())
             .first::<models::Package>(self.inner())
             .map_err(|err| DatabaseError::NotFound(name.clone(), err))
+    }
+
+    /// Fetch a package given the package ID.
+    pub fn get_package_version(
+        &mut self,
+        pkg_name: String,
+        version: String,
+    ) -> Result<models::PackageVersion, DatabaseError> {
+        schema::package_versions::table
+            .inner_join(
+                schema::packages::table
+                    .on(schema::packages::id.eq(schema::package_versions::package_id)),
+            )
+            .filter(schema::package_versions::num.eq(version.clone()))
+            .filter(schema::packages::package_name.eq(pkg_name.clone()))
+            .select(models::PackageVersion::as_returning())
+            .first::<models::PackageVersion>(self.inner())
+            .map_err(|err| {
+                DatabaseError::NotFound(format!("Package {pkg_name} version {version}"), err)
+            })
     }
 
     /// Fetch the most recently updated packages.
