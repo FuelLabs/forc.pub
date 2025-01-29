@@ -35,5 +35,3 @@ chrono = { version = "0.4.39", features = ["serde"] }
 url = { version = "2.5.4", features = ["serde"] }
 forc-util = "0.66.6"
 forc-pkg = { git = "https://github.com/FuelLabs/sway", rev = "d602a0c6bd8d520ffc0f0f4a52f9284f79790eac"}
-toml = "0.8.19"
-serde_ignored = "0.1.10"

@@ -32,7 +32,7 @@ const TEST_PACKAGE_NAME: &str = "test-package";
 const TEST_DESCRIPTION: &str = "test-description";
 const TEST_README: &str = "test-readme";
 const TEST_MANIFEST: &str = "test-manifest";
-const TEST_LICENSE: &str = "ç";
+const TEST_LICENSE: &str = "test-license";
 
 fn setup_db() -> DbConn {
     let db = Database::new();
