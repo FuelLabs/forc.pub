@@ -3,6 +3,7 @@ use crate::db::error::DatabaseError;
 use crate::db::Database;
 use crate::models::{ApiToken, NewPackageDep, PackageVersion};
 use forc_pkg::PackageManifest;
+use semver::Version;
 use thiserror::Error;
 use tracing::error;
 use url::Url;
@@ -25,7 +26,7 @@ pub enum PublishError {
 pub struct PublishInfo {
     pub package_name: String,
     pub upload_id: Uuid,
-    pub num: String,
+    pub num: Version,
     pub package_description: Option<String>,
     pub repository: Option<Url>,
     pub documentation: Option<Url>,

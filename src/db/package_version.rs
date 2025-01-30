@@ -57,7 +57,7 @@ impl DbConn {
             publish_token: api_token.id,
             published_by: api_token.user_id,
             upload_id: publish_info.upload_id,
-            num: publish_info.num.clone(),
+            num: publish_info.num.to_string(),
             package_description: publish_info.package_description.clone(),
             repository: publish_info.repository.clone().map(|url| url.to_string()),
             documentation: publish_info
@@ -76,7 +76,7 @@ impl DbConn {
             .map_err(|err| {
                 DatabaseError::InsertPackageVersionFailed(
                     pkg_name.clone(),
-                    publish_info.num.clone(),
+                    publish_info.num.to_string(),
                     err,
                 )
             })?;
