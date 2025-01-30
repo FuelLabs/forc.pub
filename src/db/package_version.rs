@@ -234,6 +234,7 @@ impl DbConn {
         
                 u.bytecode_identifier AS bytecode_identifier,
                 u.forc_version AS forc_version,
+                u.readme AS readme,
         
                 u.source_code_ipfs_hash AS source_code_ipfs_hash,
                 u.abi_ipfs_hash AS abi_ipfs_hash,
@@ -242,7 +243,6 @@ impl DbConn {
                 pv.documentation AS documentation,
                 pv.homepage AS homepage,
                 pv.urls AS urls,
-                pv.readme AS readme,
                 pv.license AS license
             FROM 
                 packages p
@@ -293,15 +293,14 @@ impl DbConn {
             
                     u.bytecode_identifier AS bytecode_identifier,
                     u.forc_version AS forc_version,
-            
                     u.source_code_ipfs_hash AS source_code_ipfs_hash,
                     u.abi_ipfs_hash AS abi_ipfs_hash,
+                    u.readme AS readme,
             
                     pv.repository AS repository,
                     pv.documentation AS documentation,
                     pv.homepage AS homepage,
                     pv.urls AS urls,
-                    pv.readme AS readme,
                     pv.license AS license
                 FROM 
                     packages p
