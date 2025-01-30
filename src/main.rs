@@ -15,11 +15,12 @@ use forc_pub::api::{
 };
 use forc_pub::db::Database;
 use forc_pub::github::handle_login;
+use forc_pub::handlers::publish::handle_publish;
+use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::pinata::{PinataClient, PinataClientImpl};
-use forc_pub::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::util::validate_or_format_semver;
 use rocket::{
     data::Capped,
@@ -107,14 +108,15 @@ fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> 
 }
 
 #[post("/publish", data = "<request>")]
-fn publish(
+async fn publish(
     db: &State<Database>,
     request: Json<PublishRequest>,
     auth: TokenAuth,
 ) -> ApiResult<EmptyResponse> {
-    let _ = db.conn().new_package_version(&auth.token, &request)?;
-    // TODO: Publish to GitHub index repo.
-    Ok(Json(EmptyResponse))
+    match handle_publish(db, &request, &auth.token).await {
+        Ok(_) => Ok(Json(EmptyResponse)),
+        Err(e) => Err(ApiError::Publish(e)),
+    }
 }
 
 #[post(
@@ -215,8 +217,6 @@ fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiRe
 fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
     let recently_created = db.conn().get_recently_created()?;
     let recently_updated = db.conn().get_recently_updated()?;
-    // TODO: Publish to GitHub index repo.
-    // TODO: Publish to block explorer API.
     Ok(Json(RecentPackagesResponse {
         recently_created,
         recently_updated,

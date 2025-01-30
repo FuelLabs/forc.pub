@@ -32,6 +32,9 @@ pub enum DatabaseError {
     #[error("Failed to save package version: {0} {1}: {2}")]
     InsertPackageVersionFailed(String, String, diesel::result::Error),
 
+    #[error("Failed to save package dependencies: {0}")]
+    InsertPackageDepFailed(diesel::result::Error),
+
     #[error("Failed to query: {0}: {1}")]
     QueryFailed(String, diesel::result::Error),
 }

@@ -1,5 +1,7 @@
-use crate::upload::TARBALL_NAME;
-use crate::{upload::UploadError, util::load_env};
+use crate::{
+    handlers::upload::{UploadError, TARBALL_NAME},
+    util::load_env,
+};
 use pinata_sdk::{PinByFile, PinataApi};
 use std::{env, path::Path};
 
