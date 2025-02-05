@@ -1,7 +1,7 @@
 use crate::api::publish::PublishRequest;
 use crate::db::error::DatabaseError;
 use crate::db::Database;
-use crate::models::{ApiToken, NewPackageDep, PackageVersion};
+use crate::models::{ApiToken, NewPackageDep};
 use forc_pkg::PackageManifest;
 use semver::Version;
 use thiserror::Error;
@@ -51,7 +51,7 @@ pub async fn handle_publish(
     db: &Database,
     request: &PublishRequest,
     token: &ApiToken,
-) -> Result<PackageVersion, PublishError> {
+) -> Result<PublishInfo, PublishError> {
     // Parse the forc manifest file and verify that the version is set.
     let upload = db.conn().get_upload(request.upload_id)?;
     // For now, only package manifests are supported. Workspace manifests will be supported in the future.
@@ -120,5 +120,5 @@ pub async fn handle_publish(
 
     // TODO [https://github.com/FuelLabs/forc.pub/issues/28]: Publish to GitHub index repo.
 
-    Ok(package_version)
+    Ok(publish_info)
 }

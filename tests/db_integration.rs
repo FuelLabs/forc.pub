@@ -10,6 +10,7 @@ use forc_pub::api::pagination::Pagination;
 use forc_pub::db::{Database, DbConn};
 use forc_pub::handlers::publish::PublishInfo;
 use forc_pub::models::{FullPackage, NewUpload, PackageVersion};
+use semver::Version;
 use serial_test::serial;
 use url::Url;
 
@@ -178,7 +179,7 @@ fn test_package_versions() {
     let request = PublishInfo {
         package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
-        num: TEST_VERSION_1.into(),
+        num: Version::parse(TEST_VERSION_1).unwrap(),
         package_description: Some(TEST_DESCRIPTION.into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
@@ -243,7 +244,7 @@ fn test_package_versions() {
     let request = PublishInfo {
         package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
-        num: TEST_VERSION_2.into(),
+        num: Version::parse(TEST_VERSION_2).unwrap(),
         package_description: Some("test description 2".into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),

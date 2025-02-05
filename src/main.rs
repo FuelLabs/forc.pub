@@ -6,7 +6,7 @@ extern crate rocket;
 use chrono::{DateTime, Utc};
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::pagination::{PaginatedResponse, Pagination};
-use forc_pub::api::publish::{PublishRequest, UploadResponse};
+use forc_pub::api::publish::{PublishRequest, PublishResponse, UploadResponse};
 use forc_pub::api::search::{FullPackage, RecentPackagesResponse};
 use forc_pub::api::ApiError;
 use forc_pub::api::{
@@ -112,9 +112,12 @@ async fn publish(
     db: &State<Database>,
     request: Json<PublishRequest>,
     auth: TokenAuth,
-) -> ApiResult<EmptyResponse> {
+) -> ApiResult<PublishResponse> {
     match handle_publish(db, &request, &auth.token).await {
-        Ok(_) => Ok(Json(EmptyResponse)),
+        Ok(info) => Ok(Json(PublishResponse {
+            name: info.package_name,
+            version: info.num,
+        })),
         Err(e) => Err(ApiError::Publish(e)),
     }
 }
