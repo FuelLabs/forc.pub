@@ -921,17 +921,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "derive_builder"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -971,6 +960,27 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
+]
+
+[[package]]
+name = "derive_more"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a9b99b9cbbe49445b21764dc0625032a89b145a2642e67603e1c936f5458d05"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb7330aeadfbe296029522e6c40f315320aba36fc43a5b3632f3795348f3bd22"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+ "unicode-xid",
 ]
 
 [[package]]
@@ -1213,10 +1223,22 @@ version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f0042ff8246a363dbe77d2ceedb073339e85a804b9a47636c6e016a9a32c05f"
 dependencies = [
- "enum-ordinalize",
+ "enum-ordinalize 3.1.15",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "educe"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7bc049e1bd8cdeb31b68bbd586a9464ecf9f3944af3958a7a9d0f8b9799417"
+dependencies = [
+ "enum-ordinalize 4.3.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
 ]
 
 [[package]]
@@ -1279,6 +1301,26 @@ checksum = "1bf1fa3f06bbff1ea5b1a9c7b14aa992a39657db60a2759457328d7e058f49ee"
 dependencies = [
  "num-bigint",
  "num-traits",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
+
+[[package]]
+name = "enum-ordinalize"
+version = "4.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fea0dcfa4e54eeb516fe454635a95753ddd39acda650ce703031c6973e315dd5"
+dependencies = [
+ "enum-ordinalize-derive",
+]
+
+[[package]]
+name = "enum-ordinalize-derive"
+version = "4.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d28318a75d4aead5c4db25382e8ef717932d0346600cacae6357eb5941bc5ff"
+dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
@@ -1499,15 +1541,16 @@ checksum = "a0d2fde1f7b3d48b8395d5f2de76c18a528bd6a9cdde438df747bfcba3e05d6f"
 
 [[package]]
 name = "forc-pkg"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
+version = "0.66.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf3a8c72d4018e98dcf7ca368ce4da9bf2dc919807e702e0c3bf0a08653a9eae"
 dependencies = [
  "ansiterm",
  "anyhow",
  "byte-unit",
  "cid",
- "forc-tracing 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "forc-util 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "forc-tracing",
+ "forc-util",
  "fuel-abi-types",
  "futures",
  "git2",
@@ -1521,11 +1564,11 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "serde_with",
- "sway-core 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-error 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-features 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-utils 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-core",
+ "sway-error",
+ "sway-features",
+ "sway-types",
+ "sway-utils",
  "sysinfo",
  "tar",
  "toml 0.8.19",
@@ -1537,19 +1580,9 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1859a49673aa5d424127c9c85f4dfebe37ad759cbd3fd2d5b8b672ad1e6dc9c7"
-dependencies = [
- "ansiterm",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "forc-tracing"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
+checksum = "ce77e54d176e8e888c25220e3c40333a5464c3f957a11c4e192ae5ede0a8f6f6"
 dependencies = [
  "ansiterm",
  "tracing",
@@ -1558,9 +1591,9 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0bb0297db7f5d7aac0a023d9c5fde8d12d7363b9be3631ee73513c7d1fdb35a"
+checksum = "da0c6b53f32931cc51cab3e53fe26886bd6351459340f7aaaa62e48f2cd17b11"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -1568,7 +1601,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "forc-tracing",
  "fuel-asm",
  "fuel-tx",
  "hex",
@@ -1578,40 +1611,10 @@ dependencies = [
  "serde_json",
  "serial_test",
  "sha2",
- "sway-core 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-error 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-types 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-utils 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "tracing",
- "tracing-subscriber",
- "unicode-xid",
-]
-
-[[package]]
-name = "forc-util"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "annotate-snippets",
- "ansiterm",
- "anyhow",
- "clap",
- "dirs 5.0.1",
- "fd-lock",
- "forc-tracing 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "fuel-asm",
- "fuel-tx",
- "hex",
- "paste",
- "regex",
- "serde",
- "serde_json",
- "serial_test",
- "sha2",
- "sway-core 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-error 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-utils 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-core",
+ "sway-error",
+ "sway-types",
+ "sway-utils",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -1627,7 +1630,7 @@ dependencies = [
  "dotenvy",
  "flate2",
  "forc-pkg",
- "forc-util 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "forc-util",
  "hex",
  "nanoid",
  "pinata-sdk",
@@ -1676,9 +1679,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-abi-types"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bce44ac13b1971be7cea024a2003cf944522093dafec454fea9ff792f0ff2577"
+checksum = "026deca571c0d3304a4392a0d99c7477d58cade18b2861232c151eb0816dde0a"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -1693,9 +1696,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-asm"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f325971bf9047ec70004f80a989e03456316bc19cbef3ff3a39a38b192ab56e"
+checksum = "885617a606218680114122f4e1107ed5c9424e42dec05de84843e4a3a99e2cd7"
 dependencies = [
  "bitflags 2.7.0",
  "fuel-types",
@@ -1705,9 +1708,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-crypto"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65e318850ca64890ff123a99b6b866954ef49da94ab9bc6827cf6ee045568585"
+checksum = "8e5643d6c281369825854bbc96d5d1648fe49ddcc3443961c633270f65e6c4b6"
 dependencies = [
  "coins-bip32",
  "coins-bip39",
@@ -1726,9 +1729,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-derive"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab0bc46a3552964bae5169e79b383761a54bd115ea66951a1a7a229edcefa55a"
+checksum = "8703ee10001e6a52ad9a0d8411ca5a92098de978ccfbdddd0ba185f3a7405b4c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1775,7 +1778,7 @@ version = "0.3.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7eed51e8869a40529c44dc6d971f3509f2a3aa55dc9b213d6f88ee2da38a3d44"
 dependencies = [
- "educe",
+ "educe 0.4.23",
  "indexmap 1.9.3",
  "quote",
  "serde",
@@ -1785,11 +1788,11 @@ dependencies = [
 
 [[package]]
 name = "fuel-merkle"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79eca6a452311c70978a5df796c0f99f27e474b69719e0db4c1d82e68800d07"
+checksum = "7446f9cc1885ede3af88cf567931f96fd1feda3146e9052c09b1b260fbd56173"
 dependencies = [
- "derive_more",
+ "derive_more 0.99.18",
  "digest",
  "fuel-storage",
  "hashbrown 0.13.2",
@@ -1800,19 +1803,19 @@ dependencies = [
 
 [[package]]
 name = "fuel-storage"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d0c46b5d76b3e11197bd31e036cd8b1cb46c4d822cacc48836638080c6d2b76"
+checksum = "01f810b544f0930fc68e1311ea078fad9af6912d5215a9ae9febda67206e34e5"
 
 [[package]]
 name = "fuel-tx"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6723bb8710ba2b70516ac94d34459593225870c937670fb3afaf82e0354667ac"
+checksum = "806498d953bc989995425f1bb7c17890f5538a3664c6ec3b5d8a77c63d617421"
 dependencies = [
  "bitflags 2.7.0",
- "derivative",
- "derive_more",
+ "derive_more 1.0.0",
+ "educe 0.6.0",
  "fuel-asm",
  "fuel-crypto",
  "fuel-merkle",
@@ -1828,9 +1831,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-types"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "982265415a99b5bd6277bc24194a233bb2e18764df11c937b3dbb11a02c9e545"
+checksum = "d0d46d41db59c131195e6d842cc1e50f0b8adeadf2a840519e8b57b78e57a0bf"
 dependencies = [
  "fuel-derive",
  "hex",
@@ -1839,15 +1842,15 @@ dependencies = [
 
 [[package]]
 name = "fuel-vm"
-version = "0.58.2"
+version = "0.59.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54b5362d7d072c72eec20581f67fc5400090c356a7f3ae77c79880b3b177b667"
+checksum = "9bcf74f636cc01a1ab035458628f925945bb4df9da653058c6ab2b26fa25f087"
 dependencies = [
  "async-trait",
  "backtrace",
  "bitflags 2.7.0",
- "derivative",
- "derive_more",
+ "derive_more 0.99.18",
+ "educe 0.6.0",
  "ethnum",
  "fuel-asm",
  "fuel-crypto",
@@ -1866,6 +1869,7 @@ dependencies = [
  "sha3",
  "static_assertions",
  "strum 0.24.1",
+ "substrate-bn",
 ]
 
 [[package]]
@@ -2836,6 +2840,9 @@ name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+dependencies = [
+ "spin",
+]
 
 [[package]]
 name = "libc"
@@ -2876,9 +2883,9 @@ dependencies = [
 
 [[package]]
 name = "libssh2-sys"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dc8a030b787e2119a731f1951d6a773e2280c660f8ec4b0f5e1505a386e71ee"
+checksum = "220e4f05ad4a218192533b300327f5150e809b54c4ec83b5a1d91833601811b9"
 dependencies = [
  "cc",
  "libc",
@@ -4809,6 +4816,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand",
+ "rustc-hex",
+]
+
+[[package]]
 name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4894,39 +4914,25 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20ebf9e8d17fccbdd1e61002486ec82f0b187e4f5e5be63b2a604597a6a4672d"
+checksum = "3e35bce498cd80b2e9babe9e079b1311ebf9686ccefaf07fc78e3918ca16d93a"
 dependencies = [
  "extension-trait",
  "num-bigint",
  "num-traits",
  "serde",
- "sway-error 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-types 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "sway-ast"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "extension-trait",
- "num-bigint",
- "num-traits",
- "serde",
- "sway-error 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-error",
+ "sway-types",
 ]
 
 [[package]]
 name = "sway-core"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "616c9e35ba6de296fcf32308389fcd8e60bef0ea7db28439404a0f870c0ddd84"
+checksum = "e4abd418532acf42ed5acc584c2d3570048b020af3b8f51c87279337c16c9b3a"
 dependencies = [
  "clap",
- "derivative",
  "dirs 5.0.1",
  "either",
  "fuel-abi-types",
@@ -4952,59 +4958,13 @@ dependencies = [
  "serde_json",
  "sha2",
  "strum 0.26.3",
- "sway-ast 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-error 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-features 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-ir 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-parse 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-types 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-utils 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sysinfo",
- "thiserror 1.0.69",
- "tracing",
- "uint",
- "vec1",
-]
-
-[[package]]
-name = "sway-core"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "clap",
- "derivative",
- "dirs 5.0.1",
- "either",
- "fuel-abi-types",
- "fuel-ethabi",
- "fuel-etk-asm",
- "fuel-etk-ops",
- "fuel-vm",
- "gimli",
- "graph-cycles",
- "hashbrown 0.14.5",
- "im",
- "indexmap 2.7.0",
- "itertools 0.13.0",
- "lazy_static",
- "object",
- "parking_lot",
- "paste",
- "pest",
- "pest_derive",
- "petgraph",
- "rustc-hash",
- "serde",
- "serde_json",
- "sha2",
- "strum 0.26.3",
- "sway-ast 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-error 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-features 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-ir 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-parse 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-utils 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-ast",
+ "sway-error",
+ "sway-features",
+ "sway-ir",
+ "sway-parse",
+ "sway-types",
+ "sway-utils",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
@@ -5014,47 +4974,24 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "568bd9a583788a96f501bdf14fcbb834db8710c094e20dd26bc364c0edb04e31"
+checksum = "a8cd2e128e3322029c24caba37af9cce701a0fb5058665078244218a7db1e35f"
 dependencies = [
  "either",
  "in_definite",
  "num-traits",
  "smallvec",
  "strsim 0.11.1",
- "sway-types 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "sway-error"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "either",
- "in_definite",
- "num-traits",
- "smallvec",
- "strsim 0.11.1",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-types",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "sway-features"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e4dee809306aaf10c760c3a60a07d340564177683296843a5907348e0136678"
-dependencies = [
- "clap",
- "paste",
-]
-
-[[package]]
-name = "sway-features"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
+checksum = "377fb08140955103c958b01b5f937438e64c5168ae5f10cb33671da6b89ecc70"
 dependencies = [
  "clap",
  "paste",
@@ -5062,9 +4999,9 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edf82b9b5b3435d89feeffa0150b7a88f44e83684fe75540236d437e86030e70"
+checksum = "b22d3e5ebe415383d96c998ab43f4cacc75d3b62e4cb2b4728285bd7ee988f43"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -5077,50 +5014,17 @@ dependencies = [
  "rustc-hash",
  "serde",
  "slotmap",
- "sway-features 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-ir-macros 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-types 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-utils 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "sway-ir"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "anyhow",
- "downcast-rs",
- "filecheck",
- "indexmap 2.7.0",
- "itertools 0.13.0",
- "once_cell",
- "peg",
- "prettydiff",
- "rustc-hash",
- "serde",
- "slotmap",
- "sway-features 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-ir-macros 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-utils 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-features",
+ "sway-ir-macros",
+ "sway-types",
+ "sway-utils",
 ]
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07f5d3bf83d2c05a5709e59b9a21061b94be893d5fb83caba838ac7219e0f197"
-dependencies = [
- "itertools 0.13.0",
- "proc-macro2",
- "quote",
- "syn 2.0.96",
-]
-
-[[package]]
-name = "sway-ir-macros"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
+checksum = "eac908e4d6bc2a21751bfd52bc2d9b505fbec659b267988b3767e35096c92c37"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -5130,34 +5034,17 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c32610cda4051059979a56498d5a13209441ab46b58ae6c256a4fce658368fba"
+checksum = "14df30df7fa60ddb1b42f31bd18d5cbea645ada5b57f6a66ceeb481f75d272cb"
 dependencies = [
  "extension-trait",
  "num-bigint",
  "num-traits",
  "phf",
- "sway-ast 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-error 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "sway-types 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror 1.0.69",
- "unicode-bidi",
- "unicode-xid",
-]
-
-[[package]]
-name = "sway-parse"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "extension-trait",
- "num-bigint",
- "num-traits",
- "phf",
- "sway-ast 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-error 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
- "sway-types 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-ast",
+ "sway-error",
+ "sway-types",
  "thiserror 1.0.69",
  "unicode-bidi",
  "unicode-xid",
@@ -5165,9 +5052,9 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71a268a56e2e9a45c73ee024c59a9ff8f216b8cacb4a81816b2a9cc1bd100e42"
+checksum = "03d050501030aa8284ff52591c28bb5e8c8bb0983625d9be7f957a766d19a902"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -5180,44 +5067,15 @@ dependencies = [
  "parking_lot",
  "rustc-hash",
  "serde",
- "sway-utils 0.66.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "sway-types"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
-dependencies = [
- "bytecount",
- "fuel-asm",
- "fuel-crypto",
- "fuel-tx",
- "indexmap 2.7.0",
- "lazy_static",
- "num-bigint",
- "num-traits",
- "parking_lot",
- "rustc-hash",
- "serde",
- "sway-utils 0.66.6 (git+https://github.com/FuelLabs/sway?branch=master)",
+ "sway-utils",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "sway-utils"
-version = "0.66.6"
+version = "0.66.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae34d8c938e1cc7787356f571f5719392c4bb9836b625ea8dd88d10eafb335e2"
-dependencies = [
- "serde",
- "walkdir",
-]
-
-[[package]]
-name = "sway-utils"
-version = "0.66.6"
-source = "git+https://github.com/FuelLabs/sway?branch=master#e511ddaac1e7a4123fb414731ddc8ea81a52357f"
+checksum = "b5021d76d3efa869cd08655488df7f1ee09150f660e0022bf8d2e2f337fe2799"
 dependencies = [
  "serde",
  "walkdir",
