@@ -249,7 +249,7 @@ mod tests {
         let upload_id = Uuid::new_v4();
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
         let orig_tarball_path = PathBuf::from("tests/fixtures/sway-project.tgz");
-        let forc_version = "0.66.5";
+        let forc_version = "0.66.6";
         let forc_path_str = format!("forc-{forc_version}");
         let forc_path = PathBuf::from(&forc_path_str);
         fs::create_dir_all(forc_path.clone()).ok();
@@ -275,7 +275,7 @@ mod tests {
         assert_eq!(result.forc_version, forc_version);
         assert_eq!(
             result.bytecode_identifier.unwrap(),
-            "325030b9e3b9b8b52401c48221ccff609acc0b91695f57852a3fd7a7f3ccb687"
+            "009683afb9a422c3d23aeafce43e3a8e29099d8d64d55c63cf8179af3f8112de"
         );
     }
 }
