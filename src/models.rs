@@ -78,7 +78,7 @@ pub struct Upload {
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
     pub readme: Option<String>,
-    pub forc_manifest: Option<String>,
+    pub forc_manifest: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -91,7 +91,7 @@ pub struct NewUpload {
     pub abi_ipfs_hash: Option<String>,
     pub bytecode_identifier: Option<String>,
     pub readme: Option<String>,
-    pub forc_manifest: Option<String>,
+    pub forc_manifest: String,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]

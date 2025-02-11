@@ -66,7 +66,7 @@ diesel::table! {
         abi_ipfs_hash -> Nullable<Varchar>,
         bytecode_identifier -> Nullable<Varchar>,
         created_at -> Timestamptz,
-        readme -> Nullable<Varchar>,
+        readme -> Varchar,
         forc_manifest -> Nullable<Varchar>,
     }
 }

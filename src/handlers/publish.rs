@@ -8,6 +8,7 @@ use thiserror::Error;
 use tracing::error;
 use url::Url;
 use uuid::Uuid;
+use tracing::info;
 
 #[derive(Error, Debug)]
 pub enum PublishError {
@@ -52,8 +53,10 @@ pub async fn handle_publish(
     request: &PublishRequest,
     token: &ApiToken,
 ) -> Result<PublishInfo, PublishError> {
-    // Parse the forc manifest file and verify that the version is set.
+    info!("Starting to publish upload {}", request.upload_id);
+
     let upload = db.conn().get_upload(request.upload_id)?;
+
     // For now, only package manifests are supported. Workspace manifests will be supported in the future.
     let forc_manifest = upload
         .forc_manifest
@@ -94,7 +97,7 @@ pub async fn handle_publish(
 
     // Insert package version into the database along with metadata from the package manifest.
     let publish_info = PublishInfo {
-        package_name: pkg_manifest.project.name.clone(),
+        package_name: pkg_manifest.project.name,
         upload_id: request.upload_id,
         num: pkg_version,
         package_description: pkg_manifest.project.description.clone(),
@@ -117,6 +120,8 @@ pub async fn handle_publish(
         })
         .collect();
     let _ = db.conn().insert_dependencies(new_package_deps)?;
+    
+    info!("Successfully published package {} version {}", publish_info.package_name, publish_info.num);
 
     // TODO [https://github.com/FuelLabs/forc.pub/issues/28]: Publish to GitHub index repo.
 

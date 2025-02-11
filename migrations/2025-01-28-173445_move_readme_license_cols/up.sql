@@ -1,6 +1,6 @@
 -- Add `readme` and `forc_manifest` columns to the `uploads` table
 ALTER TABLE uploads
-ADD COLUMN readme VARCHAR,
+ADD COLUMN readme VARCHAR NOT NULL DEFAULT '',
 ADD COLUMN forc_manifest VARCHAR;
 
 -- Migrate data from `package_versions` to `uploads`
