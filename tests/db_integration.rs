@@ -8,7 +8,9 @@ use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::api::pagination::Pagination;
 use forc_pub::db::{Database, DbConn};
+use forc_pub::handlers::publish::PublishInfo;
 use forc_pub::models::{FullPackage, NewUpload, PackageVersion};
+use semver::Version;
 use serial_test::serial;
 use url::Url;
 
@@ -29,6 +31,9 @@ const TEST_VERSION_1: &str = "0.1.0";
 const TEST_VERSION_2: &str = "0.2.0";
 const TEST_PACKAGE_NAME: &str = "test-package";
 const TEST_DESCRIPTION: &str = "test-description";
+const TEST_README: &str = "test-readme";
+const TEST_MANIFEST: &str = "test-manifest";
+const TEST_LICENSE: &str = "test-license";
 
 fn setup_db() -> DbConn {
     let db = Database::new();
@@ -165,21 +170,23 @@ fn test_package_versions() {
             source_code_ipfs_hash: "test-ipfs-hash".into(),
             abi_ipfs_hash: None,
             bytecode_identifier: None,
+            readme: Some(TEST_README.into()),
+            forc_manifest: TEST_MANIFEST.into(),
         })
         .expect("upload is ok");
 
     // Insert a package version for a package that doesn't exist
-    let request = api::publish::PublishRequest {
+    let request = PublishInfo {
         package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
-        num: TEST_VERSION_1.into(),
+        num: Version::parse(TEST_VERSION_1).unwrap(),
         package_description: Some(TEST_DESCRIPTION.into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
         homepage: Url::parse(TEST_URL_HOME).ok(),
         urls: vec![Url::parse(TEST_URL_OTHER).expect("other url")],
-        readme: Some("test readme".into()),
-        license: Some("test license".into()),
+        readme: Some(TEST_README.into()),
+        license: Some(TEST_LICENSE.into()),
     };
     let version_result = db
         .new_package_version(&token, &request)
@@ -197,7 +204,6 @@ fn test_package_versions() {
             documentation: Some(TEST_URL_DOC.into()),
             homepage: Some(TEST_URL_HOME.into()),
             urls: vec![Some(TEST_URL_OTHER.into())],
-            readme: request.readme,
             license: request.license,
             created_at: version_result.created_at,
         }
@@ -223,8 +229,8 @@ fn test_package_versions() {
             documentation: Some(TEST_URL_DOC.into()),
             homepage: Some(TEST_URL_HOME.into()),
             urls: vec![Some(TEST_URL_OTHER.into())],
-            readme: Some("test readme".into()),
-            license: Some("test license".into()),
+            readme: Some(TEST_README.into()),
+            license: Some(TEST_LICENSE.into()),
             created_at: result.created_at,
             updated_at: version_result.created_at,
             bytecode_identifier: upload.bytecode_identifier,
@@ -235,10 +241,10 @@ fn test_package_versions() {
     );
 
     // Insert a package version for a package that already exists
-    let request = api::publish::PublishRequest {
+    let request = PublishInfo {
         package_name: TEST_PACKAGE_NAME.into(),
         upload_id: upload.id,
-        num: TEST_VERSION_2.into(),
+        num: Version::parse(TEST_VERSION_2).unwrap(),
         package_description: Some("test description 2".into()),
         repository: Url::parse(TEST_URL_REPO).ok(),
         documentation: Url::parse(TEST_URL_DOC).ok(),
@@ -264,7 +270,6 @@ fn test_package_versions() {
             documentation: Some(TEST_URL_DOC.into()),
             homepage: Some(TEST_URL_HOME.into()),
             urls: vec![Some(TEST_URL_OTHER.into())],
-            readme: request.readme,
             license: request.license,
             created_at: version_result.created_at,
         }

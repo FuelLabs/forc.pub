@@ -16,6 +16,9 @@ use uuid::Uuid;
 const UNPACKED_DIR: &str = "unpacked";
 const RELEASE_DIR: &str = "out/release";
 const PROJECT_DIR: &str = "project";
+const README_FILE: &str = "README.md";
+const FORC_MANIFEST_FILE: &str = "Forc.toml";
+const MAX_UPLOAD_SIZE_STR: &str = "10MB";
 pub const TARBALL_NAME: &str = "project.tgz";
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -26,7 +29,10 @@ pub enum UploadError {
     #[error("Failed to remove temporary directory.")]
     RemoveTempDir,
 
-    #[error("The project is too large to be uploaded.")]
+    #[error(
+        "The project exceeded the maximum upload size of {}.",
+        MAX_UPLOAD_SIZE_STR
+    )]
     TooLarge,
 
     #[error("Failed to save zip file.")]
@@ -58,11 +64,17 @@ pub enum UploadError {
 
     #[error("OS '{0}' not supported.")]
     UnsupportedOs(String),
+
+    #[error("Upload does not contain a Forc manifest.")]
+    MissingForcManifest,
 }
 
-/// Handles the project upload process by unpacking the tarball, compiling the project, copying the
-/// necessary files to a new directory, and storing the source code tarball and ABI file in IPFS.
-/// Returns a NewUpload struct with the necessary information to store in the database.
+/// Handles the project upload process by:
+/// 1. Unpacking the tarball, compiling the project
+/// 2. Copying the necessary files to a new directory
+/// 3. Storing the source code tarball and ABI file in IPFS
+///
+/// Returns a [NewUpload] with the necessary information to store in the database.
 pub async fn handle_project_upload(
     upload_dir: &Path,
     upload_id: &Uuid,
@@ -174,12 +186,19 @@ pub async fn handle_project_upload(
         None => None,
     };
 
+    // Load the contents of readme and Forc.toml into memory for storage in the database.
+    let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
+    let forc_manifest = fs::read_to_string(project_dir.join(FORC_MANIFEST_FILE))
+        .map_err(|_| UploadError::MissingForcManifest)?;
+
     let upload = NewUpload {
         id: *upload_id,
         source_code_ipfs_hash: tarball_ipfs_hash,
         forc_version,
         abi_ipfs_hash,
         bytecode_identifier,
+        readme,
+        forc_manifest,
     };
 
     Ok(upload)
@@ -234,7 +253,7 @@ mod tests {
         let upload_id = Uuid::new_v4();
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
         let orig_tarball_path = PathBuf::from("tests/fixtures/sway-project.tgz");
-        let forc_version = "0.66.5";
+        let forc_version = "0.66.6";
         let forc_path_str = format!("forc-{forc_version}");
         let forc_path = PathBuf::from(&forc_path_str);
         fs::create_dir_all(forc_path.clone()).ok();
@@ -260,7 +279,7 @@ mod tests {
         assert_eq!(result.forc_version, forc_version);
         assert_eq!(
             result.bytecode_identifier.unwrap(),
-            "325030b9e3b9b8b52401c48221ccff609acc0b91695f57852a3fd7a7f3ccb687"
+            "009683afb9a422c3d23aeafce43e3a8e29099d8d64d55c63cf8179af3f8112de"
         );
     }
 }
