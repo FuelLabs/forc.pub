@@ -64,6 +64,9 @@ pub enum UploadError {
 
     #[error("OS '{0}' not supported.")]
     UnsupportedOs(String),
+
+    #[error("Upload does not contain a Forc manifest.")]
+    MissingForcManifest,
 }
 
 /// Handles the project upload process by:
@@ -185,7 +188,8 @@ pub async fn handle_project_upload(
 
     // Load the contents of readme and Forc.toml into memory for storage in the database.
     let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
-    let forc_manifest = fs::read_to_string(project_dir.join(FORC_MANIFEST_FILE)).ok();
+    let forc_manifest = fs::read_to_string(project_dir.join(FORC_MANIFEST_FILE))
+        .map_err(|_| UploadError::MissingForcManifest)?;
 
     let upload = NewUpload {
         id: *upload_id,

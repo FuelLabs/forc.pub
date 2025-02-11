@@ -171,7 +171,7 @@ fn test_package_versions() {
             abi_ipfs_hash: None,
             bytecode_identifier: None,
             readme: Some(TEST_README.into()),
-            forc_manifest: Some(TEST_MANIFEST.into()),
+            forc_manifest: TEST_MANIFEST.into(),
         })
         .expect("upload is ok");
 
