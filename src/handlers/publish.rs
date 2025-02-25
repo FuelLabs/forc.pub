@@ -1,6 +1,7 @@
 use crate::api::publish::PublishRequest;
 use crate::db::error::DatabaseError;
 use crate::db::Database;
+use crate::index::{PackageDependencyIdentifier, PackageEntry};
 use crate::models::{ApiToken, NewPackageDep};
 use forc_pkg::PackageManifest;
 use semver::Version;
@@ -34,7 +35,7 @@ pub struct PublishInfo {
     pub license: Option<String>,
 }
 
-struct PartialPackageDep {
+pub struct PartialPackageDep {
     pub dependency_package_name: String,
     pub dependency_version_req: String,
 }
@@ -133,6 +134,22 @@ pub async fn handle_publish(
     );
 
     // TODO [https://github.com/FuelLabs/forc.pub/issues/28]: Publish to GitHub index repo.
+    let package_name = publish_info.package_name.clone();
+    let package_version = publish_info.num.clone();
+    let source_cid = upload.source_code_ipfs_hash;
+    let abi_cid = upload.abi_ipfs_hash;
+    let dependencies = package_deps
+        .into_iter()
+        .map(|package_dep| PackageDependencyIdentifier::from(package_dep))
+        .collect();
+
+    let package_entry = PackageEntry::new(
+        package_name,
+        package_version,
+        source_cid,
+        abi_cid,
+        dependencies,
+    );
 
     Ok(publish_info)
 }
