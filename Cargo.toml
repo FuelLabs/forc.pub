@@ -33,5 +33,6 @@ tracing-subscriber = "0.3.19"
 tempfile = "3.17"
 chrono = { version = "0.4", features = ["serde"] }
 url = { version = "2.5", features = ["serde"] }
-forc-util = "0.67"
-forc-pkg = "0.67"
+forc-util = "0.66.7"
+forc-pkg = "0.66.7"
+async-trait = "0.1.88"
