@@ -20,21 +20,21 @@ pub struct LocationConfiguration {
     /// Example:
     /// If set to 2, and package name is "foobar", the index file location
     /// will be ".../fo/ob/ar/foobar".
-    chunking_size: usize,
+    pub chunking_size: usize,
     /// Type of the namespacing is needed to determine whether to add domain at
     /// the beginnig of the file location.
-    namespace: Namespace,
+    pub namespace: Namespace,
 }
 
 /// Calculates the exact file location from the root of the namespace repo.
 /// If the configuration includes a namespace, it will be the first part of
 /// the path followed by chunks.
-pub fn location_from_root(config: LocationConfiguration, package_entry: &PackageEntry) -> PathBuf {
+pub fn location_from_root(config: &LocationConfiguration, package_entry: &PackageEntry) -> PathBuf {
     let mut path = PathBuf::new();
 
     // Add domain to path if namespace is 'Domain'
     // otherwise skip.
-    if let Namespace::Domain(domain) = config.namespace {
+    if let Namespace::Domain(domain) = &config.namespace {
         path.push(domain);
     }
 
@@ -81,7 +81,7 @@ mod tests {
         };
         let entry = create_package_entry("ab");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         assert_eq!(path, Path::new("ab").join("ab"));
     }
@@ -94,7 +94,7 @@ mod tests {
         };
         let entry = create_package_entry("foobar");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should produce: fo/ob/ar/foobar
         assert_eq!(path, Path::new("fo").join("ob").join("ar").join("foobar"));
@@ -108,7 +108,7 @@ mod tests {
         };
         let entry = create_package_entry("foobar");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should produce: example.com/fo/ob/ar/foobar
         assert_eq!(
@@ -129,7 +129,7 @@ mod tests {
         };
         let entry = create_package_entry("hello");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should produce: he/ll/o/hello
         assert_eq!(path, Path::new("he").join("ll").join("o").join("hello"));
@@ -143,7 +143,7 @@ mod tests {
         };
         let entry = create_package_entry("fibonacci");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should produce: fib/ona/cci/fibonacci
         assert_eq!(
@@ -160,7 +160,7 @@ mod tests {
         };
         let entry = create_package_entry("small");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should produce: small/small
         assert_eq!(path, Path::new("small").join("small"));
@@ -174,7 +174,7 @@ mod tests {
         };
         let entry = create_package_entry("héllo");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should produce: hé/ll/o/héllo
         assert_eq!(path, Path::new("hé").join("ll").join("o").join("héllo"));
@@ -188,7 +188,7 @@ mod tests {
         };
         let entry = create_package_entry("");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should just produce: ""
         assert_eq!(path, Path::new(""));
@@ -202,7 +202,7 @@ mod tests {
         };
         let entry = create_package_entry("package");
 
-        let path = location_from_root(config, &entry);
+        let path = location_from_root(&config, &entry);
 
         // Should just produce: package
         assert_eq!(path, Path::new("package"));
