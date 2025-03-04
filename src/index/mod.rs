@@ -13,6 +13,8 @@
 //!   2: Calculating correct path for given package index.
 
 mod handler;
+mod location;
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -44,7 +46,7 @@ pub struct PackageEntry {
     /// Name of the package.
     /// This is the actual package name needed in forc.toml file to fetch this
     /// package.
-    package_name: String,
+    name: String,
     /// Version of the package.
     /// This is the actual package version needed in forc.toml file to fetch
     /// this package.
@@ -77,14 +79,14 @@ pub struct PackageDependencyIdentifier {
 
 impl PackageEntry {
     pub fn new(
-        package_name: String,
+        name: String,
         version: semver::Version,
         source_cid: String,
         abi_cid: Option<String>,
         dependencies: Vec<PackageDependencyIdentifier>,
     ) -> Self {
         Self {
-            package_name,
+            name,
             version,
             source_cid,
             abi_cid,
@@ -194,7 +196,7 @@ mod tests {
             .contains_key(&semver::Version::new(1, 0, 0)));
 
         let main_pkg = &deserialized.versions[&semver::Version::new(1, 0, 0)];
-        assert_eq!(main_pkg.package_name, "main-package");
+        assert_eq!(main_pkg.name, "main-package");
         assert_eq!(main_pkg.source_cid, "QmMainHash");
         assert_eq!(main_pkg.abi_cid, None);
 
@@ -245,7 +247,7 @@ mod tests {
 
         assert_eq!(deserialized.versions.len(), 1);
         let pkg = &deserialized.versions[&semver::Version::new(0, 5, 0)];
-        assert_eq!(pkg.package_name, "minimal-package");
+        assert_eq!(pkg.name, "minimal-package");
         assert_eq!(pkg.source_cid, "QmMinimalHash");
         assert_eq!(pkg.abi_cid, None);
         assert_eq!(pkg.dependencies.len(), 0);
@@ -267,7 +269,7 @@ mod tests {
             dependencies.clone(),
         );
 
-        assert_eq!(entry.package_name, "test-package");
+        assert_eq!(entry.name, "test-package");
         assert_eq!(entry.version, semver::Version::new(2, 0, 0));
         assert_eq!(entry.source_cid, "QmTestHash");
         assert_eq!(entry.abi_cid, Some("QmAbiHash".to_string()));
