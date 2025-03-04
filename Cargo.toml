@@ -36,3 +36,4 @@ url = { version = "2.5", features = ["serde"] }
 forc-util = "0.66.7"
 forc-pkg = "0.66.7"
 async-trait = "0.1.88"
+git2 = "0.19.0"

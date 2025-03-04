@@ -1622,6 +1622,7 @@ dependencies = [
  "flate2",
  "forc-pkg",
  "forc-util",
+ "git2",
  "hex",
  "nanoid",
  "pinata-sdk",
