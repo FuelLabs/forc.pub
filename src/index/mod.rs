@@ -11,6 +11,8 @@
 //! There are two main things forc.pub needs to be able to do for index files:
 //!   1: Creation of index files from published packages
 //!   2: Calculating correct path for given package index.
+
+mod handler;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

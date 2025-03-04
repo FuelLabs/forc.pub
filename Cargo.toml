@@ -35,3 +35,4 @@ chrono = { version = "0.4", features = ["serde"] }
 url = { version = "2.5", features = ["serde"] }
 forc-util = "0.66.7"
 forc-pkg = "0.66.7"
+async-trait = "0.1.87"
