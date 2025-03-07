@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Box,
   Card,
@@ -7,12 +7,12 @@ import {
   Grid,
   CircularProgress,
   Container,
-} from '@mui/material';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import { useNavigate } from 'react-router-dom';
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import useFetchRecentPackages, {
   RecentPackage,
-} from '../hooks/useFetchRecentPackages';
+} from "../hooks/useFetchRecentPackages";
+import "./PackageDashboard.css";
 
 const PackageDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -21,10 +21,11 @@ const PackageDashboard: React.FC = () => {
   if (loading) {
     return (
       <Box
-        display='flex'
-        justifyContent='center'
-        alignItems='center'
-        minHeight='100vh'>
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="50vh"
+      >
         <CircularProgress />
       </Box>
     );
@@ -32,44 +33,42 @@ const PackageDashboard: React.FC = () => {
 
   const renderPackages = (packages: RecentPackage[], type: string) => (
     <>
-      <Typography
-        variant='h5'
-        gutterBottom
-        style={{ borderBottom: '2px solid #1976d2', paddingBottom: '8px' }}>
+      <Typography variant="h5" gutterBottom className="section-title">
         {type}
       </Typography>
       {packages.map((pkg, i) => (
         <Card
           key={i}
-          style={{
-            marginBottom: '16px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-            cursor: 'pointer',
-            transition: 'transform 0.2s, background-color 0.2s',
-          }}
-          onClick={() => navigate('/package/' + pkg.name)}
+          className="package-card"
+          onClick={() => navigate("/package/" + pkg.name)}
           onMouseEnter={(e) =>
-            (e.currentTarget.style.backgroundColor = '#f0f8ff')
+            (e.currentTarget.className = "package-card package-card-hover")
           }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.backgroundColor = 'white')
-          }>
-          <CardContent style={{ display: 'flex', alignItems: 'center' }}>
+          onMouseLeave={(e) => (e.currentTarget.className = "package-card")}
+        >
+          <CardContent className="card-content">
             <Box flex={1}>
-              <Typography variant='h6' gutterBottom>
+              <Typography variant="h6" gutterBottom className="package-name">
                 {pkg.name} (v{pkg.version})
               </Typography>
-              <Typography variant='body2' color='textSecondary' gutterBottom>
-                {type === 'Just Updated'
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                gutterBottom
+                className="package-timestamp"
+              >
+                {type === "Just Updated"
                   ? `Updated: ${new Date(pkg.updatedAt!).toLocaleString()}`
                   : `Added: ${new Date(pkg.createdAt!).toLocaleString()}`}
               </Typography>
-              <Typography variant='body1' paragraph>
-                {pkg.description || 'No description available.'}
+              <Typography
+                variant="body1"
+                paragraph
+                className="package-description"
+              >
+                {pkg.description || "No description available."}
               </Typography>
             </Box>
-            <ArrowForwardIosIcon color='action' />
           </CardContent>
         </Card>
       ))}
@@ -77,13 +76,13 @@ const PackageDashboard: React.FC = () => {
   );
 
   return (
-    <Container maxWidth='md' style={{ marginTop: '24px' }}>
+    <Container maxWidth="md" className="dashboard-container">
       <Grid container spacing={4}>
         <Grid item xs={12} md={6}>
-          {renderPackages(data.recentlyUpdated, 'Just Updated')}
+          {renderPackages(data.recentlyUpdated, "Just Updated")}
         </Grid>
         <Grid item xs={12} md={6}>
-          {renderPackages(data.recentlyCreated, 'New Packages')}
+          {renderPackages(data.recentlyCreated, "New Packages")}
         </Grid>
       </Grid>
     </Container>

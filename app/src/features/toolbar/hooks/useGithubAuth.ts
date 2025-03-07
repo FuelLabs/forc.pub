@@ -1,29 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useLocalSession } from '../../../utils/localStorage';
-import useCookie from 'react-use-cookie';
-import HTTP, { AuthenticatedUser } from '../../../utils/http';
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useLocalSession } from "../../../utils/localStorage";
+import useCookie from "react-use-cookie";
+import HTTP, { AuthenticatedUser } from "../../../utils/http";
 
 export function useGithubAuth(): [
   AuthenticatedUser | null,
-  () => Promise<void>
+  () => Promise<void>,
 ] {
-  const [sessionId, setSessionId] = useCookie('fp_session');
+  const [sessionId, setSessionId] = useCookie("fp_session");
   const [githubUser, setGithubUser] = useState<AuthenticatedUser | null>(null);
   const { githubCode, saveGithubCode, clearGithubCode } = useLocalSession();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const logout = useCallback(async () => {
     await HTTP.post(`/logout`);
-    setSessionId('');
+    setSessionId("");
     setGithubUser(null);
   }, [setGithubUser, setSessionId]);
 
   // If this was a redirect from Github, we have a code to log in with.
   useEffect(() => {
-    const codeParam = searchParams.get('code');
+    const codeParam = searchParams.get("code");
     if (codeParam) {
-      searchParams.delete('code');
+      searchParams.delete("code");
       setSearchParams(searchParams);
       saveGithubCode(codeParam);
       window.close();
@@ -55,7 +55,7 @@ export function useGithubAuth(): [
       .then(({ data }) => {
         setGithubUser(data.user);
       })
-      .catch(() => setSessionId(''));
+      .catch(() => setSessionId(""));
   }, [githubUser, setGithubUser, setSessionId, sessionId]);
 
   return [githubUser, logout];

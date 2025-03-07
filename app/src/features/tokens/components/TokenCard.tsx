@@ -1,7 +1,8 @@
-import React from 'react';
-import { Button } from '@mui/material';
-import { Token } from '../hooks/useApiTokens';
-import CopyableToken from './CopyableToken';
+import React from "react";
+import { Button } from "@mui/material";
+import { Token } from "../hooks/useApiTokens";
+import CopyableToken from "./CopyableToken";
+import "./TokenCard.css";
 
 export interface TokenCardProps {
   token: Token;
@@ -10,35 +11,29 @@ export interface TokenCardProps {
 
 function TokenCard({ token, handleRevoke }: TokenCardProps) {
   return (
-    <div
-      key={token.id}
-      style={{
-        padding: '20px',
-        borderBottom: '1px solid lightgrey',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-      <div style={{ position: 'relative' }}>
-        <h3 style={{ float: 'left' }}> {token.name}</h3>
+    <div key={token.id} className="token-card">
+      <div className="token-header">
+        <h3 className="token-name">{token.name}</h3>
 
         <Button
-          size='small'
-          variant='contained'
-          color='warning'
-          style={{ float: 'right' }}
-          aria-label='delete'
-          onClick={handleRevoke}>
-          {'Revoke'}
+          size="small"
+          variant="contained"
+          color="warning"
+          className="revoke-button"
+          aria-label="delete"
+          onClick={handleRevoke}
+        >
+          {"Revoke"}
         </Button>
       </div>
-      <div style={{ fontSize: '12px', alignSelf: 'start' }}>
+      <div className="token-date">
         {`Created ${token.createdAt.toLocaleString()}`}
       </div>
       {token.token && (
         <>
-          <div style={{ margin: '1rem' }}>
+          <div className="token-warning">
             {
-              'Make sure to copy your API token now. You won’t be able to see it again!'
+              "Make sure to copy your API token now. You won't be able to see it again!"
             }
           </div>
 
