@@ -1,6 +1,6 @@
 use crate::{
     models::PackagePreview,
-    pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url},
+    file_uploader::pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url},
 };
 use serde::Serialize;
 use url::Url;
