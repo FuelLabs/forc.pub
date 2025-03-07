@@ -24,7 +24,7 @@ impl PinataClient for PinataClientImpl {
         let (api_key, secret_api_key) =
             match (env::var("PINATA_API_KEY"), env::var("PINATA_API_SECRET")) {
                 (Ok(key), Ok(secret)) => (key, secret),
-                _ => return Err(UploadError::Ipfs),
+                _ => return Err(UploadError::IpfsUploadFailed("Missing API key".to_string())),
             };
         let api =
             PinataApi::new(api_key, secret_api_key).map_err(|_| UploadError::Authentication)?;
@@ -44,7 +44,7 @@ impl PinataClient for PinataClientImpl {
             .await
         {
             Ok(pinned_object) => Ok(pinned_object.ipfs_hash),
-            Err(_) => Err(UploadError::Ipfs),
+            Err(err) => Err(UploadError::IpfsUploadFailed(err.to_string())),
         }
     }
 }
