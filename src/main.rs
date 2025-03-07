@@ -15,13 +15,16 @@ use forc_pub::api::{
 };
 use forc_pub::db::Database;
 use forc_pub::file_uploader::s3::{S3Client, S3ClientImpl};
+use forc_pub::file_uploader::{
+    pinata::{PinataClient, PinataClientImpl},
+    FileUploader,
+};
 use forc_pub::github::handle_login;
 use forc_pub::handlers::publish::handle_publish;
 use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::file_uploader::{FileUploader, pinata::{PinataClient, PinataClientImpl}};
 use forc_pub::util::validate_or_format_semver;
 use rocket::{
     data::Capped,

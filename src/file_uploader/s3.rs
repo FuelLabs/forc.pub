@@ -1,7 +1,7 @@
 use crate::{handlers::upload::UploadError, util::load_env};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::{
-    config::{BehaviorVersion, Region, Credentials},
+    config::{BehaviorVersion, Region},
     primitives::ByteStream,
 };
 use std::{env, fs::File, io::Read, path::Path};

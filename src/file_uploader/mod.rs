@@ -13,17 +13,14 @@ pub struct FileUploader<'a, T: PinataClient, E: S3Client> {
 
 impl<'a, T: PinataClient, E: S3Client> FileUploader<'a, T, E> {
     pub fn new(pinata_client: &'a T, s3_client: &'a E) -> Self {
-            Self {
-                pinata_client,
-                s3_client,
-            }
+        Self {
+            pinata_client,
+            s3_client,
         }
+    }
 
     pub async fn upload_file(&self, path: &Path) -> Result<String, UploadError> {
-        let ipfs_hash = self
-            .pinata_client
-            .upload_file_to_ipfs(path)
-            .await?;
+        let ipfs_hash = self.pinata_client.upload_file_to_ipfs(path).await?;
 
         // Read file contents
         let mut file = File::open(path).map_err(|_| UploadError::OpenFile)?;
@@ -41,7 +38,8 @@ impl<'a, T: PinataClient, E: S3Client> FileUploader<'a, T, E> {
 }
 
 #[cfg(test)]
-pub fn get_mock_file_uploader() -> FileUploader<'static, pinata::MockPinataClient, s3::MockS3Client> {
+pub fn get_mock_file_uploader() -> FileUploader<'static, pinata::MockPinataClient, s3::MockS3Client>
+{
     FileUploader::new(&pinata::MockPinataClient, &s3::MockS3Client)
 }
 
@@ -92,15 +90,18 @@ mod tests {
 
         let result = file_uploader.upload_file(&temp_path).await;
         assert!(result.is_err());
-        assert_eq!(result, Err(UploadError::IpfsUploadFailed("IPFS error".to_string())));
+        assert_eq!(
+            result,
+            Err(UploadError::IpfsUploadFailed("IPFS error".to_string()))
+        );
     }
 
     #[tokio::test]
     async fn test_upload_file_s3_failure() {
         struct FailingS3Client;
         impl S3Client for FailingS3Client {
-            fn new() -> impl std::future::Future<Output = Result<Self, UploadError>> + Send {
-                async { Ok(FailingS3Client) }
+            async fn new() -> Result<Self, UploadError> {
+                Ok(FailingS3Client)
             }
             async fn upload_file_to_s3(
                 &self,
@@ -124,7 +125,10 @@ mod tests {
 
         let result = file_uploader.upload_file(&temp_path).await;
         assert!(result.is_err());
-        assert_eq!(result, Err(UploadError::S3UploadFailed("S3 error".to_string())));
+        assert_eq!(
+            result,
+            Err(UploadError::S3UploadFailed("S3 error".to_string()))
+        );
     }
 
     #[tokio::test]
