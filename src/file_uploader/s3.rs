@@ -24,9 +24,7 @@ impl S3Client for S3ClientImpl {
     async fn new() -> Result<Self, UploadError> {
         load_env();
 
-        // TODO: load credentials from environment variables
-
-        // let credentials = Credentials::new("ACCESS_KEY", "SECRET_KEY", None, None, "custom-provider");
+        // TODO: verify this locally
 
         let bucket_name = env::var("S3_BUCKET_NAME")
             .map_err(|_| UploadError::S3UploadFailed("Missing S3_BUCKET_NAME".to_string()))?;
@@ -35,8 +33,7 @@ impl S3Client for S3ClientImpl {
 
         let shared_config = aws_config::defaults(BehaviorVersion::v2024_03_28())
             .region(Region::new(bucket_region))
-            .profile_name("forcpub")
-            // .credentials_provider(credentials)
+//            .profile_name("forcpub")
             .load()
             .await;
         let s3_client = Client::new(&shared_config);
@@ -56,14 +53,14 @@ impl S3Client for S3ClientImpl {
             .map_err(|_| UploadError::ReadFile)?;
 
         // Upload to S3
-        // self.s3_client
-        //     .put_object()
-        //     .bucket(&self.bucket_name)
-        //     .key(&file_name)
-        //     .body(ByteStream::from(buffer))
-        //     .send()
-        //     .await
-        //     .map_err(|e| UploadError::S3UploadFailed(format!("{:?}", e)))?;
+        self.s3_client
+            .put_object()
+            .bucket(&self.bucket_name)
+            .key(&file_name)
+            .body(ByteStream::from(buffer))
+            .send()
+            .await
+            .map_err(|e| UploadError::S3UploadFailed(format!("{:?}", e)))?;
         Ok(())
     }
 }
