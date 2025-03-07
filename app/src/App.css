@@ -1,38 +1,73 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* Dark Mode Theme for Main App Container */
+.app-container {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  text-align: center;
+  background-color: #1e1e1e;
+  height: 100vh;
+  color: #e0e0e0;
+  overflow: hidden;
 }
 
-.App-link {
-  color: #61dafb;
+.app-toolbar {
+  background-color: #181818 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.app-logo {
+  flex-grow: 1;
+  display: block;
+  color: #00f58c;
+  font-size: 24px;
+  font-family: monospace;
+  cursor: pointer;
+  font-weight: bold;
+  transition: color 0.2s ease;
+}
+
+.app-logo:hover {
+  color: #2dffa0;
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Global Dark Mode styles */
+body {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Button overrides */
+.MuiButton-containedPrimary {
+  background-color: #0d47a1 !important;
+  color: #ffffff !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  background-color: #1565c0 !important;
+}
+
+.MuiButton-containedSecondary {
+  background-color: #00f58c !important;
+  color: #111111 !important;
+}
+
+.MuiButton-containedSecondary:hover {
+  background-color: #2dffa0 !important;
+}
+
+.MuiButton-containedWarning {
+  background-color: #bf360c !important;
+  color: #ffffff !important;
+}
+
+.MuiButton-containedWarning:hover {
+  background-color: #e64a19 !important;
 }
