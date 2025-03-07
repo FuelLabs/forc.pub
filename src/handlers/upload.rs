@@ -117,7 +117,7 @@ pub async fn handle_project_upload(
             "--include=*/",
             "--include=Forc.toml",
             "--include=Forc.lock",
-            "--include=README.md",            
+            "--include=README.md",
             "--include=*.sw",
             "--exclude=*",
             "unpacked/",
