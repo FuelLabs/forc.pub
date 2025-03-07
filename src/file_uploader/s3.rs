@@ -24,8 +24,6 @@ impl S3Client for S3ClientImpl {
     async fn new() -> Result<Self, UploadError> {
         load_env();
 
-        // TODO: verify this locally
-
         let bucket_name = env::var("S3_BUCKET_NAME")
             .map_err(|_| UploadError::S3UploadFailed("Missing S3_BUCKET_NAME".to_string()))?;
         let bucket_region = env::var("S3_BUCKET_REGION")
@@ -33,7 +31,6 @@ impl S3Client for S3ClientImpl {
 
         let shared_config = aws_config::defaults(BehaviorVersion::v2024_03_28())
             .region(Region::new(bucket_region))
-//            .profile_name("forcpub")
             .load()
             .await;
         let s3_client = Client::new(&shared_config);
