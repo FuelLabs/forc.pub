@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import HTTP from '../../../utils/http';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import HTTP from "../../../utils/http";
 
 export interface RecentPackage {
   name: string;
@@ -31,9 +31,9 @@ const useFetchRecentPackages = () => {
       .catch((err: any) =>
         setError(
           axios.isAxiosError(err)
-            ? err.response?.data?.message || 'An error occurred'
-            : 'An unknown error occurred'
-        )
+            ? err.response?.data?.message || "An error occurred"
+            : "An unknown error occurred",
+        ),
       )
       .finally(() => setLoading(false));
   }, []);

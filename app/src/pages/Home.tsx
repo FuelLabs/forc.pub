@@ -1,11 +1,14 @@
-import React from 'react';
-import PackageDashboard from '../features/dahboard/components/PackageDashboard';
+import React from "react";
+import PackageDashboard from "../features/dahboard/components/PackageDashboard";
+import "./Home.css";
 
 function Home() {
   return (
-    <div>
-      <div style={{ width: '100%' }}>
-        <h1>{"The Sway community's package registry"}</h1>
+    <div className="home-container">
+      <div className="home-header">
+        <h1 className="home-title">
+          {"The Sway community's package registry"}
+        </h1>
       </div>
       <PackageDashboard />
     </div>
