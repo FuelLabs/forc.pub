@@ -124,6 +124,7 @@ pub async fn handle_project_upload<'a>(
             "--include=*/",
             "--include=Forc.toml",
             "--include=Forc.lock",
+            "--include=README.md",
             "--include=*.sw",
             "--exclude=*",
             "unpacked/",
@@ -236,7 +237,10 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
     .arg("--pkg-fmt=tgz")
     .arg(format!("forc@{forc_version}"))
     .output()
-    .map_err(|_| UploadError::InvalidForcVersion(forc_version.to_string()))?;
+    .map_err(|err| {
+        error!("Failed to install forc with binstall: {:?}", err);
+        UploadError::InvalidForcVersion(forc_version.to_string())
+    })?;
 
     if !output.status.success() {
         error!("Failed to install forc: {:?}", output);
