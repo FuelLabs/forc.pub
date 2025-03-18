@@ -53,6 +53,7 @@ COPY --from=builder /usr/local/cargo/bin/forc-* .
 COPY --from=builder /build/target/debug/forc_pub .
 COPY --from=builder /build/target/debug/forc_pub.d .
 COPY --from=builder /build/Rocket.toml .
+COPY --from=builder /build/.env .
 
 EXPOSE 8080
 
