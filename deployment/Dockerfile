@@ -38,7 +38,7 @@ COPY . .
 RUN cargo build
 
 # Stage 2: Run
-FROM ubuntu:22.04 as run
+FROM rust:1.84 as run
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates curl git libpq5 \
@@ -46,6 +46,8 @@ RUN apt-get update -y \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install binstall
 
 WORKDIR /root/
 
