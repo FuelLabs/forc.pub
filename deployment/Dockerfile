@@ -32,7 +32,7 @@ RUN cargo build
 FROM rust:1.84 as run
 
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends ca-certificates curl git libpq5 \
+    && apt-get install -y --no-install-recommends ca-certificates curl git libpq5 rsync \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
