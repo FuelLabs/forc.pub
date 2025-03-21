@@ -135,13 +135,3 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    if: github.ref == 'refs/heads/master'
-    needs:
-      - build-and-publish-image
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - name: Set Environment Variables
-        run: |
-          tag=(`echo $GITHUB_SHA | cut -c1-7`)
-          echo "IMAGE_TAG=`echo $tag`" >> $GITHUB_ENV
