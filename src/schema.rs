@@ -12,11 +12,29 @@ diesel::table! {
 }
 
 diesel::table! {
+    package_categories (id) {
+        id -> Uuid,
+        package_id -> Uuid,
+        category -> Text,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     package_dependencies (id) {
         id -> Uuid,
         dependent_package_version_id -> Uuid,
         dependency_package_name -> Varchar,
         dependency_version_req -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    package_keywords (id) {
+        id -> Uuid,
+        package_id -> Uuid,
+        keyword -> Text,
         created_at -> Timestamptz,
     }
 }
@@ -85,7 +103,9 @@ diesel::table! {
 }
 
 diesel::joinable!(api_tokens -> users (user_id));
+diesel::joinable!(package_categories -> packages (package_id));
 diesel::joinable!(package_dependencies -> package_versions (dependent_package_version_id));
+diesel::joinable!(package_keywords -> packages (package_id));
 diesel::joinable!(package_versions -> api_tokens (publish_token));
 diesel::joinable!(package_versions -> uploads (upload_id));
 diesel::joinable!(package_versions -> users (published_by));
@@ -94,7 +114,9 @@ diesel::joinable!(sessions -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     api_tokens,
+    package_categories,
     package_dependencies,
+    package_keywords,
     package_versions,
     packages,
     sessions,

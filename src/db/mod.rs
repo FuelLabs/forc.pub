@@ -1,5 +1,6 @@
 pub mod api_token;
 pub mod error;
+pub mod package_category_keyword;
 pub mod package_dependency;
 pub mod package_version;
 pub mod upload;

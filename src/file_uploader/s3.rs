@@ -29,7 +29,7 @@ impl S3Client for S3ClientImpl {
         let bucket_region = env::var("S3_BUCKET_REGION")
             .map_err(|_| UploadError::S3UploadFailed("Missing S3_BUCKET_REGION".to_string()))?;
 
-        let shared_config = aws_config::defaults(BehaviorVersion::v2024_03_28())
+        let shared_config = aws_config::defaults(BehaviorVersion::v2025_01_17())
             .region(Region::new(bucket_region))
             .load()
             .await;
