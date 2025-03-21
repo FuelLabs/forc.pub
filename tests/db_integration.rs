@@ -29,6 +29,7 @@ const TEST_URL_HOME: &str = "https://example.com/homepage";
 const TEST_URL_OTHER: &str = "https://example.com/other";
 const TEST_VERSION_1: &str = "0.1.0";
 const TEST_VERSION_2: &str = "0.2.0";
+const TEST_VERSION_3: &str = "0.3.0";
 const TEST_PACKAGE_NAME: &str = "test-package";
 const TEST_DESCRIPTION: &str = "test-description";
 const TEST_README: &str = "test-readme";
@@ -330,4 +331,61 @@ fn test_package_versions() {
     assert_eq!(result.total_pages, 0);
     assert_eq!(result.total_count, 0);
     assert_eq!(result.data.len(), 0);
+}
+
+#[test]
+#[serial]
+fn test_package_categories_keywords() {
+    let db = &mut setup_db();
+
+    // Set up session, user, token, and upload.
+    let session = db
+        .new_user_session(&mock_user_1(), 1000)
+        .expect("session is ok");
+    let user = db.get_user_for_session(session.id).expect("user is ok");
+    let (token, _) = db
+        .new_token(user.id, "test token".to_string())
+        .expect("token is ok");
+    let upload = db
+        .new_upload(&NewUpload {
+            id: uuid::Uuid::new_v4(),
+            forc_version: TEST_VERSION_1.into(),
+            source_code_ipfs_hash: "test-ipfs-hash".into(),
+            abi_ipfs_hash: None,
+            bytecode_identifier: None,
+            readme: None,
+            forc_manifest: TEST_MANIFEST.into(),
+        })
+        .expect("upload is ok");
+
+    let request = PublishInfo {
+        package_name: TEST_PACKAGE_NAME.into(),
+        upload_id: upload.id,
+        num: Version::parse(TEST_VERSION_3).unwrap(),
+        package_description: None,
+        repository: None,
+        documentation: None,
+        homepage: None,
+        urls: vec![],
+        readme: None,
+        license: None,
+    };
+
+    let version_result = db
+        .new_package_version(&token, &request)
+        .expect("version result is ok");
+
+    // Insert categories
+    let categories = vec!["cat1".to_string(), "cat2".to_string()];
+    let cat_count = db
+        .insert_categories(version_result.package_id, &categories)
+        .expect("insert categories is ok");
+    assert_eq!(cat_count, 2);
+
+    // Insert keywords
+    let keywords = vec!["key1".to_string(), "key2".to_string()];
+    let key_count = db
+        .insert_keywords(version_result.package_id, &keywords)
+        .expect("insert keywords is ok");
+    assert_eq!(key_count, 2);
 }

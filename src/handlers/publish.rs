@@ -115,6 +115,18 @@ pub async fn handle_publish(
         .collect();
     let _ = db.conn().insert_dependencies(new_package_deps)?;
 
+    // Insert package categories and keywords into the database.
+    if let Some(categories) = pkg_manifest.project.categories {
+        let _ = db
+            .conn()
+            .insert_categories(package_version.package_id, &categories)?;
+    }
+    if let Some(keywords) = pkg_manifest.project.keywords {
+        let _ = db
+            .conn()
+            .insert_keywords(package_version.package_id, &keywords)?;
+    }
+
     info!(
         "Successfully published package {} version {}",
         publish_info.package_name, publish_info.num

@@ -35,6 +35,12 @@ pub enum DatabaseError {
     #[error("Failed to save package dependencies: {0}")]
     InsertPackageDepFailed(diesel::result::Error),
 
+    #[error("Failed to save package categories: {0}")]
+    InsertPackageCategoriesFailed(diesel::result::Error),
+
+    #[error("Failed to save package categories: {0}")]
+    InsertPackageKeywordsFailed(diesel::result::Error),
+
     #[error("Failed to query: {0}: {1}")]
     QueryFailed(String, diesel::result::Error),
 }

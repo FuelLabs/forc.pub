@@ -165,6 +165,40 @@ pub struct NewPackageVersion {
     pub license: Option<String>,
 }
 
+#[derive(Queryable, Selectable, Debug, Clone, Eq, PartialEq)]
+#[diesel(table_name = crate::schema::package_categories)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PackageCategory {
+    pub id: Uuid,
+    pub package_id: Uuid,
+    pub category: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::package_categories)]
+pub struct NewPackageCategory {
+    pub package_id: Uuid,
+    pub category: String,
+}
+
+#[derive(Queryable, Selectable, Debug, Clone, Eq, PartialEq)]
+#[diesel(table_name = crate::schema::package_keywords)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PackageKeyword {
+    pub id: Uuid,
+    pub package_id: Uuid,
+    pub keyword: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = crate::schema::package_keywords)]
+pub struct NewPackageKeyword {
+    pub package_id: Uuid,
+    pub keyword: String,
+}
+
 #[derive(QueryableByName, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PackagePreview {
