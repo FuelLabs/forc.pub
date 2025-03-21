@@ -9,7 +9,7 @@ impl DbConn {
     pub fn insert_categories(
         &mut self,
         package_id: Uuid,
-        categories: &Vec<String>,
+        categories: &[String],
     ) -> Result<usize, DatabaseError> {
         let new_categories: Vec<NewPackageCategory> = categories
             .iter()
@@ -28,7 +28,7 @@ impl DbConn {
     pub fn insert_keywords(
         &mut self,
         package_id: Uuid,
-        keywords: &Vec<String>,
+        keywords: &[String],
     ) -> Result<usize, DatabaseError> {
         let new_keywords: Vec<NewPackageKeyword> = keywords
             .iter()
