@@ -103,7 +103,10 @@ pub async fn handle_project_upload(
         .arg("--release")
         .current_dir(&unpacked_dir)
         .output()
-        .expect("Failed to execute forc build");
+        .map_err(|err| {
+            error!("Failed to execute forc build: {:?}", err);
+            UploadError::FailedToCompile
+        })?;
 
     if !output.status.success() {
         return Err(UploadError::FailedToCompile);
@@ -125,7 +128,10 @@ pub async fn handle_project_upload(
         ])
         .current_dir(upload_dir)
         .output()
-        .expect("Failed to copy project files");
+        .map_err(|err| {
+            error!("Failed to copy project files: {:?}", err);
+            UploadError::CopyFiles
+        })?;
 
     if !output.status.success() {
         return Err(UploadError::CopyFiles);
