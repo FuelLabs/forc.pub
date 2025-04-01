@@ -120,6 +120,70 @@ npm start
 
 This will open http://localhost:3000 in your browser. By default, it will use the local server endpoint, so the local server must be running.
 
+## Architecture diagram
+
+```mermaid
+flowchart TD
+    subgraph "Frontend Layer"
+        FE["React Frontend"]:::frontend
+    end
+
+    subgraph "Backend Layer"
+        BE["Rocket Backend"]:::backend
+        APIRoutes["API Routes"]:::backend
+        Middleware["Middleware (CORS,Auth)"]:::middleware
+        Handlers["Business Logic / Handlers"]:::handlers
+    end
+
+    subgraph "Database Layer"
+        DB["Postgres Database"]:::database
+    end
+
+    subgraph "External Services"
+        IPFS["IPFS/Pinata"]:::external
+        GitHub["GitHub Auth"]:::external
+    end
+
+    subgraph "Deployment/CI-CD"
+        CI["CI/CD Workflows"]:::deployment
+        Docker["Docker Containerization"]:::deployment
+        Helm["Kubernetes Helm Charts"]:::deployment
+    end
+
+    FE -->|"RESTAPICalls"| BE
+    BE -->|"APIEndpoints"| APIRoutes
+    APIRoutes -->|"UsesMiddleware"| Middleware
+    Middleware -->|"ExecutesLogic"| Handlers
+    Handlers -->|"DBOperations"| DB
+
+    BE -->|"IPFSIntegration"| IPFS
+    BE -->|"GitHubAuth"| GitHub
+
+    CI -->|"TriggersContainerBuild"| Docker
+    CI -->|"DeploysViaHelm"| Helm
+    Docker -->|"DeploysBackend"| BE
+    Helm -->|"OrchestratesBackend"| BE
+
+    click FE "https://github.com/fuellabs/forc.pub/tree/master/app/"
+    click BE "https://github.com/fuellabs/forc.pub/tree/master/src/"
+    click DB "https://github.com/fuellabs/forc.pub/tree/master/migrations/"
+    click IPFS "https://github.com/fuellabs/forc.pub/blob/master/src/pinata/mod.rs"
+    click GitHub "https://github.com/fuellabs/forc.pub/blob/master/src/github.rs"
+    click CI "https://github.com/fuellabs/forc.pub/tree/master/.github/workflows/"
+    click Docker "https://github.com/fuellabs/forc.pub/tree/master/deployment/Dockerfile"
+    click Helm "https://github.com/fuellabs/forc.pub/blob/master/helm/forc.pub"
+
+    classDef middleware fill:#475569,stroke:#22d3ee,stroke-width:2px,color:#f8fafc;
+    classDef handlers fill:#475569,stroke:#22d3ee,stroke-width:2px,color:#f8fafc;
+    classDef frontend fill:#334155,stroke:#60a5fa,stroke-width:2px,color:#f8fafc;
+    classDef backend fill:#475569,stroke:#22d3ee,stroke-width:2px,color:#f8fafc;
+    classDef database fill:#334155,stroke:#fcd34d,stroke-width:2px,color:#f8fafc;
+    classDef external fill:#1e293b,stroke:#f472b6,stroke-width:2px,color:#f8fafc;
+    classDef deployment fill:#3f3f46,stroke:#fde047,stroke-width:2px,color:#f8fafc;
+
+    linkStyle default stroke:#22d3ee,stroke-width:2px;
+```
+
 ## Contributing
 
 We are not currently accepting contributions to `forc.pub` as the MVP is still being developed.
