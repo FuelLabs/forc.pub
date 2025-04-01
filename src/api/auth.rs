@@ -6,6 +6,7 @@ use crate::models;
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub full_name: String,
+    pub github_id: String,
     pub email: Option<String>,
     pub avatar_url: Option<String>,
     pub github_url: String,
@@ -17,6 +18,7 @@ impl From<models::User> for User {
     fn from(user: models::User) -> Self {
         User {
             full_name: user.full_name,
+            github_id: user.github_id,
             email: user.email,
             avatar_url: user.avatar_url,
             github_url: user.github_url,

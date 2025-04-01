@@ -13,7 +13,8 @@ struct GithubOauthResponse {
 
 #[derive(Deserialize, Debug)]
 struct GithubUserResponse {
-    pub name: String,
+    pub name: Option<String>,
+    pub id: String,
     pub email: Option<String>,
     pub avatar_url: Option<String>,
     pub html_url: String,
@@ -89,7 +90,8 @@ async fn fetch_user(token: String) -> Result<User, GithubError> {
         })?;
 
     let user = User {
-        full_name: body.name,
+        full_name: body.name.unwrap_or(body.login.clone()),
+        github_id: body.id,
         email: body.email,
         avatar_url: body.avatar_url,
         github_url: body.html_url,
