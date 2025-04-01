@@ -15,7 +15,7 @@ use serial_test::serial;
 use url::Url;
 
 // Test constants
-const TEST_GITHUB_ID_1: i64 = 1;
+const TEST_GITHUB_ID_1: &str = "1";
 const TEST_LOGIN_1: &str = "AliceBobbins";
 const TEST_FULL_NAME_1: &str = "Alice Bobbins";
 const TEST_EMAIL_1: &str = "alice@bob.com";
@@ -64,7 +64,7 @@ fn clear_tables(db: &mut DbConn) {
 fn mock_user_1() -> api::auth::User {
     api::auth::User {
         github_login: TEST_LOGIN_1.to_string(),
-        github_id: TEST_GITHUB_ID_1,
+        github_id: TEST_GITHUB_ID_1.to_string(),
         full_name: TEST_FULL_NAME_1.to_string(),
         email: Some(TEST_EMAIL_1.to_string()),
         avatar_url: Some(TEST_URL_1.to_string()),

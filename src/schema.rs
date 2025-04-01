@@ -99,7 +99,7 @@ diesel::table! {
         email -> Nullable<Varchar>,
         is_admin -> Bool,
         created_at -> Timestamptz,
-        github_id -> Int8,
+        github_id -> Varchar,
     }
 }
 

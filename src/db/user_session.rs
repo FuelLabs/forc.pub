@@ -18,7 +18,7 @@ impl DbConn {
         // Insert or update a user
         let new_user = models::NewUser {
             full_name: user.full_name.clone(),
-            github_id: user.github_id,
+            github_id: user.github_id.clone(),
             github_login: user.github_login.clone(),
             github_url: user.github_url.clone(),
             avatar_url: user.avatar_url.clone(),

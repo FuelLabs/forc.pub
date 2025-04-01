@@ -14,7 +14,7 @@ struct GithubOauthResponse {
 #[derive(Deserialize, Debug)]
 struct GithubUserResponse {
     pub name: Option<String>,
-    pub id: i64,
+    pub id: String,
     pub email: Option<String>,
     pub avatar_url: Option<String>,
     pub html_url: String,

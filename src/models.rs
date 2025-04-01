@@ -11,7 +11,7 @@ use uuid::Uuid;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
     pub id: Uuid,
-    pub github_id: i64,
+    pub github_id: String,
     pub full_name: String,
     pub github_login: String,
     pub github_url: String,
@@ -25,7 +25,7 @@ pub struct User {
 #[diesel(table_name = crate::schema::users)]
 pub struct NewUser {
     pub full_name: String,
-    pub github_id: i64,
+    pub github_id: String,
     pub github_login: String,
     pub github_url: String,
     pub avatar_url: Option<String>,
