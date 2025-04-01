@@ -39,7 +39,7 @@ DROP CONSTRAINT users_github_login_key;
 
 -- Add `github_id` column to the `users` table
 ALTER TABLE users
-ADD COLUMN github_id BIGINT NOT NULL UNIQUE;
+ADD COLUMN github_id VARCHAR NOT NULL UNIQUE;
 
 -- Update package_versions foreign key to restrict deletes
 ALTER TABLE package_versions

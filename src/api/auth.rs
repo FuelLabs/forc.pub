@@ -6,7 +6,7 @@ use crate::models;
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub full_name: String,
-    pub github_id: i64,
+    pub github_id: String,
     pub email: Option<String>,
     pub avatar_url: Option<String>,
     pub github_url: String,
