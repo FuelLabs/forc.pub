@@ -144,7 +144,7 @@ pub async fn handle_publish(
     let abi_cid = upload.abi_ipfs_hash;
     let dependencies = package_deps
         .into_iter()
-        .map(|package_dep| PackageDependencyIdentifier::from(package_dep))
+        .map(|package_dep| PackageDependencyIdentifier::from)
         .collect();
 
     let package_entry = PackageEntry::new(
