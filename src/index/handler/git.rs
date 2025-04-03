@@ -1,9 +1,9 @@
-use crate::index::{
-    handler::{IndexPublishError, IndexPublisher},
-    location::{location_from_root, LocationConfiguration, Namespace},
-    PackageEntry,
-};
+use crate::index::handler::{IndexPublishError, IndexPublisher};
 use async_trait::async_trait;
+use forc_pkg::source::reg::{
+    file_location::{location_from_root, Namespace},
+    index_file::{IndexFile, PackageEntry},
+};
 use git2::{Cred, FetchOptions, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
 use std::env;
 use std::fs;
@@ -13,49 +13,40 @@ use tokio::task;
 
 /// Index publishing backend for GitHub.
 pub struct GithubIndexPublisher {
-    /// SSH URL of the GitHub repo (e.g. git@github.com:username/repo.git)
-    repo_url: String,
-    /// Path to the SSH private key
-    ssh_key_path: String,
-    /// Configuration for file location calculation
-    location_config: LocationConfiguration,
+    repo_owner: String,
+    repo_name: String,
+    chunk_size: usize,
+    namespace: Namespace,
 }
 
 impl GithubIndexPublisher {
     /// Create a new GitHub index publisher.
     pub fn new(
-        repo_url: String,
-        ssh_key_path: String,
-        location_config: LocationConfiguration,
+        repo_owner: String,
+        repo_name: String,
+        chunk_size: usize,
+        namespace: Namespace,
     ) -> Self {
         Self {
-            repo_url,
-            ssh_key_path,
-            location_config,
+            repo_owner,
+            repo_name,
+            chunk_size,
+            namespace,
         }
     }
 
-    /// Create a new GitHub index publisher using the default SSH key (~/.ssh/id_ed25519).
-    pub fn with_default_key(repo_url: String, location_config: LocationConfiguration) -> Self {
-        let home_dir = env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let ssh_key_path = format!("{}/.ssh/id_ed25519", home_dir);
-        Self {
-            repo_url,
-            ssh_key_path,
-            location_config,
-        }
-    }
-
-    /// Gets the SSH key passphrase from environment variable
-    fn get_ssh_passphrase(&self) -> Option<String> {
-        env::var("SSH_KEY_PASSPHRASE").ok()
+    fn get_pat_token(&self) -> String {
+        env::var("GITHUB_TOKEN").unwrap()
     }
 
     /// Process the GitHub repository and publish the package entry.
     fn process_repo(&self, package_entry: &PackageEntry) -> Result<(), IndexPublishError> {
-        let repo_url = &self.repo_url;
-        let ssh_key_path = &self.ssh_key_path;
-        let key_passphrase = self.get_ssh_passphrase();
+        let repo_url = format!(
+            "https://{}@github.com/{}/{}",
+            self.get_pat_token(),
+            self.repo_owner,
+            self.repo_name
+        );
 
         // Create a temporary directory
         let tmp_dir = TempDir::new().map_err(|e| {
@@ -64,18 +55,7 @@ impl GithubIndexPublisher {
         let tmp_path = tmp_dir.path();
 
         // Configure callbacks for SSH authentication
-        let mut callbacks = RemoteCallbacks::new();
-        let ssh_key_path_clone = ssh_key_path.clone();
-        let key_passphrase_clone = key_passphrase.clone();
-
-        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
-            Cred::ssh_key(
-                username_from_url.unwrap_or("git"),
-                None,
-                Path::new(&ssh_key_path_clone),
-                key_passphrase_clone.as_deref(),
-            )
-        });
+        let callbacks = RemoteCallbacks::new();
 
         let mut fetch_opts = FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
@@ -95,14 +75,17 @@ impl GithubIndexPublisher {
         self.update_and_checkout_default_branch(&repo, branch_name)?;
         self.write_package_entry(tmp_path, package_entry)?;
 
-        let commit_message = match &self.location_config.namespace {
+        let commit_message = match &self.namespace {
             Namespace::Flat => format!(
                 "Add package {} version {}",
-                package_entry.name, package_entry.version
+                package_entry.name(),
+                package_entry.version()
             ),
             Namespace::Domain(domain) => format!(
                 "Add package {}/{} version {}",
-                domain, package_entry.name, package_entry.version
+                domain,
+                package_entry.name(),
+                package_entry.version()
             ),
         };
 
@@ -121,18 +104,7 @@ impl GithubIndexPublisher {
         branch_name: &str,
     ) -> Result<(), IndexPublishError> {
         // Configure SSH authentication for fetch
-        let mut callbacks = RemoteCallbacks::new();
-        let ssh_key_path_clone = self.ssh_key_path.clone();
-        let key_passphrase = self.get_ssh_passphrase();
-
-        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
-            Cred::ssh_key(
-                username_from_url.unwrap_or("git"),
-                None,
-                Path::new(&ssh_key_path_clone),
-                key_passphrase.as_deref(),
-            )
-        });
+        let callbacks = RemoteCallbacks::new();
 
         let mut fetch_opts = FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
@@ -198,7 +170,8 @@ impl GithubIndexPublisher {
         package_entry: &PackageEntry,
     ) -> Result<(), IndexPublishError> {
         // Calculate the file location using the location module
-        let relative_path = location_from_root(&self.location_config, package_entry);
+        let relative_path =
+            location_from_root(self.chunk_size, &self.namespace, package_entry.name());
         let package_path = repo_path.join(&relative_path);
 
         // Create parent directories if they don't exist
@@ -207,11 +180,6 @@ impl GithubIndexPublisher {
                 IndexPublishError::FileSystemError(format!("Failed to create directories: {}", e))
             })?;
         }
-
-        // Convert the package entry to a string representation (e.g., JSON)
-        let entry_content = serde_json::to_string_pretty(package_entry).map_err(|e| {
-            IndexPublishError::PackageDataError(format!("Failed to serialize package entry: {}", e))
-        })?;
 
         // Check if the package already exists and handle versioning
         if package_path.exists() {
@@ -223,22 +191,28 @@ impl GithubIndexPublisher {
                 ))
             })?;
 
-            // TODO: PARSE FILE and Check for version collision
-            if existing_content.contains(&format!("\"version\":\"{}\",", package_entry.version)) {
+            // TODO: error handling.
+            let mut index_file: IndexFile = serde_json::from_str(&existing_content).unwrap();
+
+            if index_file.get(package_entry.version()).is_some() {
                 return Err(IndexPublishError::VersionCollision(
-                    package_entry.name.clone(),
-                    package_entry.version.to_string(),
+                    package_entry.name().to_string(),
+                    package_entry.version().to_string(),
                 ));
             }
 
-            // Append the new entry (assuming entries are separated by newlines)
-            let updated_content = format!("{}\n{}", existing_content, entry_content);
-            fs::write(package_path, updated_content).map_err(|e| {
+            index_file.insert(package_entry.clone());
+            let new_content = serde_json::to_string(&index_file).unwrap();
+
+            fs::write(package_path, new_content).map_err(|e| {
                 IndexPublishError::FileSystemError(format!("Failed to write package entry: {}", e))
             })?;
         } else {
             // Write the new entry
-            fs::write(package_path, entry_content).map_err(|e| {
+            let mut index_file = IndexFile::default();
+            index_file.insert(package_entry.clone());
+            let new_content = serde_json::to_string(&index_file).unwrap();
+            fs::write(package_path, new_content).map_err(|e| {
                 IndexPublishError::FileSystemError(format!("Failed to write package entry: {}", e))
             })?;
         }
@@ -301,10 +275,9 @@ impl GithubIndexPublisher {
         })?;
 
         // Create the signature for the commit
-        let signature =
-            Signature::now("Package Index", "package-index@example.com").map_err(|e| {
-                IndexPublishError::UnexpectedError(format!("Failed to create signature: {}", e))
-            })?;
+        let signature = Signature::now("Package Index", "forc-pub@fuel.sh").map_err(|e| {
+            IndexPublishError::UnexpectedError(format!("Failed to create signature: {}", e))
+        })?;
 
         // Create the commit
         let commit_id = repo
@@ -331,16 +304,9 @@ impl GithubIndexPublisher {
 
         // Configure callbacks for SSH authentication
         let mut callbacks = RemoteCallbacks::new();
-        let ssh_key_path_clone = self.ssh_key_path.clone();
-        let key_passphrase = self.get_ssh_passphrase();
 
-        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
-            Cred::ssh_key(
-                username_from_url.unwrap_or("git"),
-                None,
-                Path::new(&ssh_key_path_clone),
-                key_passphrase.as_deref(),
-            )
+        callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+            Cred::userpass_plaintext(&self.get_pat_token(), "")
         });
 
         let mut push_options = PushOptions::new();

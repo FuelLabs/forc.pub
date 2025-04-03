@@ -1,7 +1,7 @@
 pub mod git;
 
-use crate::index::PackageEntry;
 use async_trait::async_trait;
+use forc_pkg::source::reg::index_file::PackageEntry;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

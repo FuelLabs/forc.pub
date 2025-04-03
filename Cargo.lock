@@ -1531,17 +1531,16 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forc-pkg"
-version = "0.66.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a884854e75dce12b2f2c8e7022c73673479a5cbbd476a28c57a30f3688bdaa5"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
 dependencies = [
  "ansiterm",
  "anyhow",
  "byte-unit",
  "cid",
  "flate2",
- "forc-tracing",
- "forc-util",
+ "forc-tracing 0.67.0",
+ "forc-util 0.67.0",
  "fuel-abi-types",
  "futures",
  "git2",
@@ -1555,11 +1554,11 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "serde_with",
- "sway-core",
- "sway-error",
- "sway-features",
- "sway-types",
- "sway-utils",
+ "sway-core 0.67.0",
+ "sway-error 0.67.0",
+ "sway-features 0.67.0",
+ "sway-types 0.67.0",
+ "sway-utils 0.67.0",
  "sysinfo",
  "tar",
  "toml 0.8.20",
@@ -1581,6 +1580,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-tracing"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "ansiterm",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "forc-util"
 version = "0.66.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1592,7 +1601,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing",
+ "forc-tracing 0.66.10",
  "fuel-asm",
  "hex",
  "paste",
@@ -1601,10 +1610,39 @@ dependencies = [
  "serde_json",
  "serial_test",
  "sha2",
- "sway-core",
- "sway-error",
- "sway-types",
- "sway-utils",
+ "sway-core 0.66.10",
+ "sway-error 0.66.10",
+ "sway-types 0.66.10",
+ "sway-utils 0.66.10",
+ "tracing",
+ "tracing-subscriber",
+ "unicode-xid",
+]
+
+[[package]]
+name = "forc-util"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "annotate-snippets",
+ "ansiterm",
+ "anyhow",
+ "clap",
+ "dirs 5.0.1",
+ "fd-lock",
+ "forc-tracing 0.67.0",
+ "fuel-asm",
+ "hex",
+ "paste",
+ "regex",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "sha2",
+ "sway-core 0.67.0",
+ "sway-error 0.67.0",
+ "sway-types 0.67.0",
+ "sway-utils 0.67.0",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -1621,7 +1659,7 @@ dependencies = [
  "dotenvy",
  "flate2",
  "forc-pkg",
- "forc-util",
+ "forc-util 0.66.10",
  "git2",
  "hex",
  "nanoid",
@@ -4842,8 +4880,21 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "serde",
- "sway-error",
- "sway-types",
+ "sway-error 0.66.10",
+ "sway-types 0.66.10",
+]
+
+[[package]]
+name = "sway-ast"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "extension-trait",
+ "num-bigint",
+ "num-traits",
+ "serde",
+ "sway-error 0.67.0",
+ "sway-types 0.67.0",
 ]
 
 [[package]]
@@ -4878,13 +4929,58 @@ dependencies = [
  "serde_json",
  "sha2",
  "strum 0.26.3",
- "sway-ast",
- "sway-error",
- "sway-features",
- "sway-ir",
- "sway-parse",
- "sway-types",
- "sway-utils",
+ "sway-ast 0.66.10",
+ "sway-error 0.66.10",
+ "sway-features 0.66.10",
+ "sway-ir 0.66.10",
+ "sway-parse 0.66.10",
+ "sway-types 0.66.10",
+ "sway-utils 0.66.10",
+ "sysinfo",
+ "thiserror 1.0.69",
+ "tracing",
+ "uint",
+ "vec1",
+]
+
+[[package]]
+name = "sway-core"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "clap",
+ "dirs 5.0.1",
+ "either",
+ "fuel-abi-types",
+ "fuel-ethabi",
+ "fuel-etk-asm",
+ "fuel-etk-ops",
+ "fuel-vm",
+ "gimli",
+ "graph-cycles",
+ "hashbrown 0.14.5",
+ "im",
+ "indexmap 2.8.0",
+ "itertools 0.13.0",
+ "lazy_static",
+ "object",
+ "parking_lot",
+ "paste",
+ "pest",
+ "pest_derive",
+ "petgraph",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "sha2",
+ "strum 0.26.3",
+ "sway-ast 0.67.0",
+ "sway-error 0.67.0",
+ "sway-features 0.67.0",
+ "sway-ir 0.67.0",
+ "sway-parse 0.67.0",
+ "sway-types 0.67.0",
+ "sway-utils 0.67.0",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
@@ -4903,7 +4999,21 @@ dependencies = [
  "num-traits",
  "smallvec",
  "strsim 0.11.1",
- "sway-types",
+ "sway-types 0.66.10",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "sway-error"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "either",
+ "in_definite",
+ "num-traits",
+ "smallvec",
+ "strsim 0.11.1",
+ "sway-types 0.67.0",
  "thiserror 1.0.69",
 ]
 
@@ -4915,8 +5025,19 @@ checksum = "e1435e3d9c8ee93e1b996112d5491331977c13b8689b876b883eccc12ba29570"
 dependencies = [
  "clap",
  "paste",
- "sway-error",
- "sway-types",
+ "sway-error 0.66.10",
+ "sway-types 0.66.10",
+]
+
+[[package]]
+name = "sway-features"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "clap",
+ "paste",
+ "sway-error 0.67.0",
+ "sway-types 0.67.0",
 ]
 
 [[package]]
@@ -4936,10 +5057,32 @@ dependencies = [
  "rustc-hash",
  "serde",
  "slotmap",
- "sway-features",
- "sway-ir-macros",
- "sway-types",
- "sway-utils",
+ "sway-features 0.66.10",
+ "sway-ir-macros 0.66.10",
+ "sway-types 0.66.10",
+ "sway-utils 0.66.10",
+]
+
+[[package]]
+name = "sway-ir"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "anyhow",
+ "downcast-rs",
+ "filecheck",
+ "indexmap 2.8.0",
+ "itertools 0.13.0",
+ "once_cell",
+ "peg",
+ "prettydiff",
+ "rustc-hash",
+ "serde",
+ "slotmap",
+ "sway-features 0.67.0",
+ "sway-ir-macros 0.67.0",
+ "sway-types 0.67.0",
+ "sway-utils 0.67.0",
 ]
 
 [[package]]
@@ -4947,6 +5090,17 @@ name = "sway-ir-macros"
 version = "0.66.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2a993062ef32bef59a45d5ee9d0fcdba7d3c5b86e27e229c69636f3d04154c2"
+dependencies = [
+ "itertools 0.13.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "sway-ir-macros"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -4964,9 +5118,26 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "phf",
- "sway-ast",
- "sway-error",
- "sway-types",
+ "sway-ast 0.66.10",
+ "sway-error 0.66.10",
+ "sway-types 0.66.10",
+ "thiserror 1.0.69",
+ "unicode-bidi",
+ "unicode-xid",
+]
+
+[[package]]
+name = "sway-parse"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "extension-trait",
+ "num-bigint",
+ "num-traits",
+ "phf",
+ "sway-ast 0.67.0",
+ "sway-error 0.67.0",
+ "sway-types 0.67.0",
  "thiserror 1.0.69",
  "unicode-bidi",
  "unicode-xid",
@@ -4989,7 +5160,27 @@ dependencies = [
  "parking_lot",
  "rustc-hash",
  "serde",
- "sway-utils",
+ "sway-utils 0.66.10",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "sway-types"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
+dependencies = [
+ "bytecount",
+ "fuel-asm",
+ "fuel-crypto",
+ "fuel-tx",
+ "indexmap 2.8.0",
+ "lazy_static",
+ "num-bigint",
+ "num-traits",
+ "parking_lot",
+ "rustc-hash",
+ "serde",
+ "sway-utils 0.67.0",
  "thiserror 1.0.69",
 ]
 
@@ -4998,6 +5189,15 @@ name = "sway-utils"
 version = "0.66.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f01801a50c3e05b491d4fb4c3951fd7d3168fe97c46b4289141d05a3234306e"
+dependencies = [
+ "serde",
+ "walkdir",
+]
+
+[[package]]
+name = "sway-utils"
+version = "0.67.0"
+source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5cdc08e6da30814d89da993e6505ebd005d"
 dependencies = [
  "serde",
  "walkdir",

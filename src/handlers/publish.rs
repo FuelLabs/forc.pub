@@ -1,8 +1,10 @@
 use crate::api::publish::PublishRequest;
 use crate::db::error::DatabaseError;
 use crate::db::Database;
-use crate::index::{PackageDependencyIdentifier, PackageEntry};
+use crate::index::handler::{IndexPublishError, IndexPublisher};
 use crate::models::{ApiToken, NewPackageDep};
+use forc_pkg::source::reg::file_location::Namespace;
+use forc_pkg::source::reg::index_file::{PackageDependencyIdentifier, PackageEntry};
 use forc_pkg::PackageManifest;
 use semver::Version;
 use thiserror::Error;
@@ -18,6 +20,9 @@ pub enum PublishError {
 
     #[error(transparent)]
     Database(#[from] DatabaseError),
+
+    #[error(transparent)]
+    Index(#[from] IndexPublishError),
 }
 
 /// The information to publish.
@@ -133,7 +138,6 @@ pub async fn handle_publish(
         publish_info.package_name, publish_info.num
     );
 
-    // TODO [https://github.com/FuelLabs/forc.pub/issues/28]: Publish to GitHub index repo.
     let package_name = publish_info.package_name.clone();
     let package_version = publish_info.num.clone();
     let source_cid = upload.source_code_ipfs_hash;
@@ -151,5 +155,13 @@ pub async fn handle_publish(
         dependencies,
     );
 
+    let github_index_publisher = crate::index::handler::git::GithubIndexPublisher::new(
+        "kayagokalp".to_string(),
+        "dummy-forc.pub-index".to_string(),
+        2,
+        Namespace::Flat,
+    );
+
+    github_index_publisher.publish_entry(package_entry).await?;
     Ok(publish_info)
 }
