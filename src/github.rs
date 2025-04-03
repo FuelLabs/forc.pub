@@ -14,7 +14,7 @@ struct GithubOauthResponse {
 #[derive(Deserialize, Debug)]
 struct GithubUserResponse {
     pub name: Option<String>,
-    pub id: String,
+    pub id: i64,
     pub email: Option<String>,
     pub avatar_url: Option<String>,
     pub html_url: String,
@@ -91,7 +91,7 @@ async fn fetch_user(token: String) -> Result<User, GithubError> {
 
     let user = User {
         full_name: body.name.unwrap_or(body.login.clone()),
-        github_id: body.id,
+        github_id: body.id.to_string(),
         email: body.email,
         avatar_url: body.avatar_url,
         github_url: body.html_url,
