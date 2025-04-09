@@ -134,6 +134,7 @@ async fn publish(
 async fn upload_project(
     db: &State<Database>,
     pinata_client: &State<PinataClientImpl>,
+    s3_client: &State<S3ClientImpl>,
     forc_version: &str,
     mut tarball: Capped<TempFile<'_>>,
 ) -> ApiResult<UploadResponse> {
@@ -170,8 +171,7 @@ async fn upload_project(
         .map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     // Handle the project upload and store the metadata in the database.
-    let s3_client = S3ClientImpl::new().await?;
-    let file_uploader = FileUploader::new(pinata_client.inner(), &s3_client);
+    let file_uploader = FileUploader::new(pinata_client.inner(), s3_client.inner());
     let upload_entry = handle_project_upload(
         &upload_dir,
         &upload_id,
@@ -257,6 +257,8 @@ async fn rocket() -> _ {
         .with_max_level(LevelFilter::INFO)
         .init();
 
+    let s3_client = S3ClientImpl::new().await.expect("s3 client");
+
     let pinata_client = PinataClientImpl::new().await.expect("pinata client");
 
     info!("Starting forc.pub server");
@@ -264,6 +266,7 @@ async fn rocket() -> _ {
     rocket::build()
         .manage(Database::default())
         .manage(pinata_client)
+        .manage(s3_client)
         .attach(Cors)
         .mount(
             "/",
