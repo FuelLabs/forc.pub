@@ -259,7 +259,7 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file_uploader::get_mock_file_uploader;
+    use crate::file_uploader::tests::get_mock_file_uploader;
     use serial_test::serial;
 
     #[tokio::test]

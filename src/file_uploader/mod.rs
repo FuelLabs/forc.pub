@@ -38,18 +38,16 @@ impl<'a, T: PinataClient, E: S3Client> FileUploader<'a, T, E> {
 }
 
 #[cfg(test)]
-pub fn get_mock_file_uploader() -> FileUploader<'static, pinata::MockPinataClient, s3::MockS3Client>
-{
-    FileUploader::new(&pinata::MockPinataClient, &s3::MockS3Client)
-}
-
-#[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::file_uploader::{pinata::MockPinataClient, s3::MockS3Client};
     use std::io::Write;
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
+
+    pub fn get_mock_file_uploader() -> FileUploader<'static, MockPinataClient, MockS3Client> {
+        FileUploader::new(&MockPinataClient, &MockS3Client)
+    }
 
     #[tokio::test]
     async fn test_upload_file_success() {
