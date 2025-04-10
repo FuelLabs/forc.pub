@@ -20,7 +20,7 @@ cargo install diesel_cli --no-default-features --features postgres
 RUSTFLAGS='-L /opt/homebrew/opt/libpq/lib' cargo install diesel_cli --no-default-features --features postgres
 ```
 
-The environment variables for connecting to the local database are set in `.env`.
+The environment variables for connecting to the local database are set in `.env` or `.env.local`.
 
 ## Creating a Table
 
@@ -97,7 +97,7 @@ For easier database management and visualization, you can use a database client 
 
    - Open DBeaver and create a new database connection.
    - Select your database type (e.g., PostgreSQL).
-   - Provide your database URL, username, and password (as specified in the `.env` file).
+   - Provide your database URL, username, and password (as specified in the `.env` or `.env.local` file).
 
 3. **Explore the database:**
    - View and edit tables, run SQL queries, and inspect relationships between tables.
