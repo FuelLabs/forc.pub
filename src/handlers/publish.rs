@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::api::publish::PublishRequest;
 use crate::db::error::DatabaseError;
 use crate::db::Database;
@@ -171,12 +173,13 @@ pub async fn handle_publish(
     // TODO: fix this
     let tmpdir = TempDir::new().unwrap();
     let tmp_path = tmpdir.path();
-    println!("created tmp dir {tmp_path:?}");
-    let github_repo_builder = GithubRepoBuilder::with_repo_details(repo_name, repo_org, tmp_path)?;
+    let github_repo_builder = Arc::new(Mutex::new(GithubRepoBuilder::with_repo_details(
+        repo_name, repo_org, tmp_path,
+    )?));
     let github_index_publisher = crate::index::handler::git::GithubIndexPublisher::new(
         chunk_size,
         Namespace::Flat,
-        &github_repo_builder,
+        github_repo_builder,
     );
 
     github_index_publisher.publish_entry(package_entry).await?;

@@ -24,7 +24,7 @@ pub struct GithubIndexPublisher<T: GitRepoBuilder> {
 }
 
 pub trait GitRepoBuilder {
-    fn clone_and_resolve_head(&self) -> Result<git2::Reference<'a>, IndexPublishError>;
+    fn resolve_default_branch_name(&self) -> Result<String, IndexPublishError>;
     fn update_and_checkout_default_branch(
         &self,
         branch_name: &str,
@@ -32,6 +32,7 @@ pub trait GitRepoBuilder {
     fn stage_and_commit_changes(&self, commit_message: &str) -> Result<(), IndexPublishError>;
     fn push_changes(&self, branch_name: &str) -> Result<(), IndexPublishError>;
     fn path(&self) -> Result<&Path, IndexPublishError>;
+    fn repo(&self) -> &git2::Repository;
 }
 
 pub struct GithubRepoBuilder {
@@ -67,23 +68,32 @@ impl GithubRepoBuilder {
     }
 }
 
-impl<'a> GitRepoBuilder<'a> for GithubRepoBuilder {
+impl GitRepoBuilder for GithubRepoBuilder {
+    fn repo(&self) -> &git2::Repository {
+        &self.repo
+    }
+
     fn path(&self) -> Result<&Path, IndexPublishError> {
         // `git2::Repository::path` returns the path of the underlying `.git`
         // folder.
         let git_folder = self.repo.path();
         // We need to get the actual parent/root directory.
-        git_folder.parent().ok_or_else(|| {
+        Ok(git_folder.parent().ok_or_else(|| {
             IndexPublishError::RepoError("internal error: invalid git repo path".to_string())
-        })
+        })?)
     }
 
-    fn clone_and_resolve_head(&'a self) -> Result<git2::Reference<'a>, IndexPublishError> {
-        let head_ref = self
-            .repo
-            .head()
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get HEAD: {}", e)))?;
-        Ok(head_ref)
+    fn resolve_default_branch_name(&self) -> Result<String, IndexPublishError> {
+        let head_ref = self.repo().find_reference("HEAD")?;
+        let branch_ref = head_ref.resolve()?;
+        let branch_name = branch_ref
+            .shorthand()
+            .ok_or_else(|| {
+                IndexPublishError::RepoError("HEAD is detached or not on a named branch".into())
+            })?
+            .to_string();
+
+        Ok(branch_name)
     }
 
     fn update_and_checkout_default_branch(
@@ -303,9 +313,9 @@ fn remote_callbacks() -> RemoteCallbacks<'static> {
     callbacks
 }
 
-impl<'a, T: GitRepoBuilder<'a>> GithubIndexPublisher<'a, T> {
+impl<T: GitRepoBuilder> GithubIndexPublisher<T> {
     /// Create a new GitHub index publisher.
-    pub fn new(chunk_size: usize, namespace: Namespace, repo_builder: Arc<Mutex<&'a T>>) -> Self {
+    pub fn new(chunk_size: usize, namespace: Namespace, repo_builder: Arc<Mutex<T>>) -> Self {
         Self {
             chunk_size,
             namespace,
@@ -314,13 +324,15 @@ impl<'a, T: GitRepoBuilder<'a>> GithubIndexPublisher<'a, T> {
     }
 
     fn process_repo(&self, package_entry: &PackageEntry) -> Result<(), IndexPublishError> {
-        let repo_builder = self
+        let repo_builder_guard = self
             .repo_builder
-            .try_lock()
-            .map_err(|e| IndexPublishError::RepoError(e.to_string()))?;
+            .lock()
+            .map_err(|e| IndexPublishError::RepoError(format!("Mutex poisoned: {}", e)))?;
+        // Deref the guard to call methods on the underlying GithubRepoBuilder
+        let repo_builder = &*repo_builder_guard;
+
         let tmp_path = repo_builder.path()?;
-        let head_ref = repo_builder.clone_and_resolve_head()?;
-        let branch_name = head_ref.shorthand().unwrap_or("HEAD");
+        let branch_name = repo_builder.resolve_default_branch_name()?;
         repo_builder.update_and_checkout_default_branch(&branch_name)?;
         self.write_package_entry(tmp_path, package_entry)?;
 
@@ -339,7 +351,7 @@ impl<'a, T: GitRepoBuilder<'a>> GithubIndexPublisher<'a, T> {
         };
 
         repo_builder.stage_and_commit_changes(&commit_message)?;
-        repo_builder.push_changes(branch_name)?;
+        repo_builder.push_changes(&branch_name)?;
 
         Ok(())
     }
@@ -390,25 +402,11 @@ impl<'a, T: GitRepoBuilder<'a>> GithubIndexPublisher<'a, T> {
 }
 
 #[async_trait]
-impl IndexPublisher for GithubIndexPublisher<'_, GithubRepoBuilder> {
+impl IndexPublisher for GithubIndexPublisher<GithubRepoBuilder> {
     async fn publish_entry(self, package_entry: PackageEntry) -> Result<(), IndexPublishError> {
-        // Clone the Arc for the blocking task (cheap)
-        let builder_arc = Arc::clone(&self.repo_builder);
-        let namespace = self.namespace.clone();
-        let chunk_size = self.chunk_size;
-
-        // Move the Arc clone and other data into spawn_blocking
-        task::spawn_blocking(move || {
-            // Call the static blocking function, passing a reference to the Mutex inside the Arc
-            GithubIndexPublisher::process_repo_blocking(
-                &builder_arc,
-                &namespace,
-                chunk_size,
-                &package_entry,
-            )
-        })
-        .await
-        .map_err(|e| IndexPublishError::RepoError(format!("Blocking task JoinError: {}", e)))??
+        task::spawn_blocking(move || self.process_repo(&package_entry))
+            .await
+            .map_err(|e| IndexPublishError::RepoError(format!("Blocking task JoinError: {}", e)))?
     }
 }
 
@@ -418,11 +416,7 @@ struct MockGithubRepoBuilder {
 }
 
 #[cfg(test)]
-impl<'a> GitRepoBuilder<'a> for MockGithubRepoBuilder {
-    fn clone_and_resolve_head(&'a self) -> Result<git2::Reference<'a>, IndexPublishError> {
-        Ok(self.repo.head().unwrap())
-    }
-
+impl GitRepoBuilder for MockGithubRepoBuilder {
     fn update_and_checkout_default_branch(
         &self,
         _branch_name: &str,
@@ -441,24 +435,39 @@ impl<'a> GitRepoBuilder<'a> for MockGithubRepoBuilder {
     fn path(&self) -> Result<&std::path::Path, IndexPublishError> {
         Ok(self.repo.path().parent().unwrap())
     }
+
+    fn resolve_default_branch_name(&self) -> Result<String, IndexPublishError> {
+        Ok("master".to_string())
+    }
+
+    fn repo(&self) -> &git2::Repository {
+        &self.repo
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use std::{
+        path::Path,
+        sync::{Arc, Mutex},
+    };
 
     use forc_pkg::source::reg::file_location::Namespace;
 
     use super::{GithubIndexPublisher, MockGithubRepoBuilder};
 
-    fn mock_github_index_publisher<'a>(
+    fn mock_github_index_publisher(
         path: &Path,
         chunk_size: usize,
         namespace: Namespace,
-    ) -> GithubIndexPublisher<'a, MockGithubRepoBuilder> {
+    ) -> GithubIndexPublisher<MockGithubRepoBuilder> {
         let repo = git2::Repository::init(path).unwrap();
         let mock_repo_builder = MockGithubRepoBuilder { repo };
-        GithubIndexPublisher::new(chunk_size, namespace, &mock_repo_builder)
+        GithubIndexPublisher::new(
+            chunk_size,
+            namespace,
+            Arc::new(Mutex::new(mock_repo_builder)),
+        )
     }
 
     #[test]

@@ -36,6 +36,9 @@ pub enum IndexPublishError {
     #[error("Failed to read or write package data: {0}")]
     PackageDataError(String),
 
+    #[error("Git relatated error: {0}")]
+    Git2Error(#[from] git2::Error),
+
     #[error("Repository error: {0}")]
     RepoError(String),
 }
