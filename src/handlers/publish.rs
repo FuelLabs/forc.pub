@@ -3,8 +3,11 @@ use crate::db::error::DatabaseError;
 use crate::db::Database;
 use crate::index::handler::{IndexPublishError, IndexPublisher};
 use crate::models::{ApiToken, NewPackageDep};
-use forc_pkg::source::reg::file_location::Namespace;
-use forc_pkg::source::reg::index_file::{PackageDependencyIdentifier, PackageEntry};
+use forc_pkg::source::reg::{
+    self,
+    file_location::Namespace,
+    index_file::{PackageDependencyIdentifier, PackageEntry},
+};
 use forc_pkg::PackageManifest;
 use semver::Version;
 use thiserror::Error;
@@ -155,10 +158,14 @@ pub async fn handle_publish(
         dependencies,
     );
 
+    let repo_name = reg::GithubRegistryResolver::DEFAULT_REPO_NAME;
+    let repo_org = reg::GithubRegistryResolver::DEFAULT_GITHUB_ORG;
+    let chunk_size = reg::GithubRegistryResolver::DEFAULT_CHUNKING_SIZE;
+
     let github_index_publisher = crate::index::handler::git::GithubIndexPublisher::new(
-        "kayagokalp".to_string(),
-        "dummy-forc.pub-index".to_string(),
-        2,
+        repo_org.to_string(),
+        repo_name.to_string(),
+        chunk_size,
         Namespace::Flat,
     );
 
