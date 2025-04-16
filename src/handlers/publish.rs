@@ -1,6 +1,7 @@
 use crate::api::publish::PublishRequest;
 use crate::db::error::DatabaseError;
 use crate::db::Database;
+use crate::index::handler::git::GithubRepoBuilder;
 use crate::index::handler::{IndexPublishError, IndexPublisher};
 use crate::models::{ApiToken, NewPackageDep};
 use forc_pkg::source::reg::{
@@ -10,6 +11,7 @@ use forc_pkg::source::reg::{
 };
 use forc_pkg::PackageManifest;
 use semver::Version;
+use tempfile::TempDir;
 use thiserror::Error;
 use tracing::error;
 use tracing::info;
@@ -160,15 +162,21 @@ pub async fn handle_publish(
         yanked,
     );
 
-    let repo_name = reg::GithubRegistryResolver::DEFAULT_REPO_NAME;
-    let repo_org = reg::GithubRegistryResolver::DEFAULT_GITHUB_ORG;
+    //    let repo_name = reg::GithubRegistryResolver::DEFAULT_REPO_NAME;
+    //   let repo_org = reg::GithubRegistryResolver::DEFAULT_GITHUB_ORG;
+    let repo_name = "dummy-forc.pub-index";
+    let repo_org = "kayagokalp";
     let chunk_size = reg::GithubRegistryResolver::DEFAULT_CHUNKING_SIZE;
 
+    // TODO: fix this
+    let tmpdir = TempDir::new().unwrap();
+    let tmp_path = tmpdir.path();
+    println!("created tmp dir {tmp_path:?}");
+    let github_repo_builder = GithubRepoBuilder::with_repo_details(repo_name, repo_org, tmp_path)?;
     let github_index_publisher = crate::index::handler::git::GithubIndexPublisher::new(
-        repo_org.to_string(),
-        repo_name.to_string(),
         chunk_size,
         Namespace::Flat,
+        &github_repo_builder,
     );
 
     github_index_publisher.publish_entry(package_entry).await?;
