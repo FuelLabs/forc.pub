@@ -1,5 +1,6 @@
+use crate::file_uploader::FileUploader;
+use crate::file_uploader::{pinata::PinataClient, s3::S3Client};
 use crate::models::NewUpload;
-use crate::pinata::PinataClient;
 use flate2::{
     Compression,
     {read::GzDecoder, write::GzEncoder},
@@ -41,6 +42,9 @@ pub enum UploadError {
     #[error("Failed to open file.")]
     OpenFile,
 
+    #[error("Failed to read file.")]
+    ReadFile,
+
     #[error("Failed to copy files.")]
     CopyFiles,
 
@@ -53,8 +57,11 @@ pub enum UploadError {
     #[error("Failed to authenticate.")]
     Authentication,
 
-    #[error("Failed to upload to IPFS.")]
-    Ipfs,
+    #[error("Failed to upload to IPFS. Err: {0}")]
+    IpfsUploadFailed(String),
+
+    #[error("Failed to upload to S3. Err: {0}")]
+    S3UploadFailed(String),
 
     #[error("Failed to generate bytecode ID. Err: {0}")]
     BytecodeId(String),
@@ -75,13 +82,13 @@ pub enum UploadError {
 /// 3. Storing the source code tarball and ABI file in IPFS
 ///
 /// Returns a [NewUpload] with the necessary information to store in the database.
-pub async fn handle_project_upload(
-    upload_dir: &Path,
+pub async fn handle_project_upload<'a>(
+    upload_dir: &'a Path,
     upload_id: &Uuid,
     orig_tarball_path: &PathBuf,
     forc_path: &Path,
     forc_version: String,
-    pinata_client: &impl PinataClient,
+    file_uploader: &FileUploader<'a, impl PinataClient, impl S3Client>,
 ) -> Result<NewUpload, UploadError> {
     let unpacked_dir = upload_dir.join(UNPACKED_DIR);
     let release_dir = unpacked_dir.join(RELEASE_DIR);
@@ -157,9 +164,7 @@ pub async fn handle_project_upload(
     enc.finish().map_err(|_| UploadError::CopyFiles)?;
 
     // Store the tarball in IPFS.
-    let tarball_ipfs_hash = pinata_client
-        .upload_file_to_ipfs(&final_tarball_path)
-        .await?;
+    let tarball_ipfs_hash = file_uploader.upload_file(&final_tarball_path).await?;
 
     fn find_file_in_dir_by_suffix(dir: &Path, suffix: &str) -> Option<PathBuf> {
         let dir = fs::read_dir(dir).ok()?;
@@ -183,7 +188,7 @@ pub async fn handle_project_upload(
 
     // Store the ABI in IPFS.
     let abi_ipfs_hash = match find_file_in_dir_by_suffix(&release_dir, "-abi.json") {
-        Some(abi_path) => Some(pinata_client.upload_file_to_ipfs(&abi_path).await?),
+        Some(abi_path) => Some(file_uploader.upload_file(&abi_path).await?),
         None => None,
     };
 
@@ -256,7 +261,7 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pinata::MockPinataClient;
+    use crate::file_uploader::tests::get_mock_file_uploader;
     use serial_test::serial;
 
     #[tokio::test]
@@ -272,7 +277,7 @@ mod tests {
         let forc_path = fs::canonicalize(forc_path.clone()).expect("forc path ok");
         install_forc_at_path(forc_version, &forc_path).expect("forc installed");
 
-        let mock_client = MockPinataClient::new().await.expect("mock pinata client");
+        let mock_file_uploader = get_mock_file_uploader();
 
         let result = handle_project_upload(
             &upload_dir,
@@ -280,7 +285,7 @@ mod tests {
             &orig_tarball_path,
             &forc_path,
             forc_version.to_string(),
-            &mock_client,
+            &mock_file_uploader,
         )
         .await
         .expect("result ok");

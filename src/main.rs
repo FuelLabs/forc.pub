@@ -14,13 +14,17 @@ use forc_pub::api::{
     ApiResult, EmptyResponse,
 };
 use forc_pub::db::Database;
+use forc_pub::file_uploader::s3::{S3Client, S3ClientImpl};
+use forc_pub::file_uploader::{
+    pinata::{PinataClient, PinataClientImpl},
+    FileUploader,
+};
 use forc_pub::github::handle_login;
 use forc_pub::handlers::publish::handle_publish;
 use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, UploadError};
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::pinata::{PinataClient, PinataClientImpl};
 use forc_pub::util::validate_or_format_semver;
 use rocket::{
     data::Capped,
@@ -130,6 +134,7 @@ async fn publish(
 async fn upload_project(
     db: &State<Database>,
     pinata_client: &State<PinataClientImpl>,
+    s3_client: &State<S3ClientImpl>,
     forc_version: &str,
     mut tarball: Capped<TempFile<'_>>,
 ) -> ApiResult<UploadResponse> {
@@ -166,13 +171,14 @@ async fn upload_project(
         .map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
 
     // Handle the project upload and store the metadata in the database.
+    let file_uploader = FileUploader::new(pinata_client.inner(), s3_client.inner());
     let upload_entry = handle_project_upload(
         &upload_dir,
         &upload_id,
         &orig_tarball_path,
         &forc_path,
         forc_version.to_string(),
-        pinata_client.inner(),
+        &file_uploader,
     )
     .await?;
 
@@ -251,6 +257,8 @@ async fn rocket() -> _ {
         .with_max_level(LevelFilter::INFO)
         .init();
 
+    let s3_client = S3ClientImpl::new().await.expect("s3 client");
+
     let pinata_client = PinataClientImpl::new().await.expect("pinata client");
 
     info!("Starting forc.pub server");
@@ -258,6 +266,7 @@ async fn rocket() -> _ {
     rocket::build()
         .manage(Database::default())
         .manage(pinata_client)
+        .manage(s3_client)
         .attach(Cors)
         .mount(
             "/",

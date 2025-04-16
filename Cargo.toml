@@ -37,3 +37,5 @@ forc-util = "0.67.0"
 async-trait = "0.1.88"
 forc-pkg = { git = "https://github.com/FuelLabs/sway/", branch = "kayagokalp/6903" }
 git2 = "0.19.0"
+aws-sdk-s3 = "1.77"
+aws-config = "1.5.17"
