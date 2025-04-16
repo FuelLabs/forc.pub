@@ -78,7 +78,7 @@ cargo run --bin forc.pub
 Before starting the server, the local database must be up and running.
 
 ```sh
-./scripts/start_local_db.sh
+docker compose up
 ```
 
 Next, set up the environment by copying `.env.example` to `.env.local`, and modifying `.env.local` with your Pinata test gateway details and Github App env (if testing github login functionality).
