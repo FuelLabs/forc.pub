@@ -35,7 +35,7 @@ chrono = { version = "0.4", features = ["serde"] }
 url = { version = "2.5", features = ["serde"] }
 forc-util = "0.67.0"
 async-trait = "0.1.88"
-forc-pkg = { git = "https://github.com/FuelLabs/sway/", branch = "kayagokalp/6903" }
+forc-pkg = { git = "https://github.com/FuelLabs/sway/", rev = "f4477cfb909e6d153133df352c147d4ee2ad6f3f" }
 git2 = "0.19.0"
 aws-sdk-s3 = "1.77"
 aws-config = "1.5.17"

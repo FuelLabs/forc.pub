@@ -149,6 +149,7 @@ pub async fn handle_publish(
         .into_iter()
         .map(PackageDependencyIdentifier::from)
         .collect();
+    let yanked = false;
 
     let package_entry = PackageEntry::new(
         package_name,
@@ -156,6 +157,7 @@ pub async fn handle_publish(
         source_cid,
         abi_cid,
         dependencies,
+        yanked,
     );
 
     let repo_name = reg::GithubRegistryResolver::DEFAULT_REPO_NAME;
