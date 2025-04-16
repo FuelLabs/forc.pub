@@ -1539,8 +1539,8 @@ dependencies = [
  "byte-unit",
  "cid",
  "flate2",
- "forc-tracing 0.67.0",
- "forc-util 0.67.0",
+ "forc-tracing 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "forc-util 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "fuel-abi-types",
  "futures",
  "git2",
@@ -1554,11 +1554,11 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "serde_with",
- "sway-core 0.67.0",
- "sway-error 0.67.0",
- "sway-features 0.67.0",
- "sway-types 0.67.0",
- "sway-utils 0.67.0",
+ "sway-core 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-error 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-features 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-utils 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "sysinfo",
  "tar",
  "toml 0.8.20",
@@ -1570,9 +1570,9 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a731535c87a99db4e3f3e80ad65cb62d125f0f898be57660c075989474602f20"
+checksum = "c81ec9672413a0cadedb2791aa6208c415523f7f9a430bc8516da00587439ce6"
 dependencies = [
  "ansiterm",
  "tracing",
@@ -1591,9 +1591,9 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9e27d1594fca235aeb240c3ef9ed7bdd9d594450201169aa5dfcc7fbddf40b1"
+checksum = "f1b51eec060c72c1229c5e60d45d9eb3dc21ef62d28e5ecfe1f87121deb9be27"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -1601,7 +1601,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.66.10",
+ "forc-tracing 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fuel-asm",
  "hex",
  "paste",
@@ -1610,10 +1610,10 @@ dependencies = [
  "serde_json",
  "serial_test",
  "sha2",
- "sway-core 0.66.10",
- "sway-error 0.66.10",
- "sway-types 0.66.10",
- "sway-utils 0.66.10",
+ "sway-core 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-error 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-utils 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -1630,7 +1630,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.67.0",
+ "forc-tracing 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "fuel-asm",
  "hex",
  "paste",
@@ -1639,10 +1639,10 @@ dependencies = [
  "serde_json",
  "serial_test",
  "sha2",
- "sway-core 0.67.0",
- "sway-error 0.67.0",
- "sway-types 0.67.0",
- "sway-utils 0.67.0",
+ "sway-core 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-error 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-utils 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -1659,7 +1659,7 @@ dependencies = [
  "dotenvy",
  "flate2",
  "forc-pkg",
- "forc-util 0.66.10",
+ "forc-util 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "git2",
  "hex",
  "nanoid",
@@ -4872,16 +4872,16 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5db86780c84181cae499a3684e004ec7063a33830cd5d06a49eaa1c081126448"
+checksum = "05fe2202c2b709e9833201462d26837aae6b8d04662f97d579e08087e4ccae2a"
 dependencies = [
  "extension-trait",
  "num-bigint",
  "num-traits",
  "serde",
- "sway-error 0.66.10",
- "sway-types 0.66.10",
+ "sway-error 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -4893,15 +4893,15 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "serde",
- "sway-error 0.67.0",
- "sway-types 0.67.0",
+ "sway-error 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
 ]
 
 [[package]]
 name = "sway-core"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c726b929a3dca12887119173fe0c46be55c5d2aac7e7dfda3f6b71e847e19947"
+checksum = "3ea36c3008f63e3a7226f0c3fa30a00e20b3c1d752a701a421bd1183231c3813"
 dependencies = [
  "clap",
  "dirs 5.0.1",
@@ -4929,13 +4929,13 @@ dependencies = [
  "serde_json",
  "sha2",
  "strum 0.26.3",
- "sway-ast 0.66.10",
- "sway-error 0.66.10",
- "sway-features 0.66.10",
- "sway-ir 0.66.10",
- "sway-parse 0.66.10",
- "sway-types 0.66.10",
- "sway-utils 0.66.10",
+ "sway-ast 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-error 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-features 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-ir 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-parse 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-utils 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
@@ -4974,13 +4974,13 @@ dependencies = [
  "serde_json",
  "sha2",
  "strum 0.26.3",
- "sway-ast 0.67.0",
- "sway-error 0.67.0",
- "sway-features 0.67.0",
- "sway-ir 0.67.0",
- "sway-parse 0.67.0",
- "sway-types 0.67.0",
- "sway-utils 0.67.0",
+ "sway-ast 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-error 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-features 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-ir 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-parse 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-utils 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
@@ -4990,16 +4990,16 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c55d89bd1c011383bbfb93a9ae67144cfe3b9cbe9d88c29b10aa0c5bada658fc"
+checksum = "d905f0dc6ee8a6c10ead856e0dd00aa211581f45e6d18b5916b6e4bd2af6b7a8"
 dependencies = [
  "either",
  "in_definite",
  "num-traits",
  "smallvec",
  "strsim 0.11.1",
- "sway-types 0.66.10",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.0.69",
 ]
 
@@ -5013,20 +5013,20 @@ dependencies = [
  "num-traits",
  "smallvec",
  "strsim 0.11.1",
- "sway-types 0.67.0",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "sway-features"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1435e3d9c8ee93e1b996112d5491331977c13b8689b876b883eccc12ba29570"
+checksum = "2691c87e183b2b119725a0e6cf6dfa228cc3f23d504f75ddfbc66ce3e52cd475"
 dependencies = [
  "clap",
  "paste",
- "sway-error 0.66.10",
- "sway-types 0.66.10",
+ "sway-error 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -5036,15 +5036,15 @@ source = "git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903#89e3e5c
 dependencies = [
  "clap",
  "paste",
- "sway-error 0.67.0",
- "sway-types 0.67.0",
+ "sway-error 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
 ]
 
 [[package]]
 name = "sway-ir"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21501861c5763bd8b87ad3aadd8d82d43df185edd29971752ca1c18554a14215"
+checksum = "d3c8c878206bc30ee3e62c05c1cc6ff0dcc38439d9846b1dfae35a1adeb63b02"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -5057,10 +5057,10 @@ dependencies = [
  "rustc-hash",
  "serde",
  "slotmap",
- "sway-features 0.66.10",
- "sway-ir-macros 0.66.10",
- "sway-types 0.66.10",
- "sway-utils 0.66.10",
+ "sway-features 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-ir-macros 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-utils 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -5079,17 +5079,17 @@ dependencies = [
  "rustc-hash",
  "serde",
  "slotmap",
- "sway-features 0.67.0",
- "sway-ir-macros 0.67.0",
- "sway-types 0.67.0",
- "sway-utils 0.67.0",
+ "sway-features 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-ir-macros 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-utils 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
 ]
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2a993062ef32bef59a45d5ee9d0fcdba7d3c5b86e27e229c69636f3d04154c2"
+checksum = "f6eb7292959be36b1c7c0eb0da95644454bce67500b1fa7743cf54f5152c90dc"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -5110,17 +5110,17 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc6a89afc0c3bf6c074ddaeade0162fc74ec043b1918898307856860bc4a19f5"
+checksum = "8262f745bd7659e159e54ae22080bfc320ef5f13e2797c30cf0f6d0686463684"
 dependencies = [
  "extension-trait",
  "num-bigint",
  "num-traits",
  "phf",
- "sway-ast 0.66.10",
- "sway-error 0.66.10",
- "sway-types 0.66.10",
+ "sway-ast 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-error 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sway-types 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.0.69",
  "unicode-bidi",
  "unicode-xid",
@@ -5135,9 +5135,9 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "phf",
- "sway-ast 0.67.0",
- "sway-error 0.67.0",
- "sway-types 0.67.0",
+ "sway-ast 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-error 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
+ "sway-types 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "thiserror 1.0.69",
  "unicode-bidi",
  "unicode-xid",
@@ -5145,9 +5145,9 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cddd0de6cc409728db1e6036a8e2d3dd6354e389683c10d2042c48b7930a613d"
+checksum = "b33cd2b31b99ce2e63916742f1b6e579210a7b316743ca4c9b1ffe8ce39bc8b6"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -5160,7 +5160,7 @@ dependencies = [
  "parking_lot",
  "rustc-hash",
  "serde",
- "sway-utils 0.66.10",
+ "sway-utils 0.67.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.0.69",
 ]
 
@@ -5180,15 +5180,15 @@ dependencies = [
  "parking_lot",
  "rustc-hash",
  "serde",
- "sway-utils 0.67.0",
+ "sway-utils 0.67.0 (git+https://github.com/FuelLabs/sway/?branch=kayagokalp%2F6903)",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "sway-utils"
-version = "0.66.10"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f01801a50c3e05b491d4fb4c3951fd7d3168fe97c46b4289141d05a3234306e"
+checksum = "fbd471232137295cc92032abb419172cf01ff949d367e8648a12028a67617843"
 dependencies = [
  "serde",
  "walkdir",

@@ -49,9 +49,7 @@ impl GithubIndexPublisher {
         );
 
         // Create a temporary directory
-        let tmp_dir = TempDir::new().map_err(|e| {
-            IndexPublishError::FileSystemError(format!("Failed to create temp dir: {}", e))
-        })?;
+        let tmp_dir = TempDir::new()?;
         let tmp_path = tmp_dir.path();
 
         // Configure callbacks for SSH authentication
@@ -64,12 +62,12 @@ impl GithubIndexPublisher {
             .fetch_options(fetch_opts)
             .clone(&repo_url, tmp_path)
             .map_err(|e| {
-                IndexPublishError::CloneError(format!("Failed to clone repository: {}", e))
+                IndexPublishError::RepoError(format!("Failed to clone repository: {}", e))
             })?;
 
-        let head_ref = repo.head().map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to get HEAD: {}", e))
-        })?;
+        let head_ref = repo
+            .head()
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get HEAD: {}", e)))?;
         let branch_name = head_ref.shorthand().unwrap_or("HEAD");
 
         self.update_and_checkout_default_branch(&repo, branch_name)?;
@@ -110,9 +108,9 @@ impl GithubIndexPublisher {
         fetch_opts.remote_callbacks(callbacks);
 
         // Fetch from origin to get latest changes
-        let mut remote = repo.find_remote("origin").map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to find remote: {}", e))
-        })?;
+        let mut remote = repo
+            .find_remote("origin")
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {}", e)))?;
 
         remote
             .fetch(
@@ -127,23 +125,23 @@ impl GithubIndexPublisher {
         // Find the remote branch reference
         let remote_ref_name = format!("refs/remotes/origin/{}", branch_name);
         let remote_ref = repo.find_reference(&remote_ref_name).map_err(|e| {
-            IndexPublishError::UnexpectedError(format!(
+            IndexPublishError::RepoError(format!(
                 "Failed to find reference {}: {}",
                 remote_ref_name, e
             ))
         })?;
 
-        let commit_oid = remote_ref.target().ok_or_else(|| {
-            IndexPublishError::UnexpectedError("Failed to get target OID".to_string())
-        })?;
+        let commit_oid = remote_ref
+            .target()
+            .ok_or_else(|| IndexPublishError::RepoError("Failed to get target OID".to_string()))?;
 
         // Reset to remote state to ensure clean state
-        let obj = repo.find_object(commit_oid, None).map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to find object: {}", e))
-        })?;
+        let obj = repo
+            .find_object(commit_oid, None)
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find object: {}", e)))?;
 
         repo.reset(&obj, git2::ResetType::Hard, None).map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to reset repository: {}", e))
+            IndexPublishError::RepoError(format!("Failed to reset repository: {}", e))
         })?;
 
         // Checkout
@@ -151,14 +149,10 @@ impl GithubIndexPublisher {
         // Force checkout to ensure clean state
         checkout_builder.force();
         repo.checkout_tree(&obj, Some(&mut checkout_builder))
-            .map_err(|e| {
-                IndexPublishError::UnexpectedError(format!("Failed to checkout tree: {}", e))
-            })?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to checkout tree: {}", e)))?;
 
         repo.set_head(&format!("refs/heads/{}", branch_name))
-            .map_err(|e| {
-                IndexPublishError::UnexpectedError(format!("Failed to set HEAD: {}", e))
-            })?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to set HEAD: {}", e)))?;
 
         Ok(())
     }
@@ -176,23 +170,15 @@ impl GithubIndexPublisher {
 
         // Create parent directories if they don't exist
         if let Some(parent) = package_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| {
-                IndexPublishError::FileSystemError(format!("Failed to create directories: {}", e))
-            })?;
+            fs::create_dir_all(parent)?;
         }
 
         // Check if the package already exists and handle versioning
         if package_path.exists() {
             // Read existing package entries
-            let existing_content = fs::read_to_string(&package_path).map_err(|e| {
-                IndexPublishError::FileSystemError(format!(
-                    "Failed to read existing package: {}",
-                    e
-                ))
-            })?;
+            let existing_content = fs::read_to_string(&package_path)?;
 
-            // TODO: error handling.
-            let mut index_file: IndexFile = serde_json::from_str(&existing_content).unwrap();
+            let mut index_file: IndexFile = serde_json::from_str(&existing_content)?;
 
             if index_file.get(package_entry.version()).is_some() {
                 return Err(IndexPublishError::VersionCollision(
@@ -202,19 +188,15 @@ impl GithubIndexPublisher {
             }
 
             index_file.insert(package_entry.clone());
-            let new_content = serde_json::to_string(&index_file).unwrap();
+            let new_content = serde_json::to_string(&index_file)?;
 
-            fs::write(package_path, new_content).map_err(|e| {
-                IndexPublishError::FileSystemError(format!("Failed to write package entry: {}", e))
-            })?;
+            fs::write(package_path, new_content)?;
         } else {
             // Write the new entry
             let mut index_file = IndexFile::default();
             index_file.insert(package_entry.clone());
-            let new_content = serde_json::to_string(&index_file).unwrap();
-            fs::write(package_path, new_content).map_err(|e| {
-                IndexPublishError::FileSystemError(format!("Failed to write package entry: {}", e))
-            })?;
+            let new_content = serde_json::to_string(&index_file)?;
+            fs::write(package_path, new_content)?;
         }
 
         Ok(())
@@ -227,56 +209,56 @@ impl GithubIndexPublisher {
         commit_message: &str,
     ) -> Result<Oid, IndexPublishError> {
         // Add all changes to index
-        let mut index = repo.index().map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to get index: {}", e))
-        })?;
+        let mut index = repo
+            .index()
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get index: {}", e)))?;
 
         // Add all files
         index
             .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
             .map_err(|e| {
-                IndexPublishError::UnexpectedError(format!("Failed to add files to index: {}", e))
+                IndexPublishError::RepoError(format!("Failed to add files to index: {}", e))
             })?;
 
         // Check if there are any changes
-        let status = repo.statuses(None).map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to get status: {}", e))
-        })?;
+        let status = repo
+            .statuses(None)
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get status: {}", e)))?;
 
         if status.is_empty() {
             return Err(IndexPublishError::NoChanges);
         }
 
         // Write index
-        index.write().map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to write index: {}", e))
-        })?;
+        index
+            .write()
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to write index: {}", e)))?;
 
         // Create tree from index
-        let tree_id = index.write_tree().map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to write tree: {}", e))
-        })?;
+        let tree_id = index
+            .write_tree()
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to write tree: {}", e)))?;
 
-        let tree = repo.find_tree(tree_id).map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to find tree: {}", e))
-        })?;
+        let tree = repo
+            .find_tree(tree_id)
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find tree: {}", e)))?;
 
         // Get the current HEAD commit to use as parent
-        let head = repo.head().map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to get HEAD: {}", e))
-        })?;
+        let head = repo
+            .head()
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get HEAD: {}", e)))?;
 
-        let head_target = head.target().ok_or_else(|| {
-            IndexPublishError::UnexpectedError("Couldn't get HEAD target".to_string())
-        })?;
+        let head_target = head
+            .target()
+            .ok_or_else(|| IndexPublishError::RepoError("Couldn't get HEAD target".to_string()))?;
 
-        let parent_commit = repo.find_commit(head_target).map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to find commit: {}", e))
-        })?;
+        let parent_commit = repo
+            .find_commit(head_target)
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find commit: {}", e)))?;
 
         // Create the signature for the commit
         let signature = Signature::now("Package Index", "forc-pub@fuel.sh").map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to create signature: {}", e))
+            IndexPublishError::RepoError(format!("Failed to create signature: {}", e))
         })?;
 
         // Create the commit
@@ -289,18 +271,16 @@ impl GithubIndexPublisher {
                 &tree,             // Tree
                 &[&parent_commit], // Parents
             )
-            .map_err(|e| {
-                IndexPublishError::UnexpectedError(format!("Failed to create commit: {}", e))
-            })?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to create commit: {}", e)))?;
 
         Ok(commit_id)
     }
 
     /// Pushes changes to the remote GitHub repository
     fn push_changes(&self, repo: &Repository, branch_name: &str) -> Result<(), IndexPublishError> {
-        let mut remote = repo.find_remote("origin").map_err(|e| {
-            IndexPublishError::UnexpectedError(format!("Failed to find remote: {}", e))
-        })?;
+        let mut remote = repo
+            .find_remote("origin")
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {}", e)))?;
 
         // Configure callbacks for SSH authentication
         let mut callbacks = RemoteCallbacks::new();

@@ -33,7 +33,7 @@ tracing-subscriber = "0.3.19"
 tempfile = "3.17"
 chrono = { version = "0.4", features = ["serde"] }
 url = { version = "2.5", features = ["serde"] }
-forc-util = "0.66.7"
+forc-util = "0.67.0"
 async-trait = "0.1.88"
 forc-pkg = { git = "https://github.com/FuelLabs/sway/", branch = "kayagokalp/6903" }
 git2 = "0.19.0"

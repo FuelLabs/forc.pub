@@ -24,8 +24,11 @@ pub enum IndexPublishError {
     #[error("Failed to push changes to remote: {0}")]
     PushError(String),
 
+    #[error("Failed to parse index file: {0}")]
+    ParseError(#[from] serde_json::Error),
+
     #[error("Package index file error: {0}")]
-    FileSystemError(String),
+    FileSystemError(#[from] std::io::Error),
 
     #[error("No changes to commit")]
     NoChanges,
@@ -33,8 +36,8 @@ pub enum IndexPublishError {
     #[error("Failed to read or write package data: {0}")]
     PackageDataError(String),
 
-    #[error("Unexpected error: {0}")]
-    UnexpectedError(String),
+    #[error("Repository error: {0}")]
+    RepoError(String),
 }
 
 #[async_trait]
