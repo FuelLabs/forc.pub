@@ -4,10 +4,8 @@ use forc_pkg::source::reg::{
     file_location::{location_from_root, Namespace},
     index_file::{IndexFile, PackageEntry},
 };
-use git2::{Cred, FetchOptions, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
-use std::env;
-use std::fs;
-use std::path::Path;
+use git2::{FetchOptions, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
+use std::{env, fs, path::Path};
 use tempfile::TempDir;
 use tokio::task;
 
@@ -17,6 +15,41 @@ pub struct GithubIndexPublisher {
     repo_name: String,
     chunk_size: usize,
     namespace: Namespace,
+}
+
+const SSH_KEY_ENV_VAR: &str = "SSH_KEY";
+
+/// A git credentials handler specifically for reading the ssh key or its path
+/// from `SSH_KEY` environment variable.
+pub fn git_credentials_callback(
+    _user: &str,
+    user_from_url: Option<&str>,
+    _cred: git2::CredentialType,
+) -> Result<git2::Cred, git2::Error> {
+    let user = user_from_url.unwrap_or("git");
+
+    match env::var(SSH_KEY_ENV_VAR) {
+        Ok(k) => {
+            let key_path = std::path::Path::new(&k);
+
+            if key_path.exists() {
+                git2::Cred::ssh_key(user, None, key_path, None)
+            } else {
+                git2::Cred::ssh_key_from_memory(user, None, &k, None)
+            }
+        }
+        _ => Err(git2::Error::from_str(
+            "unable to get private key from SSH_KEY env variables",
+        )),
+    }
+}
+
+/// Configure callbacks for SSH authentication and return an `RemoteCallbacks`
+/// Ready to be used with any authentication process.
+fn remote_callbacks() -> RemoteCallbacks<'static> {
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(git_credentials_callback);
+    callbacks
 }
 
 impl GithubIndexPublisher {
@@ -35,25 +68,15 @@ impl GithubIndexPublisher {
         }
     }
 
-    fn get_pat_token(&self) -> String {
-        env::var("GITHUB_TOKEN").unwrap()
-    }
-
     /// Process the GitHub repository and publish the package entry.
     fn process_repo(&self, package_entry: &PackageEntry) -> Result<(), IndexPublishError> {
-        let repo_url = format!(
-            "https://{}@github.com/{}/{}",
-            self.get_pat_token(),
-            self.repo_owner,
-            self.repo_name
-        );
-
+        let repo_url = format!("git@github.com:{}/{}.git", self.repo_owner, self.repo_name);
         // Create a temporary directory
         let tmp_dir = TempDir::new()?;
         let tmp_path = tmp_dir.path();
 
         // Configure callbacks for SSH authentication
-        let callbacks = RemoteCallbacks::new();
+        let callbacks = remote_callbacks();
 
         let mut fetch_opts = FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
@@ -88,8 +111,6 @@ impl GithubIndexPublisher {
         };
 
         self.stage_and_commit_changes(&repo, &commit_message)?;
-
-        // Push changes to remote
         self.push_changes(&repo, branch_name)?;
 
         Ok(())
@@ -102,7 +123,7 @@ impl GithubIndexPublisher {
         branch_name: &str,
     ) -> Result<(), IndexPublishError> {
         // Configure SSH authentication for fetch
-        let callbacks = RemoteCallbacks::new();
+        let callbacks = remote_callbacks();
 
         let mut fetch_opts = FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
@@ -283,11 +304,7 @@ impl GithubIndexPublisher {
             .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {}", e)))?;
 
         // Configure callbacks for SSH authentication
-        let mut callbacks = RemoteCallbacks::new();
-
-        callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
-            Cred::userpass_plaintext(&self.get_pat_token(), "")
-        });
+        let callbacks = remote_callbacks();
 
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);
