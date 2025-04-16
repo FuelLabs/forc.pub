@@ -78,9 +78,9 @@ impl GitRepoBuilder for GithubRepoBuilder {
         // folder.
         let git_folder = self.repo.path();
         // We need to get the actual parent/root directory.
-        Ok(git_folder.parent().ok_or_else(|| {
+        git_folder.parent().ok_or_else(|| {
             IndexPublishError::RepoError("internal error: invalid git repo path".to_string())
-        })?)
+        })
     }
 
     fn resolve_default_branch_name(&self) -> Result<String, IndexPublishError> {
@@ -402,7 +402,10 @@ impl<T: GitRepoBuilder> GithubIndexPublisher<T> {
 }
 
 #[async_trait]
-impl IndexPublisher for GithubIndexPublisher<GithubRepoBuilder> {
+impl<T: GitRepoBuilder + Send + 'static> IndexPublisher for GithubIndexPublisher<T>
+where
+    T: GitRepoBuilder + Send + 'static,
+{
     async fn publish_entry(self, package_entry: PackageEntry) -> Result<(), IndexPublishError> {
         task::spawn_blocking(move || self.process_repo(&package_entry))
             .await
@@ -410,9 +413,23 @@ impl IndexPublisher for GithubIndexPublisher<GithubRepoBuilder> {
     }
 }
 
+// --- Mock Implementation ---
 #[cfg(test)]
 struct MockGithubRepoBuilder {
     repo: git2::Repository,
+}
+
+#[cfg(test)]
+impl MockGithubRepoBuilder {
+    // Helper to create the mock, including initializing the repo
+    fn new(path: &Path) -> Self {
+        // Ensure the target directory exists
+        fs::create_dir_all(path).expect("Failed to create mock repo directory");
+        // Initialize a bare repo so path calculations work
+        let repo = git2::Repository::init_bare(path.join(".git")) // Init bare usually sufficient
+            .expect("Failed to initialize mock git repository");
+        Self { repo }
+    }
 }
 
 #[cfg(test)]
@@ -433,7 +450,13 @@ impl GitRepoBuilder for MockGithubRepoBuilder {
     }
 
     fn path(&self) -> Result<&std::path::Path, IndexPublishError> {
-        Ok(self.repo.path().parent().unwrap())
+        // `git2::Repository::path` returns the path of the underlying `.git`
+        // folder.
+        let git_folder = self.repo.path();
+        // We need to get the actual parent/root directory.
+        git_folder.parent().ok_or_else(|| {
+            IndexPublishError::RepoError("internal error: invalid git repo path".to_string())
+        })
     }
 
     fn resolve_default_branch_name(&self) -> Result<String, IndexPublishError> {
@@ -447,22 +470,20 @@ impl GitRepoBuilder for MockGithubRepoBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        path::Path,
-        sync::{Arc, Mutex},
-    };
+    use std::str::FromStr;
 
-    use forc_pkg::source::reg::file_location::Namespace;
+    use super::*; // Import necessary items from parent module
+    use forc_pkg::source::reg::file_location::Namespace; // Make sure this is accessible
+    use tempfile::tempdir; // Use tempfile crate
 
-    use super::{GithubIndexPublisher, MockGithubRepoBuilder};
-
+    // Helper for setting up the publisher with the mock
     fn mock_github_index_publisher(
         path: &Path,
         chunk_size: usize,
         namespace: Namespace,
     ) -> GithubIndexPublisher<MockGithubRepoBuilder> {
-        let repo = git2::Repository::init(path).unwrap();
-        let mock_repo_builder = MockGithubRepoBuilder { repo };
+        // Use the MockGithubRepoBuilder constructor
+        let mock_repo_builder = MockGithubRepoBuilder::new(path);
         GithubIndexPublisher::new(
             chunk_size,
             namespace,
@@ -470,6 +491,164 @@ mod tests {
         )
     }
 
-    #[test]
-    fn index_file_write_test() {}
+    #[tokio::test]
+    async fn publish_new_entry_creates_file() {
+        let tmp_dir = tempdir().unwrap();
+        let repo_path = tmp_dir.path();
+        println!("Test repo path: {:?}", repo_path);
+
+        let chunk_size = 2;
+        let namespace = Namespace::Flat; // Or Domain("test.com") etc.
+        let publisher = mock_github_index_publisher(repo_path, chunk_size, namespace.clone());
+
+        let name = "my-package".to_string();
+        let version = semver::Version::from_str("0.1.0").unwrap();
+        let source_cid = "QmHash".to_string();
+        let abi_cid = None;
+        let dependencies = vec![];
+        let yanked = false;
+
+        let entry = PackageEntry::new(name, version, source_cid, abi_cid, dependencies, yanked);
+
+        // Act
+        publisher.publish_entry(entry.clone()).await.unwrap();
+
+        // Assert
+        // 1. Calculate expected file path
+        let expected_relative_path = location_from_root(chunk_size, &namespace, entry.name());
+        let expected_file_path = repo_path.join(expected_relative_path);
+        println!("Expecting file at: {:?}", expected_file_path);
+
+        // 2. Check file exists
+        assert!(
+            expected_file_path.exists(),
+            "Expected index file was not created at {:?}",
+            expected_file_path
+        );
+
+        // 3. Check file content
+        let content = fs::read_to_string(&expected_file_path).unwrap();
+        let index_file_content: IndexFile =
+            serde_json::from_str(&content).expect("Failed to parse JSON from index file");
+
+        // 4. Verify the entry exists in the parsed content
+        let retrieved_entry = index_file_content.get(entry.version());
+        assert!(
+            retrieved_entry.is_some(),
+            "Entry for version {} not found in index file",
+            entry.version()
+        );
+    }
+
+    #[tokio::test]
+    async fn publish_second_version_appends_to_file() {
+        let tmp_dir = tempdir().unwrap();
+        let repo_path = tmp_dir.path();
+        let chunk_size = 2;
+        let namespace = Namespace::Flat;
+
+        // Setup initial state: Pre-write a file with version 0.1.0
+        let name = "my-package".to_string();
+        let version = semver::Version::from_str("0.1.0").unwrap();
+        let source_cid = "QmHash".to_string();
+        let abi_cid = None;
+        let dependencies = vec![];
+        let yanked = false;
+
+        let entry_v1 = PackageEntry::new(
+            name.clone(),
+            version,
+            source_cid.clone(),
+            abi_cid.clone(),
+            dependencies.clone(),
+            yanked,
+        );
+
+        let relative_path = location_from_root(chunk_size, &namespace, entry_v1.name());
+        let file_path = repo_path.join(&relative_path);
+        fs::create_dir_all(file_path.parent().unwrap()).unwrap();
+        let mut initial_index = IndexFile::default();
+        initial_index.insert(entry_v1.clone());
+        let initial_content = serde_json::to_string_pretty(&initial_index).unwrap();
+        fs::write(&file_path, initial_content).unwrap();
+        println!("Pre-wrote initial file at: {:?}", file_path);
+
+        // Arrange publisher and new entry
+        let publisher = mock_github_index_publisher(repo_path, chunk_size, namespace.clone());
+        let version2 = semver::Version::from_str("0.2.0").unwrap();
+        let entry_v2 = PackageEntry::new(name, version2, source_cid, abi_cid, dependencies, yanked);
+
+        // Act
+        publisher.publish_entry(entry_v2.clone()).await.unwrap();
+
+        // Assert
+        // 1. Check file exists (it should)
+        assert!(file_path.exists(), "Index file should still exist");
+
+        // 2. Check file content contains *both* versions
+        let content = fs::read_to_string(&file_path).unwrap();
+        let index_file_content: IndexFile =
+            serde_json::from_str(&content).expect("Failed to parse JSON from index file");
+
+        // 3. Verify both entries exist
+        let retrieved_entry_v1 = index_file_content.get(entry_v1.version());
+        let retrieved_entry_v2 = index_file_content.get(entry_v2.version());
+
+        assert!(
+            retrieved_entry_v1.is_some(),
+            "Entry for version 0.1.0 missing"
+        );
+
+        assert!(
+            retrieved_entry_v2.is_some(),
+            "Entry for version 0.2.0 missing"
+        );
+    }
+
+    #[tokio::test]
+    async fn publish_same_version_returns_error() {
+        let tmp_dir = tempdir().unwrap();
+        let repo_path = tmp_dir.path();
+        let chunk_size = 2;
+        let namespace = Namespace::Flat;
+
+        // Setup initial state: Pre-write a file with version 0.1.0
+        let name = "my-package".to_string();
+        let version = semver::Version::from_str("0.1.0").unwrap();
+        let source_cid = "QmHash".to_string();
+        let abi_cid = None;
+        let dependencies = vec![];
+        let yanked = false;
+
+        let entry_v1 = PackageEntry::new(name, version, source_cid, abi_cid, dependencies, yanked);
+
+        let relative_path = location_from_root(chunk_size, &namespace, entry_v1.name());
+        let file_path = repo_path.join(&relative_path);
+        fs::create_dir_all(file_path.parent().unwrap()).unwrap();
+        let mut initial_index = IndexFile::default();
+        initial_index.insert(entry_v1.clone());
+        let initial_content = serde_json::to_string_pretty(&initial_index).unwrap();
+        fs::write(&file_path, &initial_content).unwrap();
+
+        // Arrange publisher and the *same* entry again
+        let publisher = mock_github_index_publisher(repo_path, chunk_size, namespace.clone());
+
+        // Act
+        let result = publisher.publish_entry(entry_v1.clone()).await;
+
+        // Assert
+        assert!(result.is_err(), "Expected publish_entry to return an error");
+        match result.err().unwrap() {
+            IndexPublishError::VersionCollision(name, version) => {
+                assert_eq!(name, entry_v1.name());
+                let version = semver::Version::from_str(&version).unwrap();
+                assert_eq!(version, *entry_v1.version());
+            }
+            e => panic!("Expected VersionCollision error, but got {:?}", e),
+        }
+
+        // Assert file content hasn't changed from initial state
+        let content_after = fs::read_to_string(&file_path).unwrap();
+        assert_eq!(content_after.trim(), initial_content.trim());
+    }
 }
