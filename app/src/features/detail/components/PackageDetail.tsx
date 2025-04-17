@@ -7,7 +7,7 @@ import {
   Card,
   CardContent,
   Tabs,
-  Tab as TabNames,
+  Tab,
   CircularProgress,
   Alert,
   Link,
@@ -115,12 +115,12 @@ const PackageDetail: React.FC = () => {
           variant="scrollable"
           scrollButtons="auto"
         >
-          <TabNames label="Readme" className="package-tab" />
-          <TabNames label="Versions" className="package-tab" />
-          <TabNames label="Dependencies" className="package-tab" />
-          <TabNames label="Dependents" className="package-tab" />
-          <TabNames label="Code" className="package-tab" />
-          {data.abiIpfsUrl && <TabNames label="ABI" className="package-tab" />}
+          <Tab label="Readme" className="package-tab" />
+          <Tab label="Versions" className="package-tab" />
+          <Tab label="Dependencies" className="package-tab" />
+          <Tab label="Dependents" className="package-tab" />
+          <Tab label="Code" className="package-tab" />
+          {data.abiIpfsUrl && <Tab label="ABI" className="package-tab" />}
         </Tabs>
 
         <Grid container spacing={4}>
