@@ -20,13 +20,16 @@ import ReactMarkdown from "react-markdown";
 import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
 
+type Tab = "Readme" | "Versions" | "Dependencies" | "Dependents" | "Code" | "ABI";
+const TABS: Tab[] = ["Readme", "Versions", "Dependencies", "Dependents", "Code", "ABI"];
+
 const PackageDetail: React.FC = () => {
   const { name, version } = useParams<{ name: string; version?: string }>();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<Tab>(TABS[0]);
   const { data, loading, error } = usePackageDetail(name!, version);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+    setActiveTab(TABS[newValue]);
   };
 
   if (loading) {
@@ -89,7 +92,7 @@ const PackageDetail: React.FC = () => {
           )}
         </div>
         <Tabs
-          value={activeTab}
+          value={TABS.indexOf(activeTab)}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="inherit"
@@ -103,16 +106,17 @@ const PackageDetail: React.FC = () => {
           <Tab label="Dependencies" className="package-tab" />
           <Tab label="Dependents" className="package-tab" />
           <Tab label="Code" className="package-tab" />
+          {data.abiIpfsUrl && <Tab label="ABI" className="package-tab" />}
         </Tabs>
 
         <Grid container spacing={4}>
           {/* Main Content - Left Side (changes with tabs) */}
           <Grid item xs={12} md={7} lg={8}>
             {/* Readme Tab */}
-            {activeTab === 0 && renderReadmeTab()}
+            {activeTab === TABS[0] && renderReadmeTab()}
 
             {/* Versions Tab */}
-            {activeTab === 1 && (
+            {activeTab === TABS[1] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -131,7 +135,7 @@ const PackageDetail: React.FC = () => {
             )}
 
             {/* Dependencies Tab */}
-            {activeTab === 2 && (
+            {activeTab === TABS[2] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -151,7 +155,7 @@ const PackageDetail: React.FC = () => {
             )}
 
             {/* Dependents Tab */}
-            {activeTab === 3 && (
+            {activeTab === TABS[3] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -171,7 +175,7 @@ const PackageDetail: React.FC = () => {
             )}
 
             {/* Code Tab */}
-            {activeTab === 4 && (
+            {activeTab === TABS[4] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -206,23 +210,35 @@ const PackageDetail: React.FC = () => {
                         IPFS: {data.sourceCodeIpfsUrl.split("/").pop()}
                       </Typography>
 
-                      {data.abiIpfsUrl && (
-                        <div className="abi-download">
-                          <Link
-                            href={data.abiIpfsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="link-light"
-                          >
-                            Download ABI (.json)
-                          </Link>
-                        </div>
-                      )}
                     </div>
 
                     <Alert severity="info" className="alert-dark">
                       Source code browser feature is coming soon.
                     </Alert>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {/* ABI Tab */}
+            {activeTab === TABS[5] && (
+              <Card variant="outlined" className="card-dark">
+                <CardContent className="card-content">
+                  <Typography variant="h6" gutterBottom className="card-title">
+                    Application Binary Interface (ABI)
+                  </Typography>
+                  <div className="tab-content">
+                    {data.abiIpfsUrl && (
+                      <div className="abi-download">
+                        <Link
+                          href={data.abiIpfsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="link-light"
+                        >
+                          Download ABI (.json)
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
