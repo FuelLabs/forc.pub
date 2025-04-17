@@ -22,31 +22,31 @@
 
 /* Make sure all MUI components in the home page follow dark theme */
 .home-container .MuiPaper-root {
-  background-color: #2a2a2a !important;
-  color: #e0e0e0 !important;
+  background-color: #2a2a2a;
+  color: #e0e0e0;
 }
 
 .home-container .MuiTypography-root {
-  color: #e0e0e0 !important;
+  color: #e0e0e0;
 }
 
 .home-container .MuiTypography-colorTextSecondary {
-  color: #b0b0b0 !important;
+  color: #b0b0b0;
 }
 
 .home-container .MuiCardContent-root {
-  background-color: #2a2a2a !important;
+  background-color: #2a2a2a;
 }
 
 .home-container .MuiCircularProgress-root {
-  color: #90caf9 !important;
+  color: #90caf9;
 }
 
 .home-container .MuiSvgIcon-colorAction {
-  color: #90caf9 !important;
+  color: #90caf9;
 }
 
 /* Override default border color for section titles */
 .home-container .MuiTypography-h5 {
-  border-bottom-color: #90caf9 !important;
+  border-bottom-color: #90caf9;
 }

@@ -19,33 +19,43 @@ function App({ children }: AppProps) {
     <ThemeProvider theme={theme}>
       <Box
         sx={{
-          minHeight: '100vh',
-          bgcolor: 'background.default',
-          color: 'text.primary',
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          textAlign: "center",
+          backgroundColor: theme.palette.background.default,
+          height: "100vh",
+          color: theme.palette.text.primary,
+          overflow: "hidden",
         }}
       >
         <AppBar position="static">
           <Toolbar
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 3,
-              px: 3,
-              minHeight: '64px',
+              backgroundColor: "#181818",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+              // display: 'flex',
+              // justifyContent: 'space-between',
+              // alignItems: 'center',
+              // gap: 3,
+              // px: 3,
+              // minHeight: '64px',
             }}
           >
             <Box
               onClick={() => navigate("/")}
               sx={{
-                cursor: 'pointer',
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                color: 'text.primary',
-                '&:hover': {
-                  opacity: 0.8,
+                flexGrow: 1,
+                display: "block",
+                color: theme.palette.primary.main,
+                fontSize: "24px",
+                fontFamily: "monospace",
+                cursor: "pointer",
+                fontWeight: "bold",
+                transition: "color 0.2s ease-in-out",
+                "&:hover": {
+                  color: theme.palette.primary.light,
                 },
-                transition: 'opacity 0.2s ease-in-out',
               }}
             >
               forc.pub
@@ -58,11 +68,14 @@ function App({ children }: AppProps) {
         <Box
           component="main"
           sx={{
-            p: 3,
-            pt: 'calc(64px + 24px)',
-            minHeight: '100vh',
-            bgcolor: 'background.default',
-            color: 'text.primary',
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            // p: 3,
+            // pt: 'calc(64px + 24px)',
+            // minHeight: '100vh',
+            // bgcolor: theme.palette.background.default,
+            // color: theme.palette.text.primary,
           }}
         >
           {children}

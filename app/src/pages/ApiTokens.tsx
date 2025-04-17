@@ -46,12 +46,9 @@ function ApiTokens() {
       <div className="api-tokens-content">
         <h1 className="page-title">{"API Tokens"}</h1>
         <div className="header-container">
-          <h2 className="section-title">API Tokens</h2>
-
           <Button
             variant="contained"
             size="medium"
-            className="new-token-button"
             onClick={() => setShowTokenForm(true)}
           >
             {"New Token"}
