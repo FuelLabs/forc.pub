@@ -278,7 +278,7 @@ impl GitRepoBuilder for GithubRepoBuilder {
     }
 }
 
-const SSH_KEY_ENV_VAR: &str = "SSH_KEY";
+const SSH_KEY_ENV_VAR: &str = "GITHUB_SSH_KEY";
 
 /// A git credentials handler specifically for reading the ssh key or its path
 /// from `SSH_KEY` environment variable.
@@ -300,7 +300,7 @@ pub fn git_credentials_callback(
             }
         }
         _ => Err(git2::Error::from_str(
-            "unable to get private key from SSH_KEY env variables",
+            "unable to get private key from GITHUB_SSH_KEY env variables",
         )),
     }
 }
