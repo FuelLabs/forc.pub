@@ -7,7 +7,7 @@ import {
   Card,
   CardContent,
   Tabs,
-  Tab,
+  Tab as TabNames,
   CircularProgress,
   Alert,
   Link,
@@ -21,14 +21,14 @@ import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
 import { AbiContent } from "./AbiContent";
 
-type Tab =
+type TabNames =
   | "Readme"
   | "Versions"
   | "Dependencies"
   | "Dependents"
   | "Code"
   | "ABI";
-const TABS: Tab[] = [
+const TABS: TabNames[] = [
   "Readme",
   "Versions",
   "Dependencies",
@@ -39,7 +39,7 @@ const TABS: Tab[] = [
 
 const PackageDetail: React.FC = () => {
   const { name, version } = useParams<{ name: string; version?: string }>();
-  const [activeTab, setActiveTab] = useState<Tab>(TABS[0]);
+  const [activeTab, setActiveTab] = useState<TabNames>(TABS[0]);
   const { data, loading, error } = usePackageDetail(name!, version);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -115,12 +115,12 @@ const PackageDetail: React.FC = () => {
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab label="Readme" className="package-tab" />
-          <Tab label="Versions" className="package-tab" />
-          <Tab label="Dependencies" className="package-tab" />
-          <Tab label="Dependents" className="package-tab" />
-          <Tab label="Code" className="package-tab" />
-          {data.abiIpfsUrl && <Tab label="ABI" className="package-tab" />}
+          <TabNames label="Readme" className="package-tab" />
+          <TabNames label="Versions" className="package-tab" />
+          <TabNames label="Dependencies" className="package-tab" />
+          <TabNames label="Dependents" className="package-tab" />
+          <TabNames label="Code" className="package-tab" />
+          {data.abiIpfsUrl && <TabNames label="ABI" className="package-tab" />}
         </Tabs>
 
         <Grid container spacing={4}>
