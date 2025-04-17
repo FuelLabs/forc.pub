@@ -19,9 +19,23 @@ import usePackageDetail from "../hooks/usePackageDetail";
 import ReactMarkdown from "react-markdown";
 import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
+import { AbiContent } from "./AbiContent";
 
-type Tab = "Readme" | "Versions" | "Dependencies" | "Dependents" | "Code" | "ABI";
-const TABS: Tab[] = ["Readme", "Versions", "Dependencies", "Dependents", "Code", "ABI"];
+type Tab =
+  | "Readme"
+  | "Versions"
+  | "Dependencies"
+  | "Dependents"
+  | "Code"
+  | "ABI";
+const TABS: Tab[] = [
+  "Readme",
+  "Versions",
+  "Dependencies",
+  "Dependents",
+  "Code",
+  "ABI",
+];
 
 const PackageDetail: React.FC = () => {
   const { name, version } = useParams<{ name: string; version?: string }>();
@@ -182,10 +196,6 @@ const PackageDetail: React.FC = () => {
                     Source Code
                   </Typography>
                   <div className="tab-content">
-                    <Typography paragraph>
-                      Browse the source code for {data.name}@{data.version}.
-                    </Typography>
-
                     <div className="download-section">
                       <Link
                         href={data.sourceCodeIpfsUrl}
@@ -203,13 +213,12 @@ const PackageDetail: React.FC = () => {
                       </Link>
 
                       <Typography variant="body2" className="download-info">
-                        Full source code including dependencies
+                        Package source code
                       </Typography>
 
                       <Typography variant="caption" className="ipfs-hash">
                         IPFS: {data.sourceCodeIpfsUrl.split("/").pop()}
                       </Typography>
-
                     </div>
 
                     <Alert severity="info" className="alert-dark">
@@ -226,20 +235,32 @@ const PackageDetail: React.FC = () => {
                   <Typography variant="h6" gutterBottom className="card-title">
                     Application Binary Interface (ABI)
                   </Typography>
-                  <div className="tab-content">
-                    {data.abiIpfsUrl && (
-                      <div className="abi-download">
-                        <Link
-                          href={data.abiIpfsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="link-light"
-                        >
-                          Download ABI (.json)
-                        </Link>
+
+                  {data.abiIpfsUrl && (
+                    <>
+                      <div className="tab-content">
+                        <div className="abi-download">
+                          <Link
+                            href={data.abiIpfsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="link-light"
+                          >
+                            <Button
+                              variant="contained"
+                              color="secondary"
+                              startIcon={<CloudDownloadIcon />}
+                            >
+                              Download ABI (.json)
+                            </Button>
+                          </Link>
+                        </div>
+                        <AbiContent
+                          abiUrl={`${data.abiIpfsUrl}?filename=${data.name}-abi.json.&download=true`}
+                        />
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
