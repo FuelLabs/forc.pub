@@ -85,7 +85,7 @@ export const AbiContent: React.FC<AbiContentProps> = ({ abiUrl }) => {
         >
           <ReactJsonView
             src={abiContent}
-            theme={"threezerotwofour"}
+            theme={"shapeshifter"}
             style={{
               width: "100%",
               height: "100%",
