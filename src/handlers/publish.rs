@@ -54,13 +54,13 @@ pub struct PartialPackageDep {
 }
 
 /// Publish index file for the given `PackageEntry`.
-/// The `PackageEntry` inserted into the `IndexFile` that is parsed from remote
-/// repo, that is used by forc.pub and forc to communicate. Index repo can be
-/// found at github.
+/// The `PackageEntry` is inserted into the `IndexFile` that is parsed from the
+/// remote repo, which is used by forc.pub and forc to communicate. Index repo
+/// can be found on GitHub.
 ///
 /// The org name is `reg::GithubRegistryResolver::DEFAULT_REPO_ORG`.
 /// The repo name is `reg::GithubRegistryResolver::DEFAULT_REPO_NAME`.
-/// The file locations for the package entries calculated using:
+/// The file locations for the package entries are calculated using:
 /// `reg::GithubRegistryResolver::DEFAULT_CHUNKING_SIZE`.
 async fn publish_index_file(package_entry: PackageEntry) -> Result<(), IndexPublishError> {
     let repo_name = reg::GithubRegistryResolver::DEFAULT_REPO_NAME;
