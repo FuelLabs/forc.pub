@@ -24,6 +24,7 @@ function ApiTokens() {
             />
 
             <Button
+              disabled={tokenName.trim() === ""}
               variant="contained"
               size="large"
               className="generate-button"
