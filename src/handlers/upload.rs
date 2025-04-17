@@ -115,8 +115,6 @@ pub async fn handle_project_upload<'a>(
             UploadError::FailedToCompile
         })?;
 
-    println!("aa {:?}", String::from_utf8(output.stderr));
-
     if !output.status.success() {
         return Err(UploadError::FailedToCompile);
     }
