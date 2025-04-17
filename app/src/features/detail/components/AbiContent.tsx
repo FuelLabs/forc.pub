@@ -2,10 +2,6 @@ import React from "react";
 import { useAbiContent } from "../hooks/useAbiContent";
 import { CircularProgress, Alert, Box } from "@mui/material";
 import ReactJsonView from "@microlink/react-json-view";
-// import AceEditor from 'react-ace';
-// import 'ace-builds/src-noconflict/mode-json';
-// import 'ace-builds/src-noconflict/theme-chrome';
-// import 'ace-builds/src-noconflict/ext-language_tools';
 
 interface AbiContentProps {
   abiUrl: string;
@@ -58,31 +54,6 @@ export const AbiContent: React.FC<AbiContentProps> = ({ abiUrl }) => {
           displayDataTypes={false}
           enableClipboard={false}
         />
-
-        {/* <AceEditor
-        mode="json"
-        theme="chrome"
-        name="abi-editor"
-        value={JSON.stringify(abiContent, null, 2)}
-        readOnly={true}
-        width="100%"
-        setOptions={{
-          useWorker: false,
-          showPrintMargin: false,
-          showGutter: true,
-          highlightActiveLine: false,
-          fontSize: 14,
-          tabSize: 2,
-          showLineNumbers: true,
-          enableBasicAutocompletion: false,
-          enableLiveAutocompletion: false,
-        }}
-        editorProps={{ $blockScrolling: true }}
-        style={{
-          width: '100%',
-          height: '100%',
-        }}
-      /> */}
       </div>
     </Box>
   );

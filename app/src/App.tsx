@@ -34,12 +34,6 @@ function App({ children }: AppProps) {
             sx={{
               backgroundColor: "#181818",
               boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-              // display: 'flex',
-              // justifyContent: 'space-between',
-              // alignItems: 'center',
-              // gap: 3,
-              // px: 3,
-              // minHeight: '64px',
             }}
           >
             <Box
@@ -71,11 +65,6 @@ function App({ children }: AppProps) {
             flex: 1,
             display: "flex",
             flexDirection: "column",
-            // p: 3,
-            // pt: 'calc(64px + 24px)',
-            // minHeight: '100vh',
-            // bgcolor: theme.palette.background.default,
-            // color: theme.palette.text.primary,
           }}
         >
           {children}
