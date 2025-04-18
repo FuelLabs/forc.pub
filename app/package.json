@@ -11,6 +11,7 @@
     "@mui/material": "^5.15.14",
     "@mui/material-nextjs": "^7.0.2",
     "@types/js-cookie": "^3.0.6",
+    "@vercel/analytics": "^1.5.0",
     "axios": "^1.6.8",
     "js-cookie": "^3.0.5",
     "next": "^14.1.0",
@@ -18,8 +19,7 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
     "typed-axios-instance": "^3.3.1",
-    "typescript": "^5.8.3",
-    "web-vitals": "^4.2.4"
+    "typescript": "^5.8.3"
   },
   "scripts": {
     "dev": "next dev",
@@ -32,9 +32,6 @@
     "check-bundle-size": "node scripts/check-bundle-size.js",
     "format": "npx prettier . --write",
     "format-check": "npx prettier ."
-  },
-  "eslintConfig": {
-    "extends": "next/core-web-vitals"
   },
   "browserslist": {
     "production": [

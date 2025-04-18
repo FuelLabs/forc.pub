@@ -1,15 +1,15 @@
 "use client";
 
-import { Suspense } from "react";
 import App from "../App";
-import Home from "../pages/Home";
+import PackageDashboard from "../features/dashboard/components/PackageDashboard";
 
-export default function Page() {
+export default function HomePage() {
   return (
     <App>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Home />
-      </Suspense>
+      <div>
+        <h1>{"The Sway community's package registry"}</h1>
+        <PackageDashboard />
+      </div>
     </App>
   );
 }
