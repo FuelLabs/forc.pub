@@ -1,4 +1,6 @@
-import useTheme from "@mui/material/styles/useTheme";
+"use client";
+
+import { useTheme } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
 export function useIsMobile() {

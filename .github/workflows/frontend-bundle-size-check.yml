@@ -1,0 +1,32 @@
+name: Bundle Analysis
+
+on:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run bundle analysis
+      run: npm run analyze-ci
+      
+    - name: Check bundle size
+      run: npm run check-bundle-size
+      
+    - name: Upload bundle analysis
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: bundle-analysis
+        path: bundle-analysis.txt
