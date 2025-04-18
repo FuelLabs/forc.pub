@@ -26,7 +26,7 @@ jobs:
       
     - name: Upload bundle analysis
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: bundle-analysis
         path: bundle-analysis.txt
