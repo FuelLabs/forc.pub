@@ -31,6 +31,8 @@ impl Default for Database {
     }
 }
 
+/// Wrapper for a database connection that provides a more convenient interface
+/// for database operations.
 pub struct DbConn<'a>(&'a mut DbConnection);
 
 impl<'a> DbConn<'a> {
@@ -39,7 +41,7 @@ impl<'a> DbConn<'a> {
     }
 
     pub fn inner(&mut self) -> &mut DbConnection {
-        &mut self.0
+        self.0
     }
 }
 
@@ -52,9 +54,7 @@ impl Database {
 
         // Run migrations
         const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-        let mut conn = pool
-            .get()
-            .expect("db connection");
+        let mut conn = pool.get().expect("db connection");
         let migrations = conn
             .run_pending_migrations(MIGRATIONS)
             .expect("diesel migrations");
@@ -65,14 +65,12 @@ impl Database {
 
     pub fn transaction<F, T, E>(&self, f: F) -> Result<T, E>
     where
-        F: FnOnce(&mut DbConnection) -> Result<T, E>,
+        F: FnOnce(&mut DbConn<'_>) -> Result<T, E>,
         E: std::convert::From<diesel::result::Error>,
     {
         let mut conn = self.pool.get().expect("db connection");
-        conn.transaction(|conn| {
-            f(conn)
-        })
-    }   
+        conn.transaction(|conn| f(&mut DbConn::new(conn)))
+    }
 }
 
 pub(crate) fn string_to_uuid(s: String) -> Result<Uuid, DatabaseError> {

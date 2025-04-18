@@ -1,4 +1,4 @@
-use crate::db::{Database, DbConn};
+use crate::db::Database;
 use crate::models;
 use chrono::Utc;
 use rocket::http::Status;
@@ -36,7 +36,9 @@ impl<'r> FromRequest<'r> for SessionAuth {
 
         let db = match request.rocket().state::<Database>() {
             Some(db) => db,
-            None => return Outcome::Error((Status::Unauthorized, SessionAuthError::DatabaseConnection)),
+            None => {
+                return Outcome::Error((Status::Unauthorized, SessionAuthError::DatabaseConnection))
+            }
         };
 
         let session_id = match request
@@ -48,8 +50,7 @@ impl<'r> FromRequest<'r> for SessionAuth {
             _ => return Outcome::Error((Status::Unauthorized, SessionAuthError::Missing)),
         };
 
-        match db.transaction(|connection| {
-            let mut conn = DbConn::new(connection);
+        match db.transaction(|conn| {
             if let Ok(session) = conn.get_session(session_id) {
                 if let Ok(user) = conn.get_user_for_session(session_id) {
                     if session.expires_at > Utc::now() {
@@ -57,7 +58,7 @@ impl<'r> FromRequest<'r> for SessionAuth {
                     }
                 }
             }
-            return Err(SessionAuthError::Invalid);
+            Err(SessionAuthError::Invalid)
         }) {
             Ok(session_auth) => return Outcome::Success(session_auth),
             Err(e) => return Outcome::Error((Status::Unauthorized, e)),

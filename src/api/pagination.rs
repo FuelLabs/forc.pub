@@ -21,7 +21,7 @@ impl Pagination {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedResponse<T> {
     pub data: Vec<T>,

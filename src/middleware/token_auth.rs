@@ -1,5 +1,5 @@
 use crate::db::api_token::PlainToken;
-use crate::db::{Database, DbConn};
+use crate::db::Database;
 use crate::models;
 use chrono::{DateTime, Utc};
 use rocket::http::hyper::header;
@@ -52,7 +52,6 @@ impl<'r> FromRequest<'r> for TokenAuth {
         let token = auth_header.trim_start_matches("Bearer ");
 
         match db.transaction(|conn| {
-            let mut conn = DbConn::new(conn);
             if let Ok(token) = conn.get_token(PlainToken::from(token.to_string())) {
                 if token.expires_at.map_or(true, |expires_at| {
                     expires_at > DateTime::<Utc>::from(SystemTime::now())

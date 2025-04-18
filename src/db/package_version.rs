@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use diesel::sql_types::Timestamptz;
 use uuid::Uuid;
 
-impl<'a> DbConn<'a> {
+impl DbConn<'_> {
     /// Insert a package version into the database and return the package version.
     /// If the package doesn't exist, insert the package as well.
     pub fn new_package_version(

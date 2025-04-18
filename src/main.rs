@@ -14,7 +14,7 @@ use forc_pub::api::{
     ApiResult, EmptyResponse,
 };
 use forc_pub::db::error::DatabaseError;
-use forc_pub::db::{Database, DbConn};
+use forc_pub::db::Database;
 use forc_pub::file_uploader::s3::{S3Client, S3ClientImpl};
 use forc_pub::file_uploader::{
     pinata::{PinataClient, PinataClientImpl},
@@ -57,10 +57,7 @@ async fn login(
     request: Json<LoginRequest>,
 ) -> ApiResult<LoginResponse> {
     let (user, expires_in) = handle_login(request.code.clone()).await?;
-    let session = db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
-        conn.new_user_session(&user, expires_in)
-    })?;
+    let session = db.transaction(|conn| conn.new_user_session(&user, expires_in))?;
     let session_id = session.id.to_string();
     cookies.add(Cookie::build((SESSION_COOKIE_NAME, session_id.clone())));
     Ok(Json(LoginResponse { user, session_id }))
@@ -70,10 +67,7 @@ async fn login(
 #[post("/logout")]
 async fn logout(db: &State<Database>, auth: SessionAuth) -> ApiResult<EmptyResponse> {
     let session_id = auth.session_id;
-    let _ = db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
-        conn.delete_session(session_id)
-    })?;
+    let _ = db.transaction(|conn| conn.delete_session(session_id))?;
     Ok(Json(EmptyResponse))
 }
 
@@ -92,10 +86,8 @@ fn new_token(
     request: Json<CreateTokenRequest>,
 ) -> ApiResult<CreateTokenResponse> {
     let user = auth.user;
-    let (token, plain_token) = db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
-        conn.new_token(user.id, request.name.clone())
-    })?;
+    let (token, plain_token) =
+        db.transaction(|conn| conn.new_token(user.id, request.name.clone()))?;
     Ok(Json(CreateTokenResponse {
         token: Token {
             // The only time we return the plain token is when it's created.
@@ -108,20 +100,14 @@ fn new_token(
 #[delete("/token/<id>")]
 fn delete_token(db: &State<Database>, auth: SessionAuth, id: String) -> ApiResult<EmptyResponse> {
     let user_id = auth.user.id;
-    db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
-        conn.delete_token(user_id, id.clone())
-    })?;
+    db.transaction(|conn| conn.delete_token(user_id, id.clone()))?;
     Ok(Json(EmptyResponse))
 }
 
 #[get("/tokens")]
 fn tokens(db: &State<Database>, auth: SessionAuth) -> ApiResult<TokensResponse> {
     let user_id = auth.user.id;
-    let tokens = db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
-        conn.get_tokens_for_user(user_id)
-    })?;
+    let tokens = db.transaction(|conn| conn.get_tokens_for_user(user_id))?;
     Ok(Json(TokensResponse {
         tokens: tokens.into_iter().map(|t| t.into()).collect(),
     }))
@@ -198,10 +184,7 @@ async fn upload_project(
     )
     .await?;
 
-    db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
-        conn.new_upload(&upload_entry)
-    })?;
+    db.transaction(|conn| conn.new_upload(&upload_entry))?;
 
     // Clean up the temporary directory.
     tmp_dir
@@ -218,11 +201,8 @@ fn packages(
     pagination: Pagination,
 ) -> ApiResult<PaginatedResponse<FullPackage>> {
     let updated_after = updated_after.and_then(|date_str| DateTime::<Utc>::from_str(date_str).ok());
-    let db_data = db
-        .transaction(|conn| {
-            let mut conn = DbConn::new(conn);
-        conn.get_full_packages(updated_after, pagination.clone())
-        })?;
+    let db_data =
+        db.transaction(|conn| conn.get_full_packages(updated_after, pagination.clone()))?;
     let data = db_data.data.into_iter().map(FullPackage::from).collect();
 
     Ok(Json(PaginatedResponse {
@@ -236,11 +216,8 @@ fn packages(
 
 #[get("/package?<name>&<version>")]
 fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiResult<FullPackage> {
-    let db_data = db
-        .transaction(|conn| {
-            let mut conn = DbConn::new(conn);
-        conn.get_full_package_version(name, version.unwrap_or_default())
-        })?;
+    let db_data =
+        db.transaction(|conn| conn.get_full_package_version(name, version.unwrap_or_default()))?;
 
     Ok(Json(FullPackage::from(db_data)))
 }
@@ -248,7 +225,6 @@ fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiRe
 #[get("/recent_packages")]
 fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
     let (recently_created, recently_updated) = db.transaction(|conn| {
-        let mut conn = DbConn::new(conn);
         let recently_created = conn.get_recently_created()?;
         let recently_updated = conn.get_recently_updated()?;
         Ok::<_, DatabaseError>((recently_created, recently_updated))
