@@ -54,8 +54,8 @@ impl Database {
 
         // Run migrations
         const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-        let mut conn = pool.get().expect("db connection");
-        let migrations = conn
+        let mut connection = pool.get().expect("db connection");
+        let migrations = connection
             .run_pending_migrations(MIGRATIONS)
             .expect("diesel migrations");
         info!("Ran {} migrations", migrations.len());
@@ -63,6 +63,9 @@ impl Database {
         Database { pool }
     }
 
+    /// Runs the database operations provided in the function `f` in a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// If the function returns Ok, the transaction will be committed.
     pub fn transaction<F, T, E>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&mut DbConn<'_>) -> Result<T, E>,
