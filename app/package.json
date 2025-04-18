@@ -3,42 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@microlink/react-json-view": "^1.26.1",
     "@mui/icons-material": "^5.15.14",
     "@mui/material": "^5.15.14",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.91",
-    "@types/react": "^18.2.67",
-    "@types/react-dom": "^18.2.22",
+    "@mui/material-nextjs": "^7.0.2",
+    "@types/js-cookie": "^3.0.6",
+    "@vercel/analytics": "^1.5.0",
     "axios": "^1.6.8",
+    "js-cookie": "^3.0.5",
+    "next": "^14.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-markdown": "^10.0.1",
-    "react-router-dom": "^6.22.3",
-    "react-scripts": "5.0.1",
-    "react-use-cookie": "^1.5.0",
+    "react-markdown": "^9.0.1",
     "typed-axios-instance": "^3.3.1",
-    "typescript": "^4.9.5",
-    "usehooks-ts": "^3.0.2",
-    "web-vitals": "^2.1.4"
+    "typescript": "^5.8.3"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "analyze": "source-map-explorer 'build/static/js/*.js'",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint --fix",
+    "lint-check": "next lint",
+    "analyze": "ANALYZE=true next build",
+    "analyze-ci": "cross-env ANALYZE=true next build > bundle-analysis.txt",
+    "check-bundle-size": "node scripts/check-bundle-size.js",
     "format": "npx prettier . --write",
     "format-check": "npx prettier ."
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [
@@ -53,12 +46,23 @@
     ]
   },
   "devDependencies": {
-    "@eslint/js": "^9.21.0",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^10.0.2",
-    "prettier": "3.5.3",
-    "source-map-explorer": "^2.5.3",
-    "typescript-eslint": "^8.26.0"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+    "@eslint/js": "^8.56.0",
+    "@next/eslint-plugin-next": "^15.3.1",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@typescript-eslint/eslint-plugin": "^8.30.1",
+    "@typescript-eslint/parser": "^8.30.1",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "prettier": "3.1.1",
+    "source-map-explorer": "^2.5.3"
+  }
 }

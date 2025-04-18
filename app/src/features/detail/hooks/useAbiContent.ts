@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 
 interface UseAbiContentResult {
-  abiContent: any;
+  abiContent: JSON | null;
   loading: boolean;
   error: Error | null;
 }
 
 export const useAbiContent = (abiUrl: string | null): UseAbiContentResult => {
-  const [abiContent, setAbiContent] = useState<any>(null);
+  const [abiContent, setAbiContent] = useState<JSON | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

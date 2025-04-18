@@ -28,7 +28,7 @@ const useFetchRecentPackages = () => {
       .then(({ data }) => {
         setData(data);
       })
-      .catch((err: any) =>
+      .catch((err: Error) =>
         setError(
           axios.isAxiosError(err)
             ? err.response?.data?.message || "An error occurred"

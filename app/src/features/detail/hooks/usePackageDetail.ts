@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import axios from "axios";
 import HTTP from "../../../utils/http";
@@ -41,7 +43,7 @@ const usePackageDetail = (packageName: string, version?: string) => {
       .then(({ data }) => {
         setData(data);
       })
-      .catch((err: any) =>
+      .catch((err: Error) =>
         setError(
           axios.isAxiosError(err)
             ? err.response?.data?.message || "Failed to load package details"

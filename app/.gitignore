@@ -7,9 +7,11 @@
 
 # testing
 /coverage
+bundle-analysis.txt
 
 # production
 /build
+/.next
 
 # misc
 .DS_Store

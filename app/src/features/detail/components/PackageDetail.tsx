@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import {
   Container,
@@ -14,7 +16,7 @@ import {
   Button,
 } from "@mui/material";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import { useParams } from "react-router-dom";
+
 import usePackageDetail from "../hooks/usePackageDetail";
 import ReactMarkdown from "react-markdown";
 import "./PackageDetail.css";
@@ -37,10 +39,13 @@ const TABS: TabNames[] = [
   "ABI",
 ];
 
-const PackageDetail: React.FC = () => {
-  const { name, version } = useParams<{ name: string; version?: string }>();
+interface PackageDetailProps {
+  packageName: string;
+}
+
+const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
   const [activeTab, setActiveTab] = useState<TabNames>(TABS[0]);
-  const { data, loading, error } = usePackageDetail(name!, version);
+  const { data, loading, error } = usePackageDetail(packageName);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(TABS[newValue]);

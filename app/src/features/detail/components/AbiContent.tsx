@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { useAbiContent } from "../hooks/useAbiContent";
 import {
@@ -8,15 +10,19 @@ import {
   Tooltip,
   Snackbar,
 } from "@mui/material";
-import ReactJsonView from "@microlink/react-json-view";
+import dynamic from "next/dynamic";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
+
+const ReactJsonView = dynamic(() => import("@microlink/react-json-view"), {
+  ssr: false,
+});
 
 interface AbiContentProps {
   abiUrl: string;
 }
 
-export const AbiContent: React.FC<AbiContentProps> = ({ abiUrl }) => {
+const AbiContentComponent: React.FC<AbiContentProps> = ({ abiUrl }) => {
   const { abiContent, loading, error } = useAbiContent(abiUrl);
   const [copied, setCopied] = useState(false);
 
@@ -107,3 +113,9 @@ export const AbiContent: React.FC<AbiContentProps> = ({ abiUrl }) => {
     </Box>
   );
 };
+
+const AbiContent = dynamic(() => Promise.resolve(AbiContentComponent), {
+  ssr: false,
+});
+
+export { AbiContent };

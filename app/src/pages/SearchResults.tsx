@@ -1,5 +1,5 @@
-import React from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface SearchResult {
   name: string;
@@ -32,17 +32,16 @@ const dummySearchResults: SearchResult[] = [
   // },
 ];
 
-function SearchResults() {
-  const [searchParams] = useSearchParams();
+interface SearchResultsProps {
+  searchParams: ReturnType<typeof useSearchParams>;
+}
 
-  const matchingResults = dummySearchResults.filter(
-    (result) => {
-      return result.name
-        .toLowerCase()
-        .includes(searchParams.get("q")?.toLowerCase() || "");
-    },
-    [searchParams],
-  );
+function SearchResults({ searchParams }: SearchResultsProps) {
+  const matchingResults = dummySearchResults.filter((result) => {
+    return result.name
+      .toLowerCase()
+      .includes(searchParams.get("q")?.toLowerCase() || "");
+  });
 
   return (
     <div style={{ width: "100%", justifyContent: "center" }}>
@@ -53,6 +52,7 @@ function SearchResults() {
 
       {matchingResults.map((result) => (
         <div
+          key={result.name}
           style={{
             margin: "25px 10% 10% 10%",
             border: "1px solid black",
@@ -77,4 +77,17 @@ function SearchResults() {
   );
 }
 
-export default SearchResults;
+function SearchResultsWithParams() {
+  const searchParams = useSearchParams();
+  return <SearchResults searchParams={searchParams} />;
+}
+
+function SearchResultsWrapper() {
+  return (
+    <Suspense fallback={<div>Loading search results...</div>}>
+      <SearchResultsWithParams />
+    </Suspense>
+  );
+}
+
+export default SearchResultsWrapper;

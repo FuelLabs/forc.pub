@@ -1,20 +1,23 @@
-import React, { useCallback } from "react";
+"use client";
+
+import React, { useCallback, useState } from "react";
 import Lock from "@mui/icons-material/Lock";
-import Button from "@mui/material/Button/Button";
-import Menu from "@mui/material/Menu/Menu";
-import MenuItem from "@mui/material/MenuItem/MenuItem";
-import { useNavigate } from "react-router-dom";
+import Button from "@mui/material/Button";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import { useGithubAuth } from "../hooks/useGithubAuth";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { REDIRECT_URI } from "../../../constants";
 import "./UserButton.css";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export const GITHUB_CLIENT_ID = "Iv1.ebdf596c6c548759";
 
 function UserButton() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [user, logout] = useGithubAuth();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenu = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -30,9 +33,9 @@ function UserButton() {
   const handleNavigate = useCallback(
     (route: string) => {
       handleClose();
-      navigate(route);
+      router.push(route);
     },
-    [handleClose, navigate],
+    [handleClose, router],
   );
 
   const handleLogout = useCallback(() => {
@@ -49,12 +52,16 @@ function UserButton() {
           endIcon={<ArrowDropDownIcon />}
           className="user-button"
         >
-          <img
-            src={user.avatarUrl}
-            title={user.fullName}
-            alt={user.githubLogin}
-            className="user-avatar"
-          />
+          {user.avatarUrl && (
+            <Image
+              width={32}
+              height={32}
+              src={user.avatarUrl}
+              title={user.fullName}
+              alt={user.githubLogin}
+              className="user-avatar"
+            />
+          )}
           <div className="user-name">{user.fullName}</div>
         </Button>
         <Menu
