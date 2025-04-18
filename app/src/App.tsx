@@ -1,13 +1,11 @@
 import React, { ReactNode } from "react";
-import AppBar from "@mui/material/AppBar/AppBar";
-import Toolbar from "@mui/material/Toolbar/Toolbar";
+import { ThemeProvider } from "@mui/material/styles";
+import { AppBar, Toolbar, Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import UserButton from "./features/toolbar/components/UserButton";
 import { useIsMobile } from "./features/toolbar/hooks/useIsMobile";
 import SearchBar from "./features/toolbar/components/SearchBar";
-import "./App.css";
-
-export const FUEL_GREEN = "#00f58c";
+import theme from "./theme/theme";
 
 interface AppProps {
   children?: ReactNode;
@@ -18,20 +16,61 @@ function App({ children }: AppProps) {
   const isMobile = useIsMobile();
 
   return (
-    <div className="app-container">
-      <AppBar position="static">
-        <Toolbar className="app-toolbar">
-          <div className="app-logo" onClick={() => navigate("/")}>
-            forc.pub
-          </div>
-
-          {!isMobile && <SearchBar />}
-          <UserButton />
-        </Toolbar>
-        {isMobile && <SearchBar />}
-      </AppBar>
-      <div className="app-content">{children}</div>
-    </div>
+    <ThemeProvider theme={theme}>
+      <Box
+        sx={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          textAlign: "center",
+          backgroundColor: theme.palette.background.default,
+          height: "100vh",
+          color: theme.palette.text.primary,
+          overflow: "hidden",
+        }}
+      >
+        <AppBar position="static">
+          <Toolbar
+            sx={{
+              backgroundColor: "#181818",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            <Box
+              onClick={() => navigate("/")}
+              sx={{
+                flexGrow: 1,
+                display: "block",
+                color: theme.palette.primary.main,
+                fontSize: "24px",
+                fontFamily: "monospace",
+                cursor: "pointer",
+                fontWeight: "bold",
+                transition: "color 0.2s ease-in-out",
+                "&:hover": {
+                  color: theme.palette.primary.light,
+                },
+              }}
+            >
+              forc.pub
+            </Box>
+            {!isMobile && <SearchBar />}
+            <UserButton />
+          </Toolbar>
+          {isMobile && <SearchBar />}
+        </AppBar>
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {children}
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
 }
 

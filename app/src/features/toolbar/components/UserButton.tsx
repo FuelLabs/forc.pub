@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import Lock from "@mui/icons-material/Lock";
 import Button from "@mui/material/Button/Button";
-import styled from "@emotion/styled";
 import Menu from "@mui/material/Menu/Menu";
 import MenuItem from "@mui/material/MenuItem/MenuItem";
 import { useNavigate } from "react-router-dom";
@@ -11,11 +10,6 @@ import { REDIRECT_URI } from "../../../constants";
 import "./UserButton.css";
 
 export const GITHUB_CLIENT_ID = "Iv1.ebdf596c6c548759";
-
-const StyledWrapper = styled.div`
-  text-wrap: nowrap;
-  color: inherit;
-`;
 
 function UserButton() {
   const navigate = useNavigate();
@@ -48,7 +42,7 @@ function UserButton() {
 
   if (user) {
     return (
-      <StyledWrapper>
+      <div className="button-wrapper">
         <Button
           color="inherit"
           onClick={handleMenu}
@@ -87,12 +81,12 @@ function UserButton() {
             Log Out
           </MenuItem>
         </Menu>
-      </StyledWrapper>
+      </div>
     );
   }
 
   return (
-    <StyledWrapper>
+    <div className="button-wrapper">
       <Button
         color="inherit"
         className="login-button"
@@ -126,7 +120,7 @@ function UserButton() {
           <div className="login-text">Log in with GitHub</div>
         </>
       </Button>
-    </StyledWrapper>
+    </div>
   );
 }
 

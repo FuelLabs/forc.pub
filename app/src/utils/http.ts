@@ -1,7 +1,7 @@
 import type { TypedAxios } from "typed-axios-instance";
 import axios from "axios";
 import { SERVER_URI } from "../constants";
-import { RecentPackagesResponse } from "../features/dahboard/hooks/useFetchRecentPackages";
+import { RecentPackagesResponse } from "../features/dashboard/hooks/useFetchRecentPackages";
 import { FullPackage } from "../features/detail/hooks/usePackageDetail";
 
 export interface AuthenticatedUser {

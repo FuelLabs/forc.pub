@@ -11,7 +11,7 @@
 }
 
 .app-toolbar {
-  background-color: #181818 !important;
+  background-color: #181818;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -46,28 +46,28 @@ body {
 
 /* Button overrides */
 .MuiButton-containedPrimary {
-  background-color: #0d47a1 !important;
-  color: #ffffff !important;
+  background-color: #0d47a1;
+  color: #ffffff;
 }
 
 .MuiButton-containedPrimary:hover {
-  background-color: #1565c0 !important;
+  background-color: #1565c0;
 }
 
 .MuiButton-containedSecondary {
-  background-color: #00f58c !important;
-  color: #111111 !important;
+  background-color: #00f58c;
+  color: #111111;
 }
 
 .MuiButton-containedSecondary:hover {
-  background-color: #2dffa0 !important;
+  background-color: #2dffa0;
 }
 
 .MuiButton-containedWarning {
-  background-color: #bf360c !important;
-  color: #ffffff !important;
+  background-color: #bf360c;
+  color: #ffffff;
 }
 
 .MuiButton-containedWarning:hover {
-  background-color: #e64a19 !important;
+  background-color: #e64a19;
 }

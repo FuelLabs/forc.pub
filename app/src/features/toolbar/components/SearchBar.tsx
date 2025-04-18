@@ -30,7 +30,7 @@ function SearchBar() {
         className="search-input"
         startAdornment={
           <InputAdornment position="start">
-            <SearchIcon style={{ color: "#c0c0c0" }} />
+            <SearchIcon className="search-icon" />
           </InputAdornment>
         }
         placeholder="Search packages and plugins"
