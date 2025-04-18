@@ -8,6 +8,45 @@ const SIZE_LIMITS = {
   INITIAL_JS: 300, // 300KB for initial JS
 };
 
+function convertToKB(size, unit) {
+  if (unit === "MB") return size * 1024;
+  if (unit === "KB") return size;
+  if (unit === "B") return size / 1024;
+  return size; // Already in KB
+}
+
+function parseSize(str) {
+  if (!str) return 0;
+  const match = str.match(/(\d+(?:\.\d+)?)\s*(B|KB|MB)?/);
+  if (!match) return 0;
+  return convertToKB(parseFloat(match[1]), match[2]);
+}
+
+function parseLine(line) {
+  // Remove box-drawing characters and other special characters
+  const cleanLine = line.replace(/[│├└┌─┐┘]/g, "").trim();
+  if (!cleanLine) return null;
+
+  // Extract size from the line
+  const parts = cleanLine.split(/\s+/);
+  if (parts.length < 2) return null;
+
+  // Get the last part that contains a number (size)
+  let size = 0;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].match(/\d/)) {
+      size = parseSize(parts[i]);
+      break;
+    }
+  }
+
+  return {
+    isChunk: cleanLine.includes(".js"),
+    isFirstLoad: cleanLine.includes("First Load JS"),
+    size,
+  };
+}
+
 function parseAnalysis(content) {
   const sizes = {
     totalJS: 0,
@@ -16,32 +55,27 @@ function parseAnalysis(content) {
   };
 
   const lines = content.split("\n");
-  let parsingJS = false;
+  let inRouteSection = false;
 
   for (const line of lines) {
-    if (line.includes("Page Size Analysis")) {
-      parsingJS = true;
+    if (line.includes("Route (")) {
+      inRouteSection = true;
       continue;
     }
 
-    if (!parsingJS) continue;
+    if (!inRouteSection) continue;
 
-    if (line.includes(".js")) {
-      const match = line.match(/(\d+(?:\.\d+)?)\s*(?:B|KB|MB)/);
-      if (match) {
-        const size = parseFloat(match[1]);
-        const unit = line.match(/[KMB]B/)[0];
+    const parsed = parseLine(line);
+    if (!parsed) continue;
 
-        // Convert to KB
-        const sizeInKB =
-          unit === "MB" ? size * 1024 : unit === "B" ? size / 1024 : size;
+    if (parsed.isFirstLoad && parsed.size > sizes.initialJS) {
+      sizes.initialJS = parsed.size;
+    }
 
-        sizes.totalJS += sizeInKB;
-        sizes.largestChunk = Math.max(sizes.largestChunk, sizeInKB);
-
-        if (line.includes("First Load JS")) {
-          sizes.initialJS = sizeInKB;
-        }
+    if (parsed.isChunk) {
+      sizes.totalJS += parsed.size;
+      if (parsed.size > sizes.largestChunk) {
+        sizes.largestChunk = parsed.size;
       }
     }
   }
@@ -54,50 +88,48 @@ try {
   const analysis = fs.readFileSync(analysisPath, "utf8");
   const sizes = parseAnalysis(analysis);
 
-  console.log("\nBundle Size Analysis:");
-  console.log("-------------------");
-  console.log(
-    `Total JS: ${sizes.totalJS.toFixed(2)}KB (limit: ${
-      SIZE_LIMITS.TOTAL_JS
-    }KB)`,
-  );
-  console.log(
-    `Largest Chunk: ${sizes.largestChunk.toFixed(2)}KB (limit: ${
-      SIZE_LIMITS.LARGEST_CHUNK
-    }KB)`,
-  );
-  console.log(
-    `Initial JS: ${sizes.initialJS.toFixed(2)}KB (limit: ${
-      SIZE_LIMITS.INITIAL_JS
-    }KB)`,
-  );
+  console.log("Bundle Size Analysis");
+  console.log("-----------------");
+  console.log(`Total JS: ${sizes.totalJS.toFixed(2)}KB`);
+  console.log(`Largest Chunk: ${sizes.largestChunk.toFixed(2)}KB`);
+  console.log(`Initial JS: ${sizes.initialJS.toFixed(2)}KB`);
+  console.log();
 
-  // Check against limits
+  let failed = false;
+
   if (sizes.totalJS > SIZE_LIMITS.TOTAL_JS) {
-    throw new Error(
-      `Total JS size (${sizes.totalJS.toFixed(2)}KB) exceeds limit (${
-        SIZE_LIMITS.TOTAL_JS
-      }KB)`,
+    console.error(
+      `\u274c Total JS (${sizes.totalJS.toFixed(
+        2
+      )}KB) exceeds limit of ${SIZE_LIMITS.TOTAL_JS}KB`
     );
-  }
-  if (sizes.largestChunk > SIZE_LIMITS.LARGEST_CHUNK) {
-    throw new Error(
-      `Largest chunk (${sizes.largestChunk.toFixed(2)}KB) exceeds limit (${
-        SIZE_LIMITS.LARGEST_CHUNK
-      }KB)`,
-    );
-  }
-  if (sizes.initialJS > SIZE_LIMITS.INITIAL_JS) {
-    throw new Error(
-      `Initial JS size (${sizes.initialJS.toFixed(2)}KB) exceeds limit (${
-        SIZE_LIMITS.INITIAL_JS
-      }KB)`,
-    );
+    failed = true;
   }
 
-  console.log("\n✅ All bundle size checks passed!");
-  process.exit(0);
+  if (sizes.largestChunk > SIZE_LIMITS.LARGEST_CHUNK) {
+    console.error(
+      `\u274c Largest chunk (${sizes.largestChunk.toFixed(
+        2
+      )}KB) exceeds limit of ${SIZE_LIMITS.LARGEST_CHUNK}KB`
+    );
+    failed = true;
+  }
+
+  if (sizes.initialJS > SIZE_LIMITS.INITIAL_JS) {
+    console.error(
+      `\u274c Initial JS (${sizes.initialJS.toFixed(
+        2
+      )}KB) exceeds limit of ${SIZE_LIMITS.INITIAL_JS}KB`
+    );
+    failed = true;
+  }
+
+  if (failed) {
+    process.exit(1);
+  } else {
+    console.log("\u2705 All bundle size checks passed!");
+  }
 } catch (error) {
-  console.error("\n❌ Bundle size check failed:", error.message);
+  console.error("Error analyzing bundle size:", error);
   process.exit(1);
 }
