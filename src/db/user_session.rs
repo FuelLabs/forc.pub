@@ -6,7 +6,7 @@ use diesel::upsert::excluded;
 use std::time::Duration;
 use uuid::Uuid;
 
-impl DbConn {
+impl<'a> DbConn<'a> {
     /// Insert a user session into the database and return the session ID.
     /// If the user doesn't exist, insert the user as well.
     /// If the user does exist, update the user's full name and avatar URL if they have changed.

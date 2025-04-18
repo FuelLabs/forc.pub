@@ -37,28 +37,27 @@ const TEST_README: &str = "test-readme";
 const TEST_MANIFEST: &str = "test-manifest";
 const TEST_LICENSE: &str = "test-license";
 
-fn setup_db() -> DbConn {
-    let db = Database::new();
-    clear_tables(&mut db.conn());
-    db.conn()
+fn setup_db() -> Database {
+    let mut db = Database::new();
+    clear_tables(&mut db);
+    db
 }
 
-fn clear_tables(db: &mut DbConn) {
-    diesel::delete(forc_pub::schema::package_versions::table)
-        .execute(db.inner())
-        .expect("clear package_versions table");
-    diesel::delete(forc_pub::schema::packages::table)
-        .execute(db.inner())
-        .expect("clear packages table");
-    diesel::delete(forc_pub::schema::api_tokens::table)
-        .execute(db.inner())
-        .expect("clear api_tokens table");
-    diesel::delete(forc_pub::schema::sessions::table)
-        .execute(db.inner())
-        .expect("clear sessions table");
-    diesel::delete(forc_pub::schema::users::table)
-        .execute(db.inner())
-        .expect("clear users table");
+fn clear_tables(db: &mut Database) {
+    db.transaction(|conn| {
+        diesel::delete(forc_pub::schema::package_versions::table)
+            .execute(conn)?;
+        diesel::delete(forc_pub::schema::packages::table)
+            .execute(conn)?;
+        diesel::delete(forc_pub::schema::api_tokens::table)
+            .execute(conn)?;
+        diesel::delete(forc_pub::schema::sessions::table)
+            .execute(conn)?;
+        diesel::delete(forc_pub::schema::users::table)
+            .execute(conn)?;
+        Ok(())
+    })
+    .expect("clear tables");
 }
 
 fn mock_user_1() -> api::auth::User {

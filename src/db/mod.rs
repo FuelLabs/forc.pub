@@ -11,6 +11,7 @@ use crate::util::load_env;
 use crate::{api, models, schema};
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
+use diesel::Connection;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::env;
 use tracing::info;
@@ -30,9 +31,14 @@ impl Default for Database {
     }
 }
 
-pub struct DbConn(DbConnection);
-impl DbConn {
-    pub fn inner(&mut self) -> &mut PgConnection {
+pub struct DbConn<'a>(&'a mut DbConnection);
+
+impl<'a> DbConn<'a> {
+    pub fn new(conn: &'a mut DbConnection) -> Self {
+        DbConn(conn)
+    }
+
+    pub fn inner(&mut self) -> &mut DbConnection {
         &mut self.0
     }
 }
@@ -46,8 +52,10 @@ impl Database {
 
         // Run migrations
         const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-        let mut connection = pool.get().expect("db connection");
-        let migrations = connection
+        let mut conn = pool
+            .get()
+            .expect("db connection");
+        let migrations = conn
             .run_pending_migrations(MIGRATIONS)
             .expect("diesel migrations");
         info!("Ran {} migrations", migrations.len());
@@ -55,10 +63,16 @@ impl Database {
         Database { pool }
     }
 
-    /// Get a connection from the pool.
-    pub fn conn(&self) -> DbConn {
-        DbConn(self.pool.get().expect("db connection"))
-    }
+    pub fn transaction<F, T, E>(&self, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&mut DbConnection) -> Result<T, E>,
+        E: std::convert::From<diesel::result::Error>,
+    {
+        let mut conn = self.pool.get().expect("db connection");
+        conn.transaction(|conn| {
+            f(conn)
+        })
+    }   
 }
 
 pub(crate) fn string_to_uuid(s: String) -> Result<Uuid, DatabaseError> {

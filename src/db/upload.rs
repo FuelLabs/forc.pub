@@ -3,7 +3,7 @@ use super::{models, schema, DbConn};
 use diesel::prelude::*;
 use uuid::Uuid;
 
-impl DbConn {
+impl<'a> DbConn<'a> {
     /// Insert an upload record into the database and return the record.
     pub fn new_upload(
         &mut self,

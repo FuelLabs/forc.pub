@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use diesel::sql_types::Timestamptz;
 use uuid::Uuid;
 
-impl DbConn {
+impl<'a> DbConn<'a> {
     /// Insert a package version into the database and return the package version.
     /// If the package doesn't exist, insert the package as well.
     pub fn new_package_version(
@@ -29,7 +29,7 @@ impl DbConn {
                 // The package exists but the user is not the owner.
                 return Err(DatabaseError::InvalidPublishToken);
             }
-            Ok(existing_package)
+            Ok::<_, DatabaseError>(existing_package)
         } else {
             // Insert a new package.
             let new_package: models::NewPackage = models::NewPackage {
