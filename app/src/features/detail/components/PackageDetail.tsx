@@ -19,14 +19,31 @@ import usePackageDetail from "../hooks/usePackageDetail";
 import ReactMarkdown from "react-markdown";
 import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
+import { AbiContent } from "./AbiContent";
+
+type TabNames =
+  | "Readme"
+  | "Versions"
+  | "Dependencies"
+  | "Dependents"
+  | "Code"
+  | "ABI";
+const TABS: TabNames[] = [
+  "Readme",
+  "Versions",
+  "Dependencies",
+  "Dependents",
+  "Code",
+  "ABI",
+];
 
 const PackageDetail: React.FC = () => {
   const { name, version } = useParams<{ name: string; version?: string }>();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabNames>(TABS[0]);
   const { data, loading, error } = usePackageDetail(name!, version);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+    setActiveTab(TABS[newValue]);
   };
 
   if (loading) {
@@ -89,7 +106,7 @@ const PackageDetail: React.FC = () => {
           )}
         </div>
         <Tabs
-          value={activeTab}
+          value={TABS.indexOf(activeTab)}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="inherit"
@@ -103,16 +120,17 @@ const PackageDetail: React.FC = () => {
           <Tab label="Dependencies" className="package-tab" />
           <Tab label="Dependents" className="package-tab" />
           <Tab label="Code" className="package-tab" />
+          {data.abiIpfsUrl && <Tab label="ABI" className="package-tab" />}
         </Tabs>
 
         <Grid container spacing={4}>
           {/* Main Content - Left Side (changes with tabs) */}
           <Grid item xs={12} md={7} lg={8}>
             {/* Readme Tab */}
-            {activeTab === 0 && renderReadmeTab()}
+            {activeTab === TABS[0] && renderReadmeTab()}
 
             {/* Versions Tab */}
-            {activeTab === 1 && (
+            {activeTab === TABS[1] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -131,7 +149,7 @@ const PackageDetail: React.FC = () => {
             )}
 
             {/* Dependencies Tab */}
-            {activeTab === 2 && (
+            {activeTab === TABS[2] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -151,7 +169,7 @@ const PackageDetail: React.FC = () => {
             )}
 
             {/* Dependents Tab */}
-            {activeTab === 3 && (
+            {activeTab === TABS[3] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
@@ -171,17 +189,13 @@ const PackageDetail: React.FC = () => {
             )}
 
             {/* Code Tab */}
-            {activeTab === 4 && (
+            {activeTab === TABS[4] && (
               <Card variant="outlined" className="card-dark">
                 <CardContent className="card-content">
                   <Typography variant="h6" gutterBottom className="card-title">
                     Source Code
                   </Typography>
                   <div className="tab-content">
-                    <Typography paragraph>
-                      Browse the source code for {data.name}@{data.version}.
-                    </Typography>
-
                     <div className="download-section">
                       <Link
                         href={data.sourceCodeIpfsUrl}
@@ -199,14 +213,32 @@ const PackageDetail: React.FC = () => {
                       </Link>
 
                       <Typography variant="body2" className="download-info">
-                        Full source code including dependencies
+                        Package source code
                       </Typography>
 
                       <Typography variant="caption" className="ipfs-hash">
                         IPFS: {data.sourceCodeIpfsUrl.split("/").pop()}
                       </Typography>
+                    </div>
 
-                      {data.abiIpfsUrl && (
+                    <Alert severity="info" className="alert-dark">
+                      Source code browser feature is coming soon.
+                    </Alert>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {/* ABI Tab */}
+            {activeTab === TABS[5] && (
+              <Card variant="outlined" className="card-dark">
+                <CardContent className="card-content">
+                  <Typography variant="h6" gutterBottom className="card-title">
+                    Application Binary Interface (ABI)
+                  </Typography>
+
+                  {data.abiIpfsUrl && (
+                    <>
+                      <div className="tab-content">
                         <div className="abi-download">
                           <Link
                             href={data.abiIpfsUrl}
@@ -214,16 +246,21 @@ const PackageDetail: React.FC = () => {
                             rel="noopener noreferrer"
                             className="link-light"
                           >
-                            Download ABI (.json)
+                            <Button
+                              variant="contained"
+                              color="secondary"
+                              startIcon={<CloudDownloadIcon />}
+                            >
+                              Download ABI (.json)
+                            </Button>
                           </Link>
                         </div>
-                      )}
-                    </div>
-
-                    <Alert severity="info" className="alert-dark">
-                      Source code browser feature is coming soon.
-                    </Alert>
-                  </div>
+                        <AbiContent
+                          abiUrl={`${data.abiIpfsUrl}?filename=${data.name}-abi.json.&download=true`}
+                        />
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
