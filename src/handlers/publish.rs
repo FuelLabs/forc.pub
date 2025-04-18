@@ -1,3 +1,4 @@
+use std::env;
 use std::sync::{Arc, Mutex};
 
 use crate::api::publish::PublishRequest;
@@ -6,6 +7,7 @@ use crate::db::Database;
 use crate::index::handler::git::GithubRepoBuilder;
 use crate::index::handler::{IndexPublishError, IndexPublisher};
 use crate::models::{ApiToken, NewPackageDep};
+use crate::util::load_env;
 use forc_pkg::source::reg::{
     self,
     file_location::Namespace,
@@ -148,29 +150,34 @@ pub async fn handle_publish(
         license: Some(pkg_manifest.project.license.clone()),
     };
 
-    let package_name = publish_info.package_name.clone();
-    let package_version = publish_info.num.clone();
-    let source_cid = upload.source_code_ipfs_hash;
-    let abi_cid = upload.abi_ipfs_hash;
-    let dependencies = package_deps
-        .iter()
-        .cloned()
-        .map(PackageDependencyIdentifier::from)
-        .collect();
-    let yanked = false;
+    load_env();
+    let run_env = env::var("RUN_ENV").unwrap_or_default();
 
-    let package_entry = PackageEntry::new(
-        package_name,
-        package_version,
-        source_cid,
-        abi_cid,
-        dependencies,
-        yanked,
-    );
+    if run_env != "local" {
+        let package_name = publish_info.package_name.clone();
+        let package_version = publish_info.num.clone();
+        let source_cid = upload.source_code_ipfs_hash;
+        let abi_cid = upload.abi_ipfs_hash;
+        let dependencies = package_deps
+            .iter()
+            .cloned()
+            .map(PackageDependencyIdentifier::from)
+            .collect();
+        let yanked = false;
 
-    // Wait for index file insertion to finalize, if it fails we should not
-    // insert the publish information into db.
-    publish_index_file(package_entry).await?;
+        let package_entry = PackageEntry::new(
+            package_name,
+            package_version,
+            source_cid,
+            abi_cid,
+            dependencies,
+            yanked,
+        );
+
+        // Wait for index file insertion to finalize, if it fails we should not
+        // insert the publish information into db.
+        publish_index_file(package_entry).await?;
+    }
 
     // Insert package version into the database along with metadata from the package manifest.
     let package_version = db.conn().new_package_version(token, &publish_info)?;
