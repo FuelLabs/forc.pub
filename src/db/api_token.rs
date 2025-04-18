@@ -51,7 +51,7 @@ impl From<PlainToken> for String {
     }
 }
 
-impl DbConn {
+impl DbConn<'_> {
     /// Creates an API token for the user and returns the token.
     pub fn new_token(
         &mut self,

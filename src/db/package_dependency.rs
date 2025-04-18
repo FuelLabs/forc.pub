@@ -4,7 +4,7 @@ use crate::models::NewPackageDep;
 use diesel::prelude::*;
 use uuid::Uuid;
 
-impl DbConn {
+impl DbConn<'_> {
     /// Insert package dependencies into the database and return the number of rows inserted.
     pub fn insert_dependencies(
         &mut self,

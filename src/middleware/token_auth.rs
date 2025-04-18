@@ -20,6 +20,12 @@ pub enum TokenAuthError {
     DatabaseConnection,
 }
 
+impl From<diesel::result::Error> for TokenAuthError {
+    fn from(_e: diesel::result::Error) -> Self {
+        TokenAuthError::DatabaseConnection
+    }
+}
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for TokenAuth {
     type Error = TokenAuthError;
@@ -28,30 +34,38 @@ impl<'r> FromRequest<'r> for TokenAuth {
         // TODO: use fairing for db connection?
         // let db = try_outcome!(request.guard::<Database>().await);
 
-        let mut db = match request.rocket().state::<Database>() {
-            Some(db) => db.conn(),
+        let db = match request.rocket().state::<Database>() {
+            Some(db) => db,
             None => {
-                return Outcome::Error((
-                    Status::InternalServerError,
-                    TokenAuthError::DatabaseConnection,
-                ))
+                return Outcome::Error((Status::Unauthorized, TokenAuthError::DatabaseConnection))
             }
         };
 
-        if let Some(auth_header) = request.headers().get_one(header::AUTHORIZATION.as_str()) {
-            if auth_header.starts_with("Bearer ") {
-                let token = auth_header.trim_start_matches("Bearer ");
-                if let Ok(token) = db.get_token(PlainToken::from(token.to_string())) {
-                    if token.expires_at.map_or(true, |expires_at| {
-                        expires_at > DateTime::<Utc>::from(SystemTime::now())
-                    }) {
-                        return Outcome::Success(TokenAuth { token });
-                    }
-                    return Outcome::Error((Status::Unauthorized, TokenAuthError::Expired));
-                }
-            }
+        let auth_header = match request.headers().get_one(header::AUTHORIZATION.as_str()) {
+            Some(header) => header,
+            None => return Outcome::Error((Status::Unauthorized, TokenAuthError::Missing)),
+        };
+
+        if !auth_header.starts_with("Bearer ") {
             return Outcome::Error((Status::Unauthorized, TokenAuthError::Invalid));
         }
-        return Outcome::Error((Status::Unauthorized, TokenAuthError::Missing));
+        let token = auth_header.trim_start_matches("Bearer ");
+
+        match db.transaction(|conn| {
+            if let Ok(token) = conn.get_token(PlainToken::from(token.to_string())) {
+                if token.expires_at.map_or(true, |expires_at| {
+                    expires_at > DateTime::<Utc>::from(SystemTime::now())
+                }) {
+                    Ok(TokenAuth { token })
+                } else {
+                    Err(TokenAuthError::Expired)
+                }
+            } else {
+                Err(TokenAuthError::Invalid)
+            }
+        }) {
+            Ok(token_auth) => Outcome::Success(token_auth),
+            Err(e) => return Outcome::Error((Status::Unauthorized, e)),
+        }
     }
 }
