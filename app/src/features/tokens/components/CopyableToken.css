@@ -30,12 +30,12 @@
 }
 
 .copy-button {
-  color: #e0e0e0 !important;
+  color: #e0e0e0;
 }
 
 .copy-button:hover {
-  color: #ffffff !important;
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .copy-button svg {

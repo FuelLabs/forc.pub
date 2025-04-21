@@ -37,15 +37,6 @@
   margin: 0;
 }
 
-.new-token-button {
-  background-color: #0d47a1 !important;
-  color: #ffffff !important;
-}
-
-.new-token-button:hover {
-  background-color: #1565c0 !important;
-}
-
 .tokens-list-container {
   display: flex;
   flex-direction: column;
@@ -73,35 +64,35 @@
 }
 
 .token-name-field {
-  min-width: 50% !important;
+  min-width: 50%;
 }
 
 /* Override MUI styles for dark mode */
 .api-tokens-container .MuiFilledInput-root {
-  background-color: #2a2a2a !important;
+  background-color: #2a2a2a;
 }
 
 .api-tokens-container .MuiInputBase-input {
-  color: #e0e0e0 !important;
+  color: #e0e0e0;
 }
 
 .api-tokens-container .MuiInputLabel-root {
-  color: #b0b0b0 !important;
+  color: #b0b0b0;
 }
 
 .api-tokens-container .MuiFormLabel-root.Mui-focused {
-  color: #90caf9 !important;
+  color: #90caf9;
 }
 
 .api-tokens-container .MuiFilledInput-underline:after {
-  border-bottom-color: #90caf9 !important;
+  border-bottom-color: #90caf9;
 }
 
 .generate-button {
-  background-color: #0d47a1 !important;
-  color: #ffffff !important;
+  background-color: #0d47a1;
+  color: #ffffff;
 }
 
 .generate-button:hover {
-  background-color: #1565c0 !important;
+  background-color: #1565c0;
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import PackageDashboard from "../features/dahboard/components/PackageDashboard";
+import PackageDashboard from "../features/dashboard/components/PackageDashboard";
 import "./Home.css";
 
 function Home() {

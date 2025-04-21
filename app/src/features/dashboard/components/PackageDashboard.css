@@ -1,0 +1,58 @@
+/* Dark mode styling for Package Dashboard */
+.dashboard-container {
+  margin-top: 24px;
+}
+
+.section-title {
+  border-bottom: 2px solid #90caf9;
+  padding-bottom: 8px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.package-card {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    background-color 0.2s;
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+}
+
+.package-card-hover {
+  background-color: #383838;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.card-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: transparent;
+}
+
+.package-name {
+  color: #90caf9;
+  margin-bottom: 8px;
+}
+
+.package-timestamp {
+  color: #b0b0b0;
+  font-size: 0.85rem;
+}
+
+.package-description {
+  color: #e0e0e0;
+  margin-top: 8px;
+}
+
+.arrow-icon {
+  color: #90caf9;
+  margin-left: 16px;
+  align-self: center;
+  font-size: 1.2rem;
+}
