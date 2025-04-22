@@ -156,7 +156,7 @@ pub async fn handle_publish(
     load_env();
     let run_env = env::var("RUN_ENV").unwrap_or_default();
 
-    if run_env != "local" {
+    let publish_index_file = if run_env != "local" {
         let package_name = publish_info.package_name.clone();
         let package_version = publish_info.num.clone();
         let source_cid = upload.source_code_ipfs_hash;
@@ -179,12 +179,17 @@ pub async fn handle_publish(
 
         // Wait for index file insertion to finalize, if it fails we should not
         // insert the publish information into db.
-        publish_index_file(package_entry).await?;
-    }
+        publish_index_file(package_entry).await
+    } else {
+        Ok(())
+    };
 
     db.transaction(|conn| {
         // Insert package version into the database along with metadata from the package manifest.
         let package_version = conn.new_package_version(token, &publish_info)?;
+
+        // Ensure the index publish repo
+        publish_index_file?;
 
         // Insert package dependencies into the database.
         let new_package_deps = package_deps
