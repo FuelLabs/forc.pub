@@ -31,6 +31,9 @@ pub enum PublishError {
     Database(#[from] DatabaseError),
 
     #[error(transparent)]
+    Diesel(#[from] diesel::result::Error),
+
+    #[error(transparent)]
     Index(#[from] IndexPublishError),
 }
 
@@ -100,7 +103,7 @@ pub async fn handle_publish(
 ) -> Result<PublishInfo, PublishError> {
     info!("Starting to publish upload {}", request.upload_id);
 
-    let upload = db.conn().get_upload(request.upload_id)?;
+    let upload = db.transaction(|conn| conn.get_upload(request.upload_id))?;
 
     // For now, only package manifests are supported. Workspace manifests will be supported in the future.
     let pkg_manifest = PackageManifest::from_string(upload.forc_manifest)
@@ -113,29 +116,29 @@ pub async fn handle_publish(
         ))?;
 
     // Validate the package dependencies.
-    let package_deps = match pkg_manifest.dependencies {
-        Some(deps) => {
-            let mut package_deps = vec![];
-            for (name, dependency) in deps {
-                // Check if the package version exists in the database.
-                let version = dependency
-                    .version()
-                    .ok_or(PublishError::InvalidForcManifest(
-                        "Dependency must have a version".to_string(),
-                    ))?;
-                let _ = db
-                    .conn()
-                    .get_package_version(name.clone(), version.to_string())?;
+    let package_deps = db.transaction(|conn| {
+        match pkg_manifest.dependencies {
+            Some(deps) => {
+                let mut package_deps = vec![];
+                for (name, dependency) in deps {
+                    // Check if the package version exists in the database.
+                    let version = dependency
+                        .version()
+                        .ok_or(PublishError::InvalidForcManifest(
+                            "Dependency must have a version".to_string(),
+                        ))?;
+                    let _ = conn.get_package_version(name.clone(), version.to_string())?;
 
-                package_deps.push(PartialPackageDep {
-                    dependency_package_name: name.clone(),
-                    dependency_version_req: version.to_string(),
-                });
+                    package_deps.push(PartialPackageDep {
+                        dependency_package_name: name.clone(),
+                        dependency_version_req: version.to_string(),
+                    });
+                }
+                Ok::<_, PublishError>(package_deps)
             }
-            package_deps
+            None => Ok(vec![]),
         }
-        None => vec![],
-    };
+    })?;
 
     let publish_info = PublishInfo {
         package_name: pkg_manifest.project.name,
@@ -179,36 +182,34 @@ pub async fn handle_publish(
         publish_index_file(package_entry).await?;
     }
 
-    // Insert package version into the database along with metadata from the package manifest.
-    let package_version = db.conn().new_package_version(token, &publish_info)?;
+    db.transaction(|conn| {
+        // Insert package version into the database along with metadata from the package manifest.
+        let package_version = conn.new_package_version(token, &publish_info)?;
 
-    // Insert package dependencies into the database.
-    let new_package_deps = package_deps
-        .iter()
-        .map(|dep| NewPackageDep {
-            dependent_package_version_id: package_version.id,
-            dependency_package_name: dep.dependency_package_name.clone(),
-            dependency_version_req: dep.dependency_version_req.clone(),
-        })
-        .collect();
-    let _ = db.conn().insert_dependencies(new_package_deps)?;
+        // Insert package dependencies into the database.
+        let new_package_deps = package_deps
+            .iter()
+            .map(|dep| NewPackageDep {
+                dependent_package_version_id: package_version.id,
+                dependency_package_name: dep.dependency_package_name.clone(),
+                dependency_version_req: dep.dependency_version_req.clone(),
+            })
+            .collect();
+        let _ = conn.insert_dependencies(new_package_deps)?;
 
-    // Insert package categories and keywords into the database.
-    if let Some(categories) = pkg_manifest.project.categories {
-        let _ = db
-            .conn()
-            .insert_categories(package_version.package_id, &categories)?;
-    }
-    if let Some(keywords) = pkg_manifest.project.keywords {
-        let _ = db
-            .conn()
-            .insert_keywords(package_version.package_id, &keywords)?;
-    }
+        // Insert package categories and keywords into the database.
+        if let Some(categories) = pkg_manifest.project.categories {
+            let _ = conn.insert_categories(package_version.package_id, &categories)?;
+        }
+        if let Some(keywords) = pkg_manifest.project.keywords {
+            let _ = conn.insert_keywords(package_version.package_id, &keywords)?;
+        }
 
-    info!(
-        "Successfully published package {} version {}",
-        publish_info.package_name, publish_info.num
-    );
+        info!(
+            "Successfully published package {} version {}",
+            publish_info.package_name, publish_info.num
+        );
 
-    Ok(publish_info)
+        Ok(publish_info)
+    })
 }
