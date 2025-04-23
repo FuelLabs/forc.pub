@@ -188,7 +188,7 @@ pub async fn handle_publish(
         // Insert package version into the database along with metadata from the package manifest.
         let package_version = conn.new_package_version(token, &publish_info)?;
 
-        // Ensure the index publish repo
+        // Ensure the index file inserted, if not revert the db transaction.
         publish_index_file?;
 
         // Insert package dependencies into the database.
