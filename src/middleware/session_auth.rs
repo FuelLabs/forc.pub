@@ -20,6 +20,12 @@ pub enum SessionAuthError {
     DatabaseConnection,
 }
 
+impl From<diesel::result::Error> for SessionAuthError {
+    fn from(_e: diesel::result::Error) -> Self {
+        SessionAuthError::DatabaseConnection
+    }
+}
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for SessionAuth {
     type Error = SessionAuthError;
@@ -28,29 +34,34 @@ impl<'r> FromRequest<'r> for SessionAuth {
         // TODO: use fairing for db connection?
         // let db = try_outcome!(request.guard::<Database>().await);
 
-        let mut db = match request.rocket().state::<Database>() {
-            Some(db) => db.conn(),
+        let db = match request.rocket().state::<Database>() {
+            Some(db) => db,
             None => {
-                return Outcome::Error((
-                    Status::InternalServerError,
-                    SessionAuthError::DatabaseConnection,
-                ))
+                return Outcome::Error((Status::Unauthorized, SessionAuthError::DatabaseConnection))
             }
         };
-        if let Some(Some(session_id)) = request
+
+        let session_id = match request
             .cookies()
             .get(SESSION_COOKIE_NAME)
             .map(|c| Uuid::parse_str(c.value()).ok())
         {
-            if let Ok(session) = db.get_session(session_id) {
-                if let Ok(user) = db.get_user_for_session(session_id) {
+            Some(Some(session_id)) => session_id,
+            _ => return Outcome::Error((Status::Unauthorized, SessionAuthError::Missing)),
+        };
+
+        match db.transaction(|conn| {
+            if let Ok(session) = conn.get_session(session_id) {
+                if let Ok(user) = conn.get_user_for_session(session_id) {
                     if session.expires_at > Utc::now() {
-                        return Outcome::Success(SessionAuth { user, session_id });
+                        return Ok(SessionAuth { user, session_id });
                     }
                 }
             }
-            return Outcome::Error((Status::Unauthorized, SessionAuthError::Invalid));
+            Err(SessionAuthError::Invalid)
+        }) {
+            Ok(session_auth) => return Outcome::Success(session_auth),
+            Err(e) => return Outcome::Error((Status::Unauthorized, e)),
         }
-        return Outcome::Error((Status::Unauthorized, SessionAuthError::Missing));
     }
 }

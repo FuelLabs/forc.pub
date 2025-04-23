@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
+    #[error("Transaction failed: {0}")]
+    TransactionFailed(#[from] diesel::result::Error),
+
     #[error("Invalid UUID: {0}")]
     InvalidUuid(String),
 
@@ -38,7 +41,7 @@ pub enum DatabaseError {
     #[error("Failed to save package categories: {0}")]
     InsertPackageCategoriesFailed(diesel::result::Error),
 
-    #[error("Failed to save package categories: {0}")]
+    #[error("Failed to save package keywords: {0}")]
     InsertPackageKeywordsFailed(diesel::result::Error),
 
     #[error("Failed to query: {0}: {1}")]

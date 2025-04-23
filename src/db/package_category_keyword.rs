@@ -4,7 +4,7 @@ use crate::models::{NewPackageCategory, NewPackageKeyword};
 use diesel::prelude::*;
 use uuid::Uuid;
 
-impl DbConn {
+impl DbConn<'_> {
     /// Insert package categories into the database and return the number of rows inserted.
     pub fn insert_categories(
         &mut self,
