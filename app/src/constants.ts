@@ -1,4 +1,4 @@
 export const SERVER_URI =
-  process.env.REACT_APP_SERVER_URI ?? "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 export const REDIRECT_URI =
-  process.env.REACT_APP_REDIRECT_URI ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_REDIRECT_URI ?? "http://localhost:3000";

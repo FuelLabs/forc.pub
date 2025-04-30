@@ -1,18 +1,13 @@
-import { useLocalStorage } from "usehooks-ts";
+"use client";
+
+import { useSafeLocalStorage } from "../hooks/useSafeLocalStorage";
 
 const STORAGE_GH_CODE_KEY = "gh_code";
 
 export function useLocalSession() {
-  function clear<T>(key: string, handleSave: (value: T | null) => void) {
-    handleSave(null);
-    localStorage.removeItem(key);
-  }
-
-  const [githubCode, saveGithubCode] = useLocalStorage<string | null>(
-    STORAGE_GH_CODE_KEY,
-    null,
-  );
-  const clearGithubCode = () => clear(STORAGE_GH_CODE_KEY, saveGithubCode);
+  const [githubCode, saveGithubCode, clearGithubCode] = useSafeLocalStorage<
+    string | null
+  >(STORAGE_GH_CODE_KEY, null);
 
   return { githubCode, saveGithubCode, clearGithubCode };
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import {
   Box,
@@ -8,14 +10,14 @@ import {
   CircularProgress,
   Container,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import useFetchRecentPackages, {
   RecentPackage,
 } from "../hooks/useFetchRecentPackages";
 import "./PackageDashboard.css";
+import { useRouter } from "next/navigation";
 
 const PackageDashboard: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { data, loading } = useFetchRecentPackages();
 
   if (loading) {
@@ -40,7 +42,7 @@ const PackageDashboard: React.FC = () => {
         <Card
           key={i}
           className="package-card"
-          onClick={() => navigate("/package/" + pkg.name)}
+          onClick={() => router.push("/package/" + pkg.name)}
           onMouseEnter={(e) =>
             (e.currentTarget.className = "package-card package-card-hover")
           }

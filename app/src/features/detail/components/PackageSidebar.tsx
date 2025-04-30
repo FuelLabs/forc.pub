@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import {
   Box,
@@ -137,9 +139,9 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
             <Typography variant="subtitle1" className="sidebar-section-heading">
               Additional URLs
             </Typography>
-            <List dense disablePadding className="sidebar-list">
+            <List dense className="sidebar-list">
               {data.urls.map((url, index) => (
-                <ListItem key={index} disablePadding className="link-list-item">
+                <ListItem key={index} className="link-list-item">
                   <Link
                     href={url}
                     target="_blank"
