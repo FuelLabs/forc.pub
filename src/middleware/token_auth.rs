@@ -53,9 +53,9 @@ impl<'r> FromRequest<'r> for TokenAuth {
 
         match db.transaction(|conn| {
             if let Ok(token) = conn.get_token(PlainToken::from(token.to_string())) {
-                if token.expires_at.map_or(true, |expires_at| {
-                    expires_at > DateTime::<Utc>::from(SystemTime::now())
-                }) {
+                 if token.expires_at.is_none_or(|expires_at| {
+                     expires_at > DateTime::<Utc>::from(SystemTime::now())
+                 }) {
                     Ok(TokenAuth { token })
                 } else {
                     Err(TokenAuthError::Expired)
