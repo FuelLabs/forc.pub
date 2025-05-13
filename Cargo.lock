@@ -2175,9 +2175,9 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forc-pkg"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d142d7762a0a656472493f4c86ef735c4636e1aa85f11c8ab1588f32e1132ab5"
+checksum = "6e22a3260bbd632dbb046e955d082003f967b47ef690a2bbb6c7075a56b2b7ad"
 dependencies = [
  "ansiterm",
  "anyhow",
@@ -2216,20 +2216,21 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d0ae7dcca839ac601722c6bb7928badae60c31ba51f72e3de864da8f09d685d"
+checksum = "f0959efc18cb7fe28a4461c9e09357e839de2a4994726307e54748e71d575c1c"
 dependencies = [
  "ansiterm",
+ "regex",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
 name = "forc-util"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a38fb8d58411aae2fcced8fbed02fd15a77f7262dc7398a24bb66d33b37e46ab"
+checksum = "9d036fc10185a6fb939133f8b747a9f8b9e96000bd30519f5974c69a29a65594"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -3393,6 +3394,12 @@ dependencies = [
  "rayon",
  "serde",
 ]
+
+[[package]]
+name = "indoc"
+version = "2.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
 
 [[package]]
 name = "inlinable_string"
@@ -5002,6 +5009,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ropey"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93411e420bcd1a75ddd1dc3caf18c23155eda2c090631a85af21ba19e97093b5"
+dependencies = [
+ "smallvec",
+ "str_indices",
+]
+
+[[package]]
 name = "rust_decimal"
 version = "1.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5682,6 +5699,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "str_indices"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d08889ec5408683408db66ad89e0e1f93dff55c73a4ccc71c427d5b277ee47e6"
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5758,9 +5781,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adf9cc010dedea915618a8974254cfb0fdbb2d374b3d4e6807ae9c9e6dd79943"
+checksum = "e18e21d34b19107c214b2dcc4d4ebc2cc69f65904f18e639f7dbd49f57ac3a42"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -5772,9 +5795,9 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05caee4e83538159dfb43b9d1a67eccf63bfb6d7c51df4b571a745b60b592da1"
+checksum = "1528ed64b406e2ab9d86e4a01305ad01f0a363488f8221abf84aa21e75714b71"
 dependencies = [
  "clap",
  "dirs 5.0.1",
@@ -5809,6 +5832,7 @@ dependencies = [
  "sway-parse",
  "sway-types",
  "sway-utils",
+ "swayfmt",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
@@ -5818,9 +5842,9 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97326c0c91b8863f9c4aa81c9d04e9493857cc1695e2322aee4fea9e3a9b5f2f"
+checksum = "d5770b4f23d9fc7966b3997f70b9b10a2cbb2ac13f557910e1061632c838bfc4"
 dependencies = [
  "either",
  "in_definite",
@@ -5833,9 +5857,9 @@ dependencies = [
 
 [[package]]
 name = "sway-features"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61ee23b05c8a71fa94fad33a00826738e785e8ce4ffa917b4c4224f4d7b2976a"
+checksum = "8ff25e5818a6023dfc847f99e56cefa76bc9cf5de92fe99dfce560cdcfcb571c"
 dependencies = [
  "clap",
  "paste",
@@ -5845,9 +5869,9 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ac9a924a0092d446bacf90454eb68942c2d2c22fe17f9f6232c3bc21c271d59"
+checksum = "f37c12ba0722073b650aff53441396fa965170f70fda873c332279b0c40b4297"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -5868,9 +5892,9 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d60c1c63aa0909ba23628457d0cb865ef4661b8db813613b64b46ae9ed6fcd7"
+checksum = "143c717794908a7974bd5c91bedefaa24a81bd7dd3a2d2bc8eb60612fc7d9b1a"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -5880,9 +5904,9 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50e6bc3ce09bd68e383e13446fe8d41483a62b12b4e6ad2d24ce039fcc8f3bb4"
+checksum = "4e53786b49531cd77f45e8340459054846e436cdf60fee58824fc5530c6d619e"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -5899,9 +5923,9 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90e4c84043ee85a69fe5021bc1fb2c5fa856fdd2e17c68302e26e80554af4300"
+checksum = "3c5df9e7f0b2656e83d137b0e3ccc74ff9b24ec717969391b14524435507d9f0"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -5919,12 +5943,34 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.68.2"
+version = "0.68.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91766a0f08a81604a331ab467b0f29a8f2b34df461498678a58bc516aea20eb7"
+checksum = "200d0c01d200d01afc47e82bff05c3398034f00a075d54dafa2d471d28702eac"
 dependencies = [
  "serde",
  "walkdir",
+]
+
+[[package]]
+name = "swayfmt"
+version = "0.68.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6c709cf6990e17fb7420f76eb3dd4930551737cd7f84012c293eacb87b4ab6a"
+dependencies = [
+ "anyhow",
+ "forc-tracing",
+ "indoc",
+ "ropey",
+ "serde",
+ "serde_ignored",
+ "sway-ast",
+ "sway-error",
+ "sway-features",
+ "sway-parse",
+ "sway-types",
+ "sway-utils",
+ "thiserror 1.0.69",
+ "toml 0.8.20",
 ]
 
 [[package]]

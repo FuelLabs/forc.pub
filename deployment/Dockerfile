@@ -29,7 +29,7 @@ COPY . .
 RUN cargo build
 
 # Stage 2: Run
-FROM rust:1.84 as run
+FROM rust:1.85 as run
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates curl git libpq5 rsync \
