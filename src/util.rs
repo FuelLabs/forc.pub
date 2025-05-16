@@ -1,5 +1,5 @@
 use semver::Version;
-use std::path::Path;
+use std::{env, path::Path};
 
 pub fn validate_or_format_semver(version: &str) -> Option<String> {
     // Remove the leading 'v' if it exists
@@ -23,7 +23,12 @@ pub fn load_env() {
 
     // Then load `.env.local`, potentially overwriting values from `.env`
     if let Err(e) = dotenvy::from_path_override(Path::new(".env.local")) {
-        tracing::error!("Could not load .env.local: {}", e);
+        if env::var("RUN_ENV").unwrap_or_default() == "local" {
+            // If RUN_ENV is not set, log the error
+            tracing::error!("Could not load .env.local: {}", e);
+        }
+
+        tracing::info!("Could not load .env.local: {}", e);
     }
 }
 

@@ -67,7 +67,7 @@ impl S3Client for S3ClientImpl {
                 .body(ByteStream::from(buffer))
                 .send()
                 .await
-                .map_err(|e| UploadError::S3UploadFailed(format!("{:?}", e)))?;
+                .map_err(|e| UploadError::S3UploadFailed(e.to_string()))?;
         }
         Ok(())
     }
