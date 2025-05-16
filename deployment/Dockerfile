@@ -51,7 +51,7 @@ RUN tags=$(curl -s "https://api.github.com/repos/FuelLabs/sway/tags?per_page=20"
     echo "Tags fetched from the repository:" && \
     for tag in $tags; do \
     echo "Tag: $tag" && \
-    cargo binstall --no-confirm --root "forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v$tag/forc-binaries-linux_arm64.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
+    cargo binstall --no-confirm --root "forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v$tag/forc-binaries-linux_amd64.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
     done
 
 COPY --from=builder /build/target/release/forc_pub .
