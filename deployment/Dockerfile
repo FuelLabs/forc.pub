@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM lukemathwalker/cargo-chef:latest-rust-1.84 as chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.85 as chef
 WORKDIR /build/
 # hadolint ignore=DL3008
 
@@ -42,14 +42,14 @@ RUN apt-get update -y \
 RUN mkdir -p /root/.ssh && \
     curl --silent https://api.github.com/meta \
     | jq --raw-output '"github.com "+.ssh_keys[]' >> ~/.ssh/known_hosts
-    
+
 # Install the latest 20 versions of forc with cargo-binstall
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 RUN tags=$(curl -s "https://api.github.com/repos/FuelLabs/sway/tags?per_page=20" | grep '"name"' | sed -E 's/.*"name": "v?([^"]+)".*/\1/') && \
     echo "Tags fetched from the repository:" && \
     for tag in $tags; do \
-      echo "Tag: $tag" && \
-      cargo binstall --no-confirm --root "forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v$tag/forc-binaries-linux_arm64.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
+    echo "Tag: $tag" && \
+    cargo binstall --no-confirm --root "forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v$tag/forc-binaries-linux_arm64.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
     done
 
 WORKDIR /root/

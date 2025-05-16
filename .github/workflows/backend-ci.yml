@@ -22,7 +22,7 @@ jobs:
 
   cargo-fmt-check:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -36,13 +36,13 @@ jobs:
 
   cargo-clippy:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v1
+      - uses: WarpBuilds/rust-cache@v2
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -51,14 +51,14 @@ jobs:
 
   cargo-check:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v1
+      - uses: WarpBuilds/rust-cache@v2
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -67,7 +67,7 @@ jobs:
 
   cargo-test:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -85,7 +85,7 @@ jobs:
       - name: Install forc for tests
         run: |
           cargo binstall --no-confirm --root tests/fixtures/forc-0.65.0 forc@0.65.0
-      - uses: Swatinem/rust-cache@v1
+      - uses: WarpBuilds/rust-cache@v2
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -98,7 +98,7 @@ jobs:
       - cargo-clippy
       - cargo-check
       - cargo-test
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -125,13 +125,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the image to ghcr.io
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deployment/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=forc-pub-cache
+          cache-to: type=registry,ref=forc-pub-cache,mode=max
 
