@@ -27,8 +27,6 @@ pub fn load_env() {
             // If RUN_ENV is not set, log the error
             tracing::error!("Could not load .env.local: {}", e);
         }
-
-        tracing::info!("Could not load .env.local: {}", e);
     }
 }
 
