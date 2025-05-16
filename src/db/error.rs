@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
-    #[error("Transaction failed: {0}")]
+    #[error("Transaction failed")]
     TransactionFailed(#[from] diesel::result::Error),
 
     #[error("Invalid UUID: {0}")]

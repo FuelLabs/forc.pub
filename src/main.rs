@@ -27,14 +27,18 @@ use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::util::{load_env, validate_or_format_semver};
-use rocket::tokio::time::{self, Duration};
 use rocket::http::Status;
+use rocket::tokio::task;
+use rocket::tokio::time::{self, Duration};
 use rocket::{
     data::Capped,
     fs::TempFile,
     http::{Cookie, CookieJar},
     request::Request,
-    response::{self, stream::{Event, EventStream}},
+    response::{
+        self,
+        stream::{Event, EventStream},
+    },
     serde::json::Json,
     State,
 };
@@ -46,7 +50,6 @@ use tempfile::tempdir;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
-use rocket::tokio::task;
 
 const ORIGINAL_TARBALL_NAME: &str = "original.tgz";
 
@@ -146,7 +149,6 @@ async fn upload_project<'a>(
     forc_version: &'a str,
     mut tarball: Capped<TempFile<'a>>,
 ) -> EventStream![Event + 'a] {
-
     EventStream! {
 
         let mut interval = time::interval(Duration::from_secs(1));
@@ -170,7 +172,7 @@ async fn upload_project<'a>(
         // Install the forc version if it's not already installed.
         let forc_path_str = format!("forc-{forc_version}");
         let forc_path = PathBuf::from(&forc_path_str);
-        if let Err(_) = fs::create_dir_all(forc_path.clone()) {
+        if fs::create_dir_all(forc_path.clone()).is_err() {
             yield Event::json(&ApiError::Upload(UploadError::SaveFile));
             return;
         }
@@ -218,14 +220,14 @@ async fn upload_project<'a>(
         };
         let upload_dir = tmp_dir.path().join(upload_id.to_string());
 
-        if let Err(_) = fs::create_dir(upload_dir.clone()) {
+        if fs::create_dir(upload_dir.clone()).is_err() {
             yield Event::json(&ApiError::Upload(UploadError::SaveFile));
             return;
         }
 
         // Persist the file to disk.
         let orig_tarball_path = upload_dir.join(ORIGINAL_TARBALL_NAME);
-        if let Err(_) = tarball.persist_to(&orig_tarball_path).await {
+        if (tarball.persist_to(&orig_tarball_path).await).is_err() {
             yield Event::json(&ApiError::Upload(UploadError::SaveFile));
             return;
         }
@@ -249,13 +251,13 @@ async fn upload_project<'a>(
             }
         };
 
-        if let Err(_) = db.transaction(|conn| conn.new_upload(&upload_entry)) {
+        if db.transaction(|conn| conn.new_upload(&upload_entry)).is_err() {
             yield Event::json(&ApiError::Upload(UploadError::SaveFile));
             return;
         }
 
         // Clean up the temporary directory.
-        if let Err(_) = tmp_dir.close() {
+        if tmp_dir.close().is_err() {
             yield Event::json(&ApiError::Upload(UploadError::RemoveTempDir));
             return;
         }
