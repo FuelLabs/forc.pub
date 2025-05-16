@@ -27,10 +27,13 @@ use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::util::validate_or_format_semver;
+use rocket::http::Status;
 use rocket::{
     data::Capped,
     fs::TempFile,
     http::{Cookie, CookieJar},
+    request::Request,
+    response::{self},
     serde::json::Json,
     State,
 };
@@ -241,10 +244,18 @@ fn all_options() {
     // Intentionally left empty
 }
 
-/// Catch 404 not founds.
-#[catch(404)]
-fn not_found() -> String {
-    "Not found".to_string()
+/// Catch all errors and log them before returning a custom error message.
+#[catch(default)]
+fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Custom<String> {
+    tracing::error!(
+        "Error occurred: {} - {:?}",
+        status.code,
+        status.reason_lossy()
+    );
+    response::status::Custom(
+        status,
+        format!("Error: {} - {}", status.code, status.reason_lossy()),
+    )
 }
 
 // Indicates the service is running
@@ -289,5 +300,5 @@ async fn rocket() -> _ {
                 health
             ],
         )
-        .register("/", catchers![not_found])
+        .register("/", catchers![default_catcher])
 }

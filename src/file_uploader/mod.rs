@@ -20,6 +20,7 @@ impl<'a, T: PinataClient, E: S3Client> FileUploader<'a, T, E> {
     }
 
     pub async fn upload_file(&self, path: &Path) -> Result<String, UploadError> {
+        tracing::info!("Uploading file to IPFS: {:?}", path);
         let ipfs_hash = self.pinata_client.upload_file_to_ipfs(path).await?;
 
         // Read file contents
@@ -29,6 +30,7 @@ impl<'a, T: PinataClient, E: S3Client> FileUploader<'a, T, E> {
             .map_err(|_| UploadError::ReadFile)?;
 
         // Upload to S3
+        tracing::info!("Uploading file to S3: {:?}", path);
         self.s3_client
             .upload_file_to_s3(path, ipfs_hash.clone())
             .await?;
