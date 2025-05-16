@@ -6,6 +6,7 @@ use flate2::{
     {read::GzDecoder, write::GzEncoder},
 };
 use forc_util::bytecode::get_bytecode_id;
+use serde::Serialize;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,7 +23,7 @@ const FORC_MANIFEST_FILE: &str = "Forc.toml";
 const MAX_UPLOAD_SIZE_STR: &str = "10MB";
 pub const TARBALL_NAME: &str = "project.tgz";
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq, Serialize)]
 pub enum UploadError {
     #[error("Failed to create temporary directory.")]
     CreateTempDir,

@@ -15,6 +15,7 @@ use forc_pkg::source::reg::{
 };
 use forc_pkg::PackageManifest;
 use semver::Version;
+use serde::Serialize;
 use tempfile::TempDir;
 use thiserror::Error;
 use tracing::error;
@@ -22,15 +23,17 @@ use tracing::info;
 use url::Url;
 use uuid::Uuid;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Serialize)]
 pub enum PublishError {
     #[error("Invalid Forc manifest: {0}")]
     InvalidForcManifest(String),
 
     #[error(transparent)]
+    #[serde(skip)]
     Database(#[from] DatabaseError),
 
     #[error(transparent)]
+    #[serde(skip)]
     Diesel(#[from] diesel::result::Error),
 
     #[error(transparent)]

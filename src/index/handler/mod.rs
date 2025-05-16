@@ -2,9 +2,10 @@ pub mod git;
 
 use async_trait::async_trait;
 use forc_pkg::source::reg::index_file::PackageEntry;
+use serde::Serialize;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Serialize)]
 pub enum IndexPublishError {
     #[error("Connection lost with the publishing backend: {0}")]
     ConnectionLost(String),
@@ -25,9 +26,11 @@ pub enum IndexPublishError {
     PushError(String),
 
     #[error("Failed to parse index file: {0}")]
+    #[serde(skip)]
     ParseError(#[from] serde_json::Error),
 
     #[error("Package index file error: {0}")]
+    #[serde(skip)]
     FileSystemError(#[from] std::io::Error),
 
     #[error("No changes to commit")]
@@ -37,6 +40,7 @@ pub enum IndexPublishError {
     PackageDataError(String),
 
     #[error("Git relatated error: {0}")]
+    #[serde(skip)]
     Git2Error(#[from] git2::Error),
 
     #[error("Repository error: {0}")]
