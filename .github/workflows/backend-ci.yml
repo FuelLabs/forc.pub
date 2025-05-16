@@ -99,6 +99,9 @@ jobs:
       - cargo-check
       - cargo-test
     runs-on: warp-ubuntu-latest-x64-4x
+    permissions:
+      contents: read
+      packages: read, write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -125,11 +128,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the image to ghcr.io
-        uses: Warpbuilds/build-push-action@v6
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deployment/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          profile-name: "super-fast-builder" # Specify the builder profile to use
+          cache-from: type=registry,ref=forc.pub-cache
+          cache-to: type=registry,ref=forc.pub-cache,mode=max
+
