@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Start the PostgreSQL container
-./scripts/start_local_db.sh
-
 # Source environment variables
 source .env
 
@@ -56,6 +53,9 @@ if [[ "$(docker ps -aqf name=$CONTAINER_NAME)" ]]; then
         fi
     fi
 fi
+
+# Start the services using docker-compose
+docker-compose up -d
 
 # Start the Docker container on the same network as the PostgreSQL container
 docker run \
