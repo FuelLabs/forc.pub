@@ -26,14 +26,15 @@ use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, Up
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::util::validate_or_format_semver;
+use forc_pub::util::{load_env, validate_or_format_semver};
+use rocket::tokio::time::{self, Duration};
 use rocket::http::Status;
 use rocket::{
     data::Capped,
     fs::TempFile,
     http::{Cookie, CookieJar},
     request::Request,
-    response::{self},
+    response::{self, stream::{Event, EventStream}},
     serde::json::Json,
     State,
 };
@@ -45,6 +46,7 @@ use tempfile::tempdir;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
+use rocket::tokio::task;
 
 const ORIGINAL_TARBALL_NAME: &str = "original.tgz";
 
@@ -137,65 +139,130 @@ async fn publish(
     format = "application/gzip",
     data = "<tarball>"
 )]
-async fn upload_project(
-    db: &State<Database>,
-    pinata_client: &State<PinataClientImpl>,
-    s3_client: &State<S3ClientImpl>,
-    forc_version: &str,
-    mut tarball: Capped<TempFile<'_>>,
-) -> ApiResult<UploadResponse> {
-    // Ensure that the tarball was fully uploaded.
-    if !tarball.is_complete() {
-        return Err(ApiError::Upload(UploadError::TooLarge));
+async fn upload_project<'a>(
+    db: &'a State<Database>,
+    pinata_client: &'a State<PinataClientImpl>,
+    s3_client: &'a State<S3ClientImpl>,
+    forc_version: &'a str,
+    mut tarball: Capped<TempFile<'a>>,
+) -> EventStream![Event + 'a] {
+
+    EventStream! {
+
+        let mut interval = time::interval(Duration::from_secs(1));
+        // Ensure that the tarball was fully uploaded.
+        yield Event::data("Uploading sway project");
+        if !tarball.is_complete() {
+            yield Event::json(&ApiError::Upload(UploadError::TooLarge));
+            return;
+        }
+
+        // Sanitize the forc version.
+        yield Event::data(format!("Validating forc version: {forc_version}"));
+        let forc_version = match validate_or_format_semver(forc_version) {
+            Some(v) => v,
+            None => {
+                yield Event::json(&ApiError::Upload(UploadError::InvalidForcVersion(forc_version.into())));
+                return;
+            }
+        };
+
+        // Install the forc version if it's not already installed.
+        let forc_path_str = format!("forc-{forc_version}");
+        let forc_path = PathBuf::from(&forc_path_str);
+        if let Err(_) = fs::create_dir_all(forc_path.clone()) {
+            yield Event::json(&ApiError::Upload(UploadError::SaveFile));
+            return;
+        }
+        let forc_path = match fs::canonicalize(forc_path.clone()) {
+            Ok(p) => p,
+            Err(_) => {
+                yield Event::json(&ApiError::Upload(UploadError::SaveFile));
+                return;
+            }
+        };
+
+        // Spawn a task to install forc.
+        let forc_path_clone = forc_path.clone();
+        let forc_version_clone = forc_version.clone();
+        let handle = task::spawn_blocking(move || {
+            install_forc_at_path(&forc_version_clone, &forc_path_clone)
+        });
+
+        while !handle.is_finished() {
+            interval.tick().await;
+            yield Event::comment("keep-alive");
+        }
+
+        match handle.await {
+            Ok(Ok(_)) => {},
+            Ok(Err(err)) => {
+                yield Event::json(&ApiError::Upload(err));
+                return;
+            }
+            Err(_) => {
+                yield Event::json(&ApiError::Upload(UploadError::FailedToCompile));
+                return;
+            }
+        }
+
+        // Create an upload ID and temporary directory.
+        yield Event::data("Preparing project for publishing");
+        let upload_id = Uuid::new_v4();
+        let tmp_dir = match tempdir() {
+            Ok(d) => d,
+            Err(_) => {
+                yield Event::json(&ApiError::Upload(UploadError::CreateTempDir));
+                return;
+            }
+        };
+        let upload_dir = tmp_dir.path().join(upload_id.to_string());
+
+        if let Err(_) = fs::create_dir(upload_dir.clone()) {
+            yield Event::json(&ApiError::Upload(UploadError::SaveFile));
+            return;
+        }
+
+        // Persist the file to disk.
+        let orig_tarball_path = upload_dir.join(ORIGINAL_TARBALL_NAME);
+        if let Err(_) = tarball.persist_to(&orig_tarball_path).await {
+            yield Event::json(&ApiError::Upload(UploadError::SaveFile));
+            return;
+        }
+
+        // Handle the project upload and store the metadata in the database.
+        yield Event::data("Uploading project to IPFS and S3");
+        let file_uploader = FileUploader::new(pinata_client.inner(), s3_client.inner());
+        // TODO: Add keep-alives for this future.
+        let upload_entry = match handle_project_upload(
+            &upload_dir,
+            &upload_id,
+            &orig_tarball_path,
+            &forc_path,
+            forc_version.to_string(),
+            &file_uploader,
+        ).await {
+            Ok(entry) => entry,
+            Err(e) => {
+                yield Event::json(&ApiError::Upload(e));
+                return;
+            }
+        };
+
+        if let Err(_) = db.transaction(|conn| conn.new_upload(&upload_entry)) {
+            yield Event::json(&ApiError::Upload(UploadError::SaveFile));
+            return;
+        }
+
+        // Clean up the temporary directory.
+        if let Err(_) = tmp_dir.close() {
+            yield Event::json(&ApiError::Upload(UploadError::RemoveTempDir));
+            return;
+        }
+
+        // Final event: success with upload_id
+        yield Event::json(&UploadResponse { upload_id });
     }
-
-    // Sanitize the forc version.
-    let forc_version = validate_or_format_semver(forc_version)
-        .ok_or_else(|| ApiError::Upload(UploadError::InvalidForcVersion(forc_version.into())))?;
-
-    // Install the forc version if it's not already installed.
-    let forc_path_str = format!("forc-{forc_version}");
-    let forc_path = PathBuf::from(&forc_path_str);
-    fs::create_dir_all(forc_path.clone()).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
-    let forc_path =
-        fs::canonicalize(forc_path.clone()).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
-
-    install_forc_at_path(&forc_version, &forc_path)?;
-
-    // Create an upload ID and temporary directory.
-    let upload_id = Uuid::new_v4();
-    let tmp_dir = tempdir().map_err(|_| ApiError::Upload(UploadError::CreateTempDir))?;
-    let upload_dir = tmp_dir.path().join(upload_id.to_string());
-
-    fs::create_dir(upload_dir.clone()).map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
-
-    // Persist the file to disk.
-    let orig_tarball_path = upload_dir.join(ORIGINAL_TARBALL_NAME);
-    tarball
-        .persist_to(&orig_tarball_path)
-        .await
-        .map_err(|_| ApiError::Upload(UploadError::SaveFile))?;
-
-    // Handle the project upload and store the metadata in the database.
-    let file_uploader = FileUploader::new(pinata_client.inner(), s3_client.inner());
-    let upload_entry = handle_project_upload(
-        &upload_dir,
-        &upload_id,
-        &orig_tarball_path,
-        &forc_path,
-        forc_version.to_string(),
-        &file_uploader,
-    )
-    .await?;
-
-    db.transaction(|conn| conn.new_upload(&upload_entry))?;
-
-    // Clean up the temporary directory.
-    tmp_dir
-        .close()
-        .map_err(|_| ApiError::Upload(UploadError::RemoveTempDir))?;
-
-    Ok(Json(UploadResponse { upload_id }))
 }
 
 #[get("/packages?<updated_after>&<pagination..>")]
@@ -247,7 +314,7 @@ fn all_options() {
 
 /// Catch all errors and log them before returning a custom error message.
 #[catch(default)]
-fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Custom<String> {
+fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Custom<ApiError> {
     tracing::error!(
         "Error occurred: {} - {:?}",
         status.code,
@@ -255,7 +322,7 @@ fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Cust
     );
     response::status::Custom(
         status,
-        format!("Error: {} - {}", status.code, status.reason_lossy()),
+        ApiError::Generic(format!("{} - {}", status.code, status.reason_lossy())),
     )
 }
 
@@ -303,6 +370,7 @@ async fn rocket() -> _ {
 }
 
 fn setup_tracing_subscriber() {
+    load_env();
     let default_filter = "info"; // Default log level if RUST_LOG is not set
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));
