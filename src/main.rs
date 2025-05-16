@@ -268,6 +268,8 @@ fn health() -> String {
 #[launch]
 async fn rocket() -> _ {
     tracing_subscriber::fmt()
+        .json()
+        .with_ansi(false)
         .with_max_level(LevelFilter::INFO)
         .init();
 
