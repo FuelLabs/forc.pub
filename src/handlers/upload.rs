@@ -95,7 +95,7 @@ pub async fn handle_project_upload<'a>(
     let project_dir = upload_dir.join(PROJECT_DIR);
 
     // Unpack the tarball.
-    tracing::info!("Unpacking tarball: {:?}", orig_tarball_path);
+    tracing::info!("Unpacking tarball: {}", orig_tarball_path.to_string_lossy());
     let tarball = File::open(orig_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let decompressed = GzDecoder::new(tarball);
     let mut archive = Archive::new(decompressed);
@@ -106,7 +106,7 @@ pub async fn handle_project_upload<'a>(
     // Remove `out` directory if it exists.
     let _ = fs::remove_dir_all(unpacked_dir.join("out"));
 
-    tracing::info!("Executing forc build: {:?}", forc_path);
+    tracing::info!("Executing forc build: {}", forc_path.to_string_lossy());
     let output = Command::new(format!("{}/bin/forc", forc_path.to_string_lossy()))
         .arg("build")
         .arg("--release")
@@ -122,7 +122,10 @@ pub async fn handle_project_upload<'a>(
     }
 
     // Copy files that are part of the Sway project to a new directory.
-    tracing::info!("Copying files to project directory: {:?}", project_dir);
+    tracing::info!(
+        "Copying files to project directory: {}",
+        project_dir.to_string_lossy()
+    );
     let output = Command::new("rsync")
         .args([
             "-av",
@@ -148,7 +151,7 @@ pub async fn handle_project_upload<'a>(
     }
 
     // Pack the new tarball.
-    tracing::info!("Packing tarball: {:?}", upload_dir);
+    tracing::info!("Packing tarball: {}", upload_dir.to_string_lossy());
     let final_tarball_path = upload_dir.join(TARBALL_NAME);
     let tar_gz = File::create(&final_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
@@ -166,7 +169,10 @@ pub async fn handle_project_upload<'a>(
     enc.finish().map_err(|_| UploadError::CopyFiles)?;
 
     // Store the tarball.
-    tracing::info!("Uploading tarball: {:?}", final_tarball_path);
+    tracing::info!(
+        "Uploading tarball: {}",
+        final_tarball_path.to_string_lossy()
+    );
     let tarball_ipfs_hash = file_uploader.upload_file(&final_tarball_path).await?;
 
     fn find_file_in_dir_by_suffix(dir: &Path, suffix: &str) -> Option<PathBuf> {
@@ -192,7 +198,7 @@ pub async fn handle_project_upload<'a>(
     // Store the ABI.
     let abi_ipfs_hash = match find_file_in_dir_by_suffix(&release_dir, "-abi.json") {
         Some(abi_path) => {
-            tracing::info!("Uploading ABI: {:?}", release_dir);
+            tracing::info!("Uploading ABI: {}", release_dir.to_string_lossy());
             Some(file_uploader.upload_file(&abi_path).await?)
         }
         None => None,
