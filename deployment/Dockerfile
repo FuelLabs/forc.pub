@@ -26,7 +26,7 @@ RUN cargo chef cook --recipe-path recipe.json
 # Up to this point, if our dependency tree stays the same,
 # all layers should be cached.
 COPY . .
-RUN cargo build
+RUN cargo build --release
 
 # Stage 2: Run
 FROM rust:1.85 as run
@@ -54,8 +54,7 @@ RUN tags=$(curl -s "https://api.github.com/repos/FuelLabs/sway/tags?per_page=20"
 
 WORKDIR /root/
 
-COPY --from=builder /build/target/debug/forc_pub .
-COPY --from=builder /build/target/debug/forc_pub.d .
+COPY --from=builder /build/target/release/forc_pub .
 COPY --from=builder /build/Rocket.toml .
 COPY --from=builder /build/.env .
 
