@@ -268,7 +268,6 @@ fn health() -> String {
 // Launch the rocket server.
 #[launch]
 async fn rocket() -> _ {
-
     setup_tracing_subscriber();
 
     let s3_client = S3ClientImpl::new().await.expect("s3 client");
@@ -305,14 +304,12 @@ async fn rocket() -> _ {
 
 fn setup_tracing_subscriber() {
     let default_filter = "info"; // Default log level if RUST_LOG is not set
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(default_filter));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));
     // Initialize the tracing subscriber with JSON format and no ANSI colors for non-local.
     // For local, use standard formatting. Both respect RUST_LOG.
     if env::var("RUN_ENV").unwrap_or_default() == "local" {
-        tracing_subscriber::fmt()
-            .with_env_filter(env_filter)
-            .init();
+        tracing_subscriber::fmt().with_env_filter(env_filter).init();
     } else {
         tracing_subscriber::fmt()
             .json()
