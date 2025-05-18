@@ -324,7 +324,10 @@ fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Cust
     );
     response::status::Custom(
         status,
-        ApiError::Generic(format!("{} - {}", status.code, status.reason_lossy())),
+        ApiError::Generic(
+            format!("{} - {}", status.code, status.reason_lossy()),
+            status,
+        ),
     )
 }
 
