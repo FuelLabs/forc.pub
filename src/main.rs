@@ -26,6 +26,7 @@ use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, Up
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
+use forc_pub::models::PackageVersionInfo;
 use forc_pub::util::{load_env, validate_or_format_semver};
 use rocket::http::Status;
 use rocket::tokio::task;
@@ -295,6 +296,13 @@ fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiRe
     Ok(Json(FullPackage::from(db_data)))
 }
 
+/// Get all versions for a package.
+#[get("/package/versions?<name>")]
+fn package_versions(db: &State<Database>, name: String) -> ApiResult<Vec<PackageVersionInfo>> {
+    let versions = db.transaction(|conn| conn.get_package_versions(name))?;
+    Ok(Json(versions))
+}
+
 #[get("/recent_packages")]
 fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
     let (recently_created, recently_updated) = db.transaction(|conn| {
@@ -364,8 +372,9 @@ async fn rocket() -> _ {
                 publish,
                 upload_project,
                 tokens,
-                package,
                 packages,
+                package,
+                package_versions,
                 recent_packages,
                 all_options,
                 health

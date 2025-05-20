@@ -10,8 +10,7 @@ export default function PackagePage() {
 
   return (
     <App>
-      {" "}
-      <PackageDetail packageName={name} />{" "}
+      <PackageDetail packageName={name} />
     </App>
   );
 }

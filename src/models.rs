@@ -263,3 +263,19 @@ pub struct CountResult {
     #[diesel(sql_type = BigInt)]
     pub count: i64,
 }
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthorInfo {
+    pub full_name: String,
+    pub github_login: String,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PackageVersionInfo {
+    pub version: String,
+    pub author: AuthorInfo,
+    pub license: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
