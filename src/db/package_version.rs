@@ -2,7 +2,9 @@ use super::error::DatabaseError;
 use super::{models, schema, DbConn};
 use crate::api::pagination::{PaginatedResponse, Pagination};
 use crate::handlers::publish::PublishInfo;
-use crate::models::{ApiToken, CountResult, FullPackage, PackagePreview};
+use crate::models::{
+    ApiToken, AuthorInfo, CountResult, FullPackage, PackagePreview, PackageVersionInfo,
+};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::sql_types::Timestamptz;
@@ -324,5 +326,45 @@ impl DbConn<'_> {
         })?;
 
         Ok(package.clone())
+    }
+
+    /// Get all versions for a package given its name.
+    pub fn get_package_versions(
+        &mut self,
+        pkg_name: String,
+    ) -> Result<Vec<PackageVersionInfo>, DatabaseError> {
+        use schema::package_versions;
+        use schema::package_versions::columns::{
+            created_at as pv_created_at, license, num, package_id, published_by,
+        };
+        use schema::users;
+        use schema::users::columns::{full_name, github_login};
+
+        let package = self.get_package_by_name(pkg_name.clone())?;
+
+        let results = package_versions::table
+            .inner_join(users::table.on(published_by.eq(users::id)))
+            .filter(package_id.eq(package.id))
+            .order_by(package_versions::created_at.desc())
+            .select((num, full_name, github_login, license, pv_created_at))
+            .load::<(String, String, String, Option<String>, DateTime<Utc>)>(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed(pkg_name, err))?;
+
+        Ok(results
+            .into_iter()
+            .map(
+                |(version, author_full_name, author_github_login, pkg_license, created_at)| {
+                    PackageVersionInfo {
+                        version,
+                        author: AuthorInfo {
+                            full_name: author_full_name,
+                            github_login: author_github_login,
+                        },
+                        license: pkg_license,
+                        created_at,
+                    }
+                },
+            )
+            .collect())
     }
 }

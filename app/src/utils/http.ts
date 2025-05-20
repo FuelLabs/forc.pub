@@ -46,6 +46,18 @@ export interface TokensResponse {
   error?: string;
 }
 
+export interface AuthorInfo {
+  fullName: string;
+  githubLogin: string;
+}
+
+export interface PackageVersionInfo {
+  version: string;
+  author: AuthorInfo;
+  license?: string;
+  createdAt: Date;
+}
+
 type Routes = [
   {
     route: "/user";
@@ -76,6 +88,14 @@ type Routes = [
   {
     route: "/token/[id]";
     method: "DELETE";
+  },
+  {
+    route: "/package/versions";
+    method: "GET";
+    jsonResponse: PackageVersionInfo[];
+    queryParams: {
+      name: string;
+    };
   },
   {
     route: "/recent_packages";

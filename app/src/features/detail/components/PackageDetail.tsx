@@ -18,10 +18,12 @@ import {
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 
 import usePackageDetail from "../hooks/usePackageDetail";
+import { usePackageVersions } from "../hooks/usePackageVersions";
 import ReactMarkdown from "react-markdown";
 import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
 import { AbiContent } from "./AbiContent";
+import { VersionsList } from "./VersionsList";
 
 type TabNames =
   | "Readme"
@@ -41,17 +43,30 @@ const TABS: TabNames[] = [
 
 interface PackageDetailProps {
   packageName: string;
+  version?: string;
 }
 
-const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
+const PackageDetail: React.FC<PackageDetailProps> = ({
+  packageName,
+  version,
+}) => {
   const [activeTab, setActiveTab] = useState<TabNames>(TABS[0]);
-  const { data, loading, error } = usePackageDetail(packageName);
+  const {
+    data: packageData,
+    error: packageError,
+    loading: packageLoading,
+  } = usePackageDetail(packageName, version);
+  const {
+    versions,
+    loading: versionsLoading,
+    error: versionsError,
+  } = usePackageVersions(packageName);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(TABS[newValue]);
   };
 
-  if (loading) {
+  if (packageLoading) {
     return (
       <Box
         display="flex"
@@ -64,15 +79,15 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
     );
   }
 
-  if (error) {
+  if (packageError) {
     return (
       <Box sx={{ margin: 4 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{packageError}</Alert>
       </Box>
     );
   }
 
-  if (!data) {
+  if (!packageData) {
     return (
       <Box sx={{ margin: 4 }}>
         <Alert severity="info">No package information found.</Alert>
@@ -83,9 +98,9 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
   const renderReadmeTab = () => (
     <Card variant="outlined" className="card-dark">
       <CardContent className="card-content">
-        {data.readme ? (
+        {packageData.readme ? (
           <div className="readme-content">
-            <ReactMarkdown>{data.readme}</ReactMarkdown>
+            <ReactMarkdown>{packageData.readme}</ReactMarkdown>
           </div>
         ) : (
           <Typography>No readme available for this package.</Typography>
@@ -99,14 +114,14 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
       <Container maxWidth="lg" className="package-detail-inner">
         <div className="package-header">
           <Typography variant="h4" gutterBottom className="package-title">
-            {data.name}@{data.version}
+            {packageData.name}@{packageData.version}
           </Typography>
-          {data.description && (
+          {packageData.description && (
             <Typography
               variant="body1"
               className="package-description-text-header"
             >
-              {data.description}
+              {packageData.description}
             </Typography>
           )}
         </div>
@@ -125,7 +140,9 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
           <Tab label="Dependencies" className="package-tab" />
           <Tab label="Dependents" className="package-tab" />
           <Tab label="Code" className="package-tab" />
-          {data.abiIpfsUrl && <Tab label="ABI" className="package-tab" />}
+          {packageData.abiIpfsUrl && (
+            <Tab label="ABI" className="package-tab" />
+          )}
         </Tabs>
 
         <Grid container spacing={4}>
@@ -142,12 +159,12 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
                     Version History
                   </Typography>
                   <div className="tab-content">
-                    <Typography paragraph>
-                      Version history for this package will be displayed here.
-                    </Typography>
-                    <Alert severity="info" className="alert-dark">
-                      Version history feature is coming soon.
-                    </Alert>
+                    <VersionsList
+                      loading={versionsLoading}
+                      error={versionsError}
+                      versions={versions}
+                      packageName={packageName}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -203,7 +220,7 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
                   <div className="tab-content">
                     <div className="download-section">
                       <Link
-                        href={data.sourceCodeIpfsUrl}
+                        href={packageData.sourceCodeIpfsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ textDecoration: "none" }}
@@ -222,7 +239,7 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
                       </Typography>
 
                       <Typography variant="caption" className="ipfs-hash">
-                        IPFS: {data.sourceCodeIpfsUrl.split("/").pop()}
+                        IPFS: {packageData.sourceCodeIpfsUrl.split("/").pop()}
                       </Typography>
                     </div>
 
@@ -241,12 +258,12 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
                     Application Binary Interface (ABI)
                   </Typography>
 
-                  {data.abiIpfsUrl && (
+                  {packageData.abiIpfsUrl && (
                     <>
                       <div className="tab-content">
                         <div className="abi-download">
                           <Link
-                            href={data.abiIpfsUrl}
+                            href={packageData.abiIpfsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="link-light"
@@ -261,7 +278,7 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
                           </Link>
                         </div>
                         <AbiContent
-                          abiUrl={`${data.abiIpfsUrl}?filename=${data.name}-abi.json.&download=true`}
+                          abiUrl={`${packageData.abiIpfsUrl}?filename=${packageData.name}-abi.json.&download=true`}
                         />
                       </div>
                     </>
@@ -273,7 +290,11 @@ const PackageDetail: React.FC<PackageDetailProps> = ({ packageName }) => {
 
           {/* Sidebar - Right Side (always visible) */}
           <Grid item xs={12} md={5} lg={4}>
-            <PackageSidebar data={data} loading={loading} error={error} />
+            <PackageSidebar
+              data={packageData}
+              loading={packageLoading}
+              error={packageError}
+            />
           </Grid>
         </Grid>
       </Container>

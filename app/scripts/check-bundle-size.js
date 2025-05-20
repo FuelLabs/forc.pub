@@ -99,9 +99,9 @@ try {
 
   if (sizes.totalJS > SIZE_LIMITS.TOTAL_JS) {
     console.error(
-      `\u274c Total JS (${sizes.totalJS.toFixed(
-        2
-      )}KB) exceeds limit of ${SIZE_LIMITS.TOTAL_JS}KB`
+      `\u274c Total JS (${sizes.totalJS.toFixed(2)}KB) exceeds limit of ${
+        SIZE_LIMITS.TOTAL_JS
+      }KB`,
     );
     failed = true;
   }
@@ -109,17 +109,17 @@ try {
   if (sizes.largestChunk > SIZE_LIMITS.LARGEST_CHUNK) {
     console.error(
       `\u274c Largest chunk (${sizes.largestChunk.toFixed(
-        2
-      )}KB) exceeds limit of ${SIZE_LIMITS.LARGEST_CHUNK}KB`
+        2,
+      )}KB) exceeds limit of ${SIZE_LIMITS.LARGEST_CHUNK}KB`,
     );
     failed = true;
   }
 
   if (sizes.initialJS > SIZE_LIMITS.INITIAL_JS) {
     console.error(
-      `\u274c Initial JS (${sizes.initialJS.toFixed(
-        2
-      )}KB) exceeds limit of ${SIZE_LIMITS.INITIAL_JS}KB`
+      `\u274c Initial JS (${sizes.initialJS.toFixed(2)}KB) exceeds limit of ${
+        SIZE_LIMITS.INITIAL_JS
+      }KB`,
     );
     failed = true;
   }
