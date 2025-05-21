@@ -1,93 +1,238 @@
-import React, { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+"use client";
 
-interface SearchResult {
-  name: string;
-  version: string;
-  homepage: string;
-  documentation: string;
-  repository: string;
-  updated: string;
-  downloads: number;
+import React, { Suspense, useEffect, useState } from "react";
+import {
+  useRouter,
+  useSearchParams,
+  ReadonlyURLSearchParams,
+} from "next/navigation";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  CircularProgress,
+  Pagination,
+} from "@mui/material";
+import HTTP, { PackagePreview } from "../utils/http";
+import { formatDate } from "../utils/date";
+import NextLink from "next/link";
+
+export interface SearchResultsProps {
+  searchParams: URLSearchParams | ReadonlyURLSearchParams;
 }
 
-const dummySearchResults: SearchResult[] = [
-  // {
-  //   name: 'std',
-  //   version: '0.1.0',
-  //   homepage: 'www.google.com',
-  //   documentation: 'www.google.com',
-  //   repository: 'www.google.com',
-  //   updated: '2024-02-02',
-  //   downloads: 100,
-  // },
-  // {
-  //   name: 'core',
-  //   version: '0.1.0',
-  //   homepage: 'www.google.com',
-  //   documentation: 'www.google.com',
-  //   repository: 'www.google.com',
-  //   updated: '2024-01-01',
-  //   downloads: 200,
-  // },
-];
-
-interface SearchResultsProps {
-  searchParams: ReturnType<typeof useSearchParams>;
-}
+const PER_PAGE = 10;
 
 function SearchResults({ searchParams }: SearchResultsProps) {
-  const matchingResults = dummySearchResults.filter((result) => {
-    return result.name
-      .toLowerCase()
-      .includes(searchParams.get("q")?.toLowerCase() || "");
-  });
+  const router = useRouter();
+  const [results, setResults] = useState<PackagePreview[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    const query = searchParams.get("query");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    setCurrentPage(page);
+
+    if (!query) {
+      setResults([]);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    HTTP.get("/search", {
+      params: {
+        query,
+        page: page.toString(),
+        per_page: PER_PAGE.toString(),
+      },
+    })
+      .then((response) => {
+        setResults(response.data.data);
+        setTotalPages(response.data.totalPages);
+        setTotalCount(response.data.totalCount);
+      })
+      .catch((err) => {
+        setError("Failed to fetch search results");
+        console.error("Search error:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [searchParams]);
+
+  const containerStyles = {
+    maxWidth: "1200px",
+    mx: "auto",
+    px: 3,
+    width: "100%",
+  };
+
+  if (loading) {
+    return (
+      <Box sx={containerStyles} mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={containerStyles} mt={4}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
+  if (results.length === 0) {
+    return (
+      <Box sx={containerStyles} mt={4}>
+        <Typography>No results found</Typography>
+      </Box>
+    );
+  }
 
   return (
-    <div style={{ width: "100%", justifyContent: "center" }}>
-      <div>
-        <h1>{"Search Results"}</h1>
-      </div>
-      <div style={{ color: "red" }}>{"Under construction"}</div>
+    <Box mt={4} sx={containerStyles}>
+      <Box mb={4}>
+        <Typography variant="h5" gutterBottom>
+          Search Results
+        </Typography>
+        <Typography color="text.secondary">
+          Found {totalCount} package{totalCount === 1 ? "" : "s"}
+        </Typography>
+      </Box>
 
-      {matchingResults.map((result) => (
-        <div
-          key={result.name}
-          style={{
-            margin: "25px 10% 10% 10%",
-            border: "1px solid black",
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {results.map((result) => (
+          <NextLink
+            key={result.name}
+            href={`/package/${result.name}`}
+            style={{ textDecoration: "none" }}
+          >
+            <Card
+              elevation={0}
+              sx={{
+                cursor: "pointer",
+                border: "1px solid",
+                borderColor: "divider",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.02)",
+                  borderColor: "primary.main",
+                  transform: "translateY(-1px)",
+                  transition: "all 0.2s ease-in-out",
+                },
+              }}
+            >
+              <CardContent
+                sx={{
+                  py: 3,
+                  pl: 3,
+                  pr: 4,
+                  "&:last-child": { pb: 3 },
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "200px 1fr 130px",
+                    gap: 3,
+                    alignItems: "center",
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      variant="h6"
+                      component="span"
+                      sx={{
+                        color: "primary.main",
+                        fontWeight: 600,
+                        fontSize: "1.1rem",
+                        display: "block",
+                        mb: 0.5,
+                      }}
+                    >
+                      {result.name}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        fontFamily: "monospace",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      v{result.version}
+                    </Typography>
+                  </Box>
+
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.primary",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {result.description || ""}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: "0.8rem",
+                      whiteSpace: "nowrap",
+                      textAlign: "right",
+                    }}
+                  >
+                    Updated {formatDate(result.updatedAt)}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </NextLink>
+        ))}
+      </Box>
+
+      {totalPages > 1 && (
+        <Box
+          sx={{
             display: "flex",
-            flexWrap: "wrap",
-            padding: "40px",
-            backgroundColor: "#fff",
-            borderRadius: "4px",
-            boxShadow: " 0 1px 3px hsla(51, 90%, 42%, .35)",
+            justifyContent: "center",
+            mt: 4,
+            mb: 2,
           }}
         >
-          <div>{result.name}</div>
-          <div>{result.version}</div>
-          <div>{result.homepage}</div>
-          <div>{result.documentation}</div>
-          <div>{result.repository}</div>
-          <div>{result.updated}</div>
-          <div>{result.downloads}</div>
-        </div>
-      ))}
-    </div>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={(_, page) => {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.set("page", page.toString());
+              router.replace(`/search?${newParams.toString()}`);
+            }}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
+      )}
+    </Box>
   );
 }
 
-function SearchResultsWithParams() {
+export default function SearchResultsWrapper() {
   const searchParams = useSearchParams();
-  return <SearchResults searchParams={searchParams} />;
-}
 
-function SearchResultsWrapper() {
   return (
     <Suspense fallback={<div>Loading search results...</div>}>
-      <SearchResultsWithParams />
+      <SearchResults searchParams={searchParams} />
     </Suspense>
   );
 }
-
-export default SearchResultsWrapper;

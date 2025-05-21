@@ -367,4 +367,71 @@ impl DbConn<'_> {
             )
             .collect())
     }
+
+    /// Search for packages by name or description.
+    pub fn search_packages(
+        &mut self,
+        query: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreview>, DatabaseError> {
+        let query = format!("%{}%", query.to_lowercase());
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                WHERE p.package_name ILIKE $1 OR pv.package_description ILIKE $1
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1
+            ORDER BY created_at DESC
+            OFFSET $2
+            LIMIT $3;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err: diesel::result::Error| {
+            DatabaseError::QueryFailed("search packages".to_string(), err)
+        })?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(*) FROM (
+                SELECT DISTINCT p.id
+                FROM packages p
+                JOIN package_versions pv ON pv.package_id = p.id
+                WHERE p.package_name ILIKE $1 OR pv.package_description ILIKE $1
+            ) AS matches;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search count".to_string(), err))?
+        .count;
+
+        Ok(PaginatedResponse {
+            data: packages,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
 }
