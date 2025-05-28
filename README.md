@@ -94,6 +94,8 @@ You can access:
 - Backend API: http://localhost:8080
 - pgAdmin interface: http://localhost:5050
 
+**Database Access**: When connecting to the database server through pgAdmin, use password in `.env.local` (default: `localpw`).
+
 To force rebuild the application image:
 
 ```sh
