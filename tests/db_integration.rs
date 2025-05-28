@@ -1,5 +1,5 @@
 //! Note: Integration tests for the database module assume that the database is running and that the DATABASE_URL environment variable is set.
-//! This should be done by running `./scripts/start_local_db.sh` before running the tests.
+//! This should be done by running `docker compose up -d db` before running the tests.
 
 use std::vec;
 
