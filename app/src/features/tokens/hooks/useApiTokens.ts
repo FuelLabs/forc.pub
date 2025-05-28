@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useGithubAuth } from '../../toolbar/hooks/useGithubAuth';
-import HTTP, {
-  CreateTokenResponse,
-  RawToken,
-} from '../../../utils/http';
+import { useCallback, useEffect, useState } from "react";
+import { useGithubAuth } from "../../toolbar/hooks/useGithubAuth";
+import HTTP, { CreateTokenResponse, RawToken } from "../../../utils/http";
 
 export interface Token {
   id: string;
@@ -39,7 +36,7 @@ export function useApiTokens(): {
       }
       return data;
     },
-    [setNewToken]
+    [setNewToken],
   );
 
   const revokeToken = useCallback(
@@ -51,7 +48,7 @@ export function useApiTokens(): {
         }
       });
     },
-    [setTokens, tokens, newToken, setNewToken]
+    [setTokens, tokens, newToken, setNewToken],
   );
 
   useEffect(() => {
@@ -59,7 +56,7 @@ export function useApiTokens(): {
       return;
     }
 
-    HTTP.get(`/tokens`).then(({data}) => {
+    HTTP.get(`/tokens`).then(({ data }) => {
       setTokens([
         ...data.tokens
           .filter((token) => token.id !== newToken?.id)

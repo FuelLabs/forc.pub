@@ -1,0 +1,365 @@
+/* Dark Mode Theme for Package Detail */
+.package-detail-container {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* Ensure all MUI components in package detail follow dark theme */
+.package-detail-container .MuiPaper-root {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.package-detail-container .MuiCard-root {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+}
+
+.package-detail-container .MuiButton-contained {
+  background-color: #0d47a1;
+  color: #ffffff;
+}
+
+.package-detail-container .MuiButton-contained:hover {
+  background-color: #1565c0;
+}
+
+.package-detail-container .MuiDivider-root {
+  background-color: #444;
+}
+
+/* Make sure all text in the cards is light */
+
+.package-detail-inner {
+  margin-top: 0;
+  padding-top: 24px;
+  max-width: 1100px;
+  overflow: auto;
+}
+
+.package-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.package-title {
+  text-align: center;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.package-description-text-header {
+  text-align: center;
+  color: #c4c4c4;
+  margin: 0 auto;
+  font-size: 1.1rem;
+}
+
+.package-tabs {
+  margin-bottom: 24px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.package-tab {
+  color: #e0e0e0;
+  opacity: 0.8;
+  text-transform: none;
+  min-width: 120px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.package-tab:hover {
+  opacity: 1;
+  color: #ffffff;
+}
+
+/* Style for the active tab */
+.package-tabs .Mui-selected {
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Style for the tab indicator (the line under the active tab) */
+.package-tabs .MuiTabs-indicator {
+  background-color: #2196f3;
+  height: 3px;
+}
+
+.card-dark {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+  color: #e0e0e0;
+}
+
+/* Override MUI styles for dark mode */
+.card-dark .MuiPaper-root {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.card-dark .MuiCardContent-root {
+  background-color: #2a2a2a;
+}
+
+.card-dark .MuiTypography-root {
+  color: #e0e0e0;
+}
+
+.card-dark .MuiDivider-root {
+  background-color: #444;
+}
+
+.card-dark .MuiListItemText-secondary {
+  color: #b0b0b0;
+}
+
+.card-dark .MuiChip-root {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+}
+
+.card-content {
+  padding: 20px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 300px);
+}
+
+.card-title {
+  font-weight: 600;
+  color: #b0b0b0;
+  margin-bottom: 16px;
+  width: 100%;
+  border-bottom: 1px solid #444;
+  padding-bottom: 12px;
+  order: -1; /* Ensure title is always at the top */
+}
+
+.readme-content,
+.tab-content {
+  overflow: auto;
+  color: #e0e0e0;
+  width: 100%;
+}
+
+.tab-content {
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.readme-content h1,
+.readme-content h2,
+.readme-content h3,
+.readme-content h4,
+.readme-content h5,
+.readme-content h6 {
+  color: #ffffff;
+}
+
+.readme-content a {
+  color: #90caf9;
+}
+
+.readme-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.readme-content pre,
+.readme-content code {
+  background-color: #383838;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  color: #e0e0e0;
+}
+
+.readme-content pre code {
+  padding: 0.5em;
+  display: block;
+  overflow: auto;
+}
+
+.readme-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1em;
+}
+
+.readme-content th,
+.readme-content td {
+  border: 1px solid #444;
+  padding: 8px;
+}
+
+.readme-content th {
+  background-color: #333;
+}
+
+.readme-content blockquote {
+  border-left: 4px solid #444;
+  padding-left: 16px;
+  margin: 12px 0;
+  color: #b0b0b0;
+}
+
+.readme-content hr {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 20px 0;
+}
+
+.alert-dark {
+  background-color: rgba(30, 70, 100, 0.2);
+  color: #90caf9;
+  border-color: #2a5d8a;
+}
+
+.alert-dark .MuiAlert-icon {
+  color: #90caf9;
+}
+
+.package-detail-container .MuiAlert-root {
+  background-color: rgba(30, 70, 100, 0.2);
+  color: #90caf9;
+  border-color: #2a5d8a;
+}
+
+.package-detail-container .MuiAlert-root .MuiAlert-icon {
+  color: #90caf9;
+}
+
+.package-detail-container .MuiAlert-root .MuiAlert-message {
+  color: #90caf9;
+}
+
+.download-section {
+  margin: 8px 0 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.download-info {
+  color: #b0b0b0;
+  margin: 0;
+}
+
+.ipfs-hash {
+  display: block;
+  margin: 0;
+  opacity: 0.7;
+  font-size: 0.75rem;
+  word-break: break-all;
+  color: #909090;
+}
+
+.abi-download {
+  margin: 8px 0 0px;
+}
+
+.link-light {
+  color: #90caf9;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.link-light:hover {
+  text-decoration: underline;
+}
+
+.link-block {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.link-list-item {
+  margin-bottom: 8px;
+}
+
+.link-list-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Styling for combined sidebar */
+.sidebar-card {
+  margin-top: 0;
+}
+
+.info-grid {
+  margin-bottom: 12px;
+}
+
+.info-label-col {
+  text-align: left;
+}
+
+.section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 1rem;
+  margin-top: 8px;
+}
+
+.section-divider {
+  margin: 16px 0;
+}
+
+.sidebar-link-item {
+  margin-bottom: 12px;
+}
+
+.sidebar-list {
+  margin-top: 8px;
+}
+
+.sidebar-list-item {
+  margin-bottom: 8px;
+}
+
+.sidebar-list-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 4px;
+  color: #b0b0b0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background-color: #444;
+  color: #ffffff;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.badge-primary {
+  background-color: #2196f3;
+}
+
+.badge-secondary {
+  background-color: #ff9800;
+}

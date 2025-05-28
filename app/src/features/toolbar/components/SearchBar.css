@@ -1,0 +1,43 @@
+/* Dark Mode SearchBar styles */
+.search-container {
+  margin-left: 25px;
+  margin-right: 15px;
+  height: 70%;
+  width: 100%;
+}
+
+.search-container-mobile {
+  margin-left: 0;
+  margin-right: 15px;
+  height: 70%;
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  height: 100%;
+  background-color: #333333;
+  color: #e0e0e0;
+  padding: 2px 4px;
+}
+
+.search-input::placeholder,
+.search-input::-webkit-input-placeholder,
+.search-input:-moz-placeholder,
+.search-input::-moz-placeholder,
+.search-input:-ms-input-placeholder {
+  color: #c0c0c0;
+  opacity: 1;
+}
+
+/* Target the actual input element within MUI Input */
+.search-input input::placeholder {
+  color: #c0c0c0;
+  opacity: 1;
+}
+
+.search-icon {
+  color: #c0c0c0;
+  margin-left: 10px;
+  margin-right: 10px;
+}

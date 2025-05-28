@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.70.0
+  RUST_VERSION: 1.85.0
 
 jobs:
   cancel-previous-runs:
@@ -22,7 +22,7 @@ jobs:
 
   cargo-fmt-check:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -36,13 +36,13 @@ jobs:
 
   cargo-clippy:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v1
+      - uses: WarpBuilds/rust-cache@v2
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
         with:
@@ -51,14 +51,14 @@ jobs:
 
   cargo-check:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v1
+      - uses: WarpBuilds/rust-cache@v2
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -67,22 +67,25 @@ jobs:
 
   cargo-test:
     needs: cancel-previous-runs
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: docker-practice/actions-setup-docker@master
-        timeout-minutes: 12
+      # Set up Docker (already available on GitHub-hosted runners)
+      - name: Set up Docker
+        run: |
+          docker --version
+          docker info
       - run: ./scripts/start_local_db.sh
       - name: setup binstall
         uses: taiki-e/install-action@cargo-binstall
       - name: Install forc for tests
         run: |
           cargo binstall --no-confirm --root tests/fixtures/forc-0.65.0 forc@0.65.0
-      - uses: Swatinem/rust-cache@v1
+      - uses: WarpBuilds/rust-cache@v2
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -95,7 +98,10 @@ jobs:
       - cargo-clippy
       - cargo-check
       - cargo-test
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -122,34 +128,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the image to ghcr.io
-        uses: docker/build-push-action@v2
+        uses: Warpbuilds/build-push-action@v6
         with:
           context: .
           file: deployment/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          profile-name: "super-fast-builder"
 
-  deploy:
-    if: github.ref == 'refs/heads/master'
-    needs:
-      - build-and-publish-image
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - name: Set Environment Variables
-        run: |
-          tag=(`echo $GITHUB_SHA | cut -c1-7`)
-          echo "IMAGE_TAG=`echo $tag`" >> $GITHUB_ENV
-
-      - name: Deploy forc.pub Backend Environment
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: Deploy forc.pub on k8s
-          repo: FuelLabs/fuel-deployment
-          ref: refs/heads/master
-          token: ${{ secrets.REPO_TOKEN }}
-          inputs: '{ "cluster": "${{ env.CONFIG }}", "deployment-version": "${{ github.sha }}", "image-version": "${{ env.IMAGE_TAG }}" }'
-        env:
-          CONFIG: 'fuel-prod-1'

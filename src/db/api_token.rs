@@ -51,7 +51,7 @@ impl From<PlainToken> for String {
     }
 }
 
-impl DbConn {
+impl DbConn<'_> {
     /// Creates an API token for the user and returns the token.
     pub fn new_token(
         &mut self,
@@ -73,7 +73,7 @@ impl DbConn {
             .values(&new_token)
             .returning(models::ApiToken::as_returning())
             .get_result(self.inner())
-            .map_err(|_| DatabaseError::InsertTokenFailed(user_id.to_string()))?;
+            .map_err(|err| DatabaseError::InsertTokenFailed(user_id.to_string(), err))?;
 
         Ok((saved_token, plain_token))
     }
@@ -88,7 +88,7 @@ impl DbConn {
                 .filter(schema::api_tokens::user_id.eq(user_id)),
         )
         .execute(self.inner())
-        .map_err(|_| DatabaseError::NotFound(token_id))?;
+        .map_err(|err| DatabaseError::NotFound(token_id, err))?;
 
         Ok(())
     }
@@ -102,7 +102,7 @@ impl DbConn {
             .filter(schema::api_tokens::user_id.eq(user_id))
             .select(models::ApiToken::as_returning())
             .load(self.inner())
-            .map_err(|_| DatabaseError::NotFound(user_id.to_string()))
+            .map_err(|err| DatabaseError::NotFound(user_id.to_string(), err))
     }
 
     /// Fetch an API token given the plaintext token.
@@ -115,7 +115,7 @@ impl DbConn {
             .filter(schema::api_tokens::token.eq(hashed))
             .select(models::ApiToken::as_returning())
             .first::<models::ApiToken>(self.inner())
-            .map_err(|_| DatabaseError::NotFound("API Token".to_string()))
+            .map_err(|err| DatabaseError::NotFound("API Token".to_string(), err))
     }
 }
 

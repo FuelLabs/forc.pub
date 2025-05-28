@@ -1,52 +1,75 @@
-import React, { ReactNode } from 'react';
-import AppBar from '@mui/material/AppBar/AppBar';
-import Toolbar from '@mui/material/Toolbar/Toolbar';
-import { useNavigate } from 'react-router-dom';
-import UserButton from './features/toolbar/components/UserButton';
-import { useIsMobile } from './features/toolbar/hooks/useIsMobile';
-import SearchBar from './features/toolbar/components/SearchBar';
+"use client";
 
-export const FUEL_GREEN = '#00f58c';
+import React, { ReactNode, Suspense } from "react";
+import { AppBar, Toolbar, Box, useTheme } from "@mui/material";
+import UserButton from "./features/toolbar/components/UserButton";
+import { useIsMobile } from "./features/toolbar/hooks/useIsMobile";
+import SearchBar from "./features/toolbar/components/SearchBar";
 
 interface AppProps {
   children?: ReactNode;
 }
 
-function App({children}: AppProps) {
-  const navigate = useNavigate();
+function App({ children }: AppProps) {
   const isMobile = useIsMobile();
+  const theme = useTheme();
 
   return (
-    <div
-      style={{
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        textAlign: 'center',
-        backgroundColor: 'lightGrey',
-        height: '100vh',
-      }}>
-      <AppBar position='static'>
-        <Toolbar style={{ backgroundColor: '#181818' }}>
-          <div
-            style={{
+    <Box
+      sx={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        textAlign: "center",
+        backgroundColor: theme.palette.background.default,
+        height: "100vh",
+        color: theme.palette.text.primary,
+        overflow: "hidden",
+      }}
+    >
+      <AppBar position="static">
+        <Toolbar
+          sx={{
+            backgroundColor: "#181818",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          <Box
+            onClick={() => (window.location.href = "/")}
+            sx={{
               flexGrow: 1,
-              display: 'block',
-              color: FUEL_GREEN,
-              fontSize: '24px',
-              fontFamily: 'monospace',
-              cursor: 'pointer'
-            }} onClick={()=>navigate('/')}>
+              display: "block",
+              color: theme.palette.primary.main,
+              fontSize: "24px",
+              fontFamily: "monospace",
+              cursor: "pointer",
+              fontWeight: "bold",
+              transition: "color 0.2s ease-in-out",
+              "&:hover": {
+                color: theme.palette.primary.light,
+              },
+            }}
+          >
             forc.pub
-          </div>
-
+          </Box>
           {!isMobile && <SearchBar />}
-          <UserButton />
+          <Suspense fallback={<div>Loading...</div>}>
+            <UserButton />
+          </Suspense>
         </Toolbar>
         {isMobile && <SearchBar />}
       </AppBar>
-      {children}
-    </div>
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {children}
+      </Box>
+    </Box>
   );
 }
 

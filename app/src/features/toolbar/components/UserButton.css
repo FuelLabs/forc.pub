@@ -1,0 +1,62 @@
+/* Dark mode styling for UserButton and dropdown */
+.user-avatar {
+  height: 30px;
+  width: 30px;
+  border-radius: 50%;
+  border: 1px solid #444;
+}
+
+.user-name {
+  margin-left: 10px;
+  color: #e0e0e0;
+}
+
+.user-button {
+  transition: all 0.2s ease;
+}
+
+.user-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Menu styling */
+.menu-paper {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.menu-item {
+  color: #e0e0e0;
+}
+
+.menu-item:hover {
+  background-color: #3a3a3a;
+}
+
+/* Login button styling */
+.login-button {
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  color: #e0e0e0;
+}
+
+.login-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.login-icon {
+  color: #e0e0e0;
+}
+
+.login-text {
+  margin-left: 10px;
+  color: #e0e0e0;
+}
+
+.button-wrapper {
+  text-wrap: nowrap;
+  color: inherit;
+}

@@ -1,34 +1,37 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useLocalSession } from '../../../utils/localStorage';
-import useCookie from 'react-use-cookie';
-import HTTP, { AuthenticatedUser } from '../../../utils/http';
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useLocalSession } from "../../../utils/localStorage";
+import { useSafeCookie } from "../../../hooks/useSafeCookie";
+import HTTP, { AuthenticatedUser } from "../../../utils/http";
 
 export function useGithubAuth(): [
   AuthenticatedUser | null,
-  () => Promise<void>
+  () => Promise<void>,
 ] {
-  const [sessionId, setSessionId] = useCookie('fp_session');
+  const [sessionId, setSessionId] = useSafeCookie("fp_session");
   const [githubUser, setGithubUser] = useState<AuthenticatedUser | null>(null);
   const { githubCode, saveGithubCode, clearGithubCode } = useLocalSession();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const logout = useCallback(async () => {
     await HTTP.post(`/logout`);
-    setSessionId('');
+    setSessionId("");
+    router.refresh();
     setGithubUser(null);
-  }, [setGithubUser, setSessionId]);
+  }, [setGithubUser, setSessionId, router]);
 
   // If this was a redirect from Github, we have a code to log in with.
   useEffect(() => {
-    const codeParam = searchParams.get('code');
-    if (codeParam) {
-      searchParams.delete('code');
-      setSearchParams(searchParams);
-      saveGithubCode(codeParam);
+    const code = searchParams.get("code");
+    if (code && !githubCode) {
+      saveGithubCode(code);
+      router.refresh();
       window.close();
     }
-  }, [searchParams, saveGithubCode, setSearchParams]);
+  }, [searchParams, saveGithubCode, router, githubCode]);
 
   useEffect(() => {
     if (!githubCode) {
@@ -55,7 +58,7 @@ export function useGithubAuth(): [
       .then(({ data }) => {
         setGithubUser(data.user);
       })
-      .catch(() => setSessionId(''));
+      .catch(() => setSessionId(""));
   }, [githubUser, setGithubUser, setSessionId, sessionId]);
 
   return [githubUser, logout];

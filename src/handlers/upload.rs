@@ -1,10 +1,12 @@
+use crate::file_uploader::FileUploader;
+use crate::file_uploader::{pinata::PinataClient, s3::S3Client};
 use crate::models::NewUpload;
-use crate::pinata::PinataClient;
 use flate2::{
     Compression,
     {read::GzDecoder, write::GzEncoder},
 };
 use forc_util::bytecode::get_bytecode_id;
+use serde::Serialize;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -16,8 +18,12 @@ use uuid::Uuid;
 const UNPACKED_DIR: &str = "unpacked";
 const RELEASE_DIR: &str = "out/release";
 const PROJECT_DIR: &str = "project";
+const README_FILE: &str = "README.md";
+const FORC_MANIFEST_FILE: &str = "Forc.toml";
+const MAX_UPLOAD_SIZE_STR: &str = "10MB";
+pub const TARBALL_NAME: &str = "project.tgz";
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq, Serialize)]
 pub enum UploadError {
     #[error("Failed to create temporary directory.")]
     CreateTempDir,
@@ -25,7 +31,10 @@ pub enum UploadError {
     #[error("Failed to remove temporary directory.")]
     RemoveTempDir,
 
-    #[error("The project is too large to be uploaded.")]
+    #[error(
+        "The project exceeded the maximum upload size of {}.",
+        MAX_UPLOAD_SIZE_STR
+    )]
     TooLarge,
 
     #[error("Failed to save zip file.")]
@@ -33,6 +42,9 @@ pub enum UploadError {
 
     #[error("Failed to open file.")]
     OpenFile,
+
+    #[error("Failed to read file.")]
+    ReadFile,
 
     #[error("Failed to copy files.")]
     CopyFiles,
@@ -46,8 +58,11 @@ pub enum UploadError {
     #[error("Failed to authenticate.")]
     Authentication,
 
-    #[error("Failed to upload to IPFS.")]
-    Ipfs,
+    #[error("Failed to upload to IPFS. Err: {0}")]
+    IpfsUploadFailed(String),
+
+    #[error("Failed to upload to S3. Err: {0}")]
+    S3UploadFailed(String),
 
     #[error("Failed to generate bytecode ID. Err: {0}")]
     BytecodeId(String),
@@ -57,24 +72,31 @@ pub enum UploadError {
 
     #[error("OS '{0}' not supported.")]
     UnsupportedOs(String),
+
+    #[error("Upload does not contain a Forc manifest.")]
+    MissingForcManifest,
 }
 
-/// Handles the project upload process by unpacking the tarball, compiling the project, copying the
-/// necessary files to a new directory, and storing the source code tarball and ABI file in IPFS.
-/// Returns a NewUpload struct with the necessary information to store in the database.
-pub async fn handle_project_upload(
-    upload_dir: &Path,
+/// Handles the project upload process by:
+/// 1. Unpacking the tarball, compiling the project
+/// 2. Copying the necessary files to a new directory
+/// 3. Storing the source code tarball and ABI file in IPFS
+///
+/// Returns a [NewUpload] with the necessary information to store in the database.
+pub async fn handle_project_upload<'a>(
+    upload_dir: &'a Path,
     upload_id: &Uuid,
     orig_tarball_path: &PathBuf,
     forc_path: &Path,
     forc_version: String,
-    pinata_client: &impl PinataClient,
+    file_uploader: &FileUploader<'a, impl PinataClient, impl S3Client>,
 ) -> Result<NewUpload, UploadError> {
     let unpacked_dir = upload_dir.join(UNPACKED_DIR);
     let release_dir = unpacked_dir.join(RELEASE_DIR);
     let project_dir = upload_dir.join(PROJECT_DIR);
 
     // Unpack the tarball.
+    tracing::info!("Unpacking tarball: {}", orig_tarball_path.to_string_lossy());
     let tarball = File::open(orig_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let decompressed = GzDecoder::new(tarball);
     let mut archive = Archive::new(decompressed);
@@ -85,18 +107,26 @@ pub async fn handle_project_upload(
     // Remove `out` directory if it exists.
     let _ = fs::remove_dir_all(unpacked_dir.join("out"));
 
+    tracing::info!("Executing forc build: {}", forc_path.to_string_lossy());
     let output = Command::new(format!("{}/bin/forc", forc_path.to_string_lossy()))
         .arg("build")
         .arg("--release")
         .current_dir(&unpacked_dir)
         .output()
-        .expect("Failed to execute forc build");
+        .map_err(|err| {
+            error!("Failed to execute forc build: {:?}", err);
+            UploadError::FailedToCompile
+        })?;
 
     if !output.status.success() {
         return Err(UploadError::FailedToCompile);
     }
 
     // Copy files that are part of the Sway project to a new directory.
+    tracing::info!(
+        "Copying files to project directory: {}",
+        project_dir.to_string_lossy()
+    );
     let output = Command::new("rsync")
         .args([
             "-av",
@@ -104,6 +134,7 @@ pub async fn handle_project_upload(
             "--include=*/",
             "--include=Forc.toml",
             "--include=Forc.lock",
+            "--include=README.md",
             "--include=*.sw",
             "--exclude=*",
             "unpacked/",
@@ -111,14 +142,18 @@ pub async fn handle_project_upload(
         ])
         .current_dir(upload_dir)
         .output()
-        .expect("Failed to copy project files");
+        .map_err(|err| {
+            error!("Failed to copy project files: {:?}", err);
+            UploadError::CopyFiles
+        })?;
 
     if !output.status.success() {
         return Err(UploadError::CopyFiles);
     }
 
     // Pack the new tarball.
-    let final_tarball_path = upload_dir.join("project.tgz");
+    tracing::info!("Packing tarball: {}", upload_dir.to_string_lossy());
+    let final_tarball_path = upload_dir.join(TARBALL_NAME);
     let tar_gz = File::create(&final_tarball_path).map_err(|_| UploadError::OpenFile)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = tar::Builder::new(enc);
@@ -134,10 +169,12 @@ pub async fn handle_project_upload(
     let enc = tar.into_inner().map_err(|_| UploadError::CopyFiles)?;
     enc.finish().map_err(|_| UploadError::CopyFiles)?;
 
-    // Store the tarball in IPFS.
-    let tarball_ipfs_hash = pinata_client
-        .upload_file_to_ipfs(&final_tarball_path)
-        .await?;
+    // Store the tarball.
+    tracing::info!(
+        "Uploading tarball: {}",
+        final_tarball_path.to_string_lossy()
+    );
+    let tarball_ipfs_hash = file_uploader.upload_file(&final_tarball_path).await?;
 
     fn find_file_in_dir_by_suffix(dir: &Path, suffix: &str) -> Option<PathBuf> {
         let dir = fs::read_dir(dir).ok()?;
@@ -159,9 +196,12 @@ pub async fn handle_project_upload(
             .next()
     }
 
-    // Store the ABI in IPFS.
+    // Store the ABI.
     let abi_ipfs_hash = match find_file_in_dir_by_suffix(&release_dir, "-abi.json") {
-        Some(abi_path) => Some(pinata_client.upload_file_to_ipfs(&abi_path).await?),
+        Some(abi_path) => {
+            tracing::info!("Uploading ABI: {}", release_dir.to_string_lossy());
+            Some(file_uploader.upload_file(&abi_path).await?)
+        }
         None => None,
     };
 
@@ -173,12 +213,19 @@ pub async fn handle_project_upload(
         None => None,
     };
 
+    // Load the contents of readme and Forc.toml into memory for storage in the database.
+    let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
+    let forc_manifest = fs::read_to_string(project_dir.join(FORC_MANIFEST_FILE))
+        .map_err(|_| UploadError::MissingForcManifest)?;
+
     let upload = NewUpload {
         id: *upload_id,
         source_code_ipfs_hash: tarball_ipfs_hash,
         forc_version,
         abi_ipfs_hash,
         bytecode_identifier,
+        readme,
+        forc_manifest,
     };
 
     Ok(upload)
@@ -211,7 +258,10 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
     .arg("--pkg-fmt=tgz")
     .arg(format!("forc@{forc_version}"))
     .output()
-    .map_err(|_| UploadError::InvalidForcVersion(forc_version.to_string()))?;
+    .map_err(|err| {
+        error!("Failed to install forc with binstall: {:?}", err);
+        UploadError::InvalidForcVersion(forc_version.to_string())
+    })?;
 
     if !output.status.success() {
         error!("Failed to install forc: {:?}", output);
@@ -223,23 +273,24 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use crate::pinata::MockPinataClient;
-
     use super::*;
+    use crate::file_uploader::tests::get_mock_file_uploader;
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn handle_project_upload_success() {
         let upload_id = Uuid::new_v4();
         let upload_dir = PathBuf::from("tmp/uploads/").join(upload_id.to_string());
         let orig_tarball_path = PathBuf::from("tests/fixtures/sway-project.tgz");
-        let forc_version = "0.66.5";
+        let forc_version = "0.66.6";
         let forc_path_str = format!("forc-{forc_version}");
         let forc_path = PathBuf::from(&forc_path_str);
-        fs::create_dir_all(forc_path.clone()).unwrap();
-        let forc_path = fs::canonicalize(forc_path.clone()).unwrap();
+        fs::create_dir_all(forc_path.clone()).ok();
+        let forc_path = fs::canonicalize(forc_path.clone()).expect("forc path ok");
         install_forc_at_path(forc_version, &forc_path).expect("forc installed");
 
-        let mock_client = MockPinataClient::new().await.expect("mock pinata client");
+        let mock_file_uploader = get_mock_file_uploader();
 
         let result = handle_project_upload(
             &upload_dir,
@@ -247,7 +298,7 @@ mod tests {
             &orig_tarball_path,
             &forc_path,
             forc_version.to_string(),
-            &mock_client,
+            &mock_file_uploader,
         )
         .await
         .expect("result ok");
@@ -258,7 +309,7 @@ mod tests {
         assert_eq!(result.forc_version, forc_version);
         assert_eq!(
             result.bytecode_identifier.unwrap(),
-            "325030b9e3b9b8b52401c48221ccff609acc0b91695f57852a3fd7a7f3ccb687"
+            "009683afb9a422c3d23aeafce43e3a8e29099d8d64d55c63cf8179af3f8112de"
         );
     }
 }

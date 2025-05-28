@@ -1,4 +1,5 @@
-use crate::{models, util::sys_time_to_epoch};
+use crate::models;
+use chrono::{DateTime, Utc};
 use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -6,7 +7,7 @@ use rocket::serde::{Deserialize, Serialize};
 pub struct Token {
     pub id: String,
     pub name: String,
-    pub created_at: u64,
+    pub created_at: DateTime<Utc>,
     pub token: Option<String>,
 }
 
@@ -15,7 +16,7 @@ impl From<models::ApiToken> for Token {
         Token {
             id: token.id.to_string(),
             name: token.friendly_name,
-            created_at: sys_time_to_epoch(token.created_at),
+            created_at: token.created_at,
             // We don't return the hashed token, as it's a secret.
             token: None,
         }

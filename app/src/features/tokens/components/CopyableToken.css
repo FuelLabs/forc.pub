@@ -1,0 +1,43 @@
+/* Dark mode styling for Copyable Token */
+.copyable-token-container {
+  display: flex;
+  flex-direction: row;
+  font-size: 16px;
+  background: #383838;
+  color: #e0e0e0;
+  border-radius: 4px;
+  text-align: left;
+  position: relative;
+  border: 1px solid #444;
+}
+
+.token-text {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 0 1rem;
+}
+
+.token-text pre {
+  margin: 10px 0;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.copy-button-container {
+  flex: 0 0 auto;
+  margin: 5px 5px 0 0;
+}
+
+.copy-button {
+  color: #e0e0e0;
+}
+
+.copy-button:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.copy-button svg {
+  color: #e0e0e0;
+}

@@ -1,4 +1,3 @@
-use dotenvy::dotenv;
 use regex::Regex;
 use reqwest::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use rocket::fairing::{Fairing, Info, Kind};
@@ -7,11 +6,13 @@ use rocket::http::{Header, HeaderMap};
 use rocket::{Request, Response};
 use std::env;
 
+use crate::util::load_env;
+
 // Build an open cors module so this server can be used accross many locations on the web.
 pub struct Cors;
 
 fn get_allowed_origin(headers: &HeaderMap<'_>) -> Option<String> {
-    dotenv().ok();
+    load_env();
 
     if let Some(req_origin) = headers.get_one(header::ORIGIN.as_str()) {
         // If the environment variable CORS_HTTP_ORIGIN is set, only allow that origin.

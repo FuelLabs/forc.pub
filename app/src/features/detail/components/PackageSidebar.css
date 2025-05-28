@@ -1,0 +1,113 @@
+/* Dark mode styles for Package Sidebar */
+.sidebar-card {
+  margin-top: 0;
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-card .MuiCardContent-root {
+  padding: 20px;
+}
+
+.info-grid {
+  margin-bottom: 16px;
+}
+
+.info-label-col {
+  text-align: left;
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 4px;
+  color: #b0b0b0;
+}
+
+.sidebar-section-heading {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+  color: #aaa;
+  font-weight: 500;
+  margin-top: 10px;
+  margin-bottom: 8px;
+  border: none;
+  padding: 0;
+  background: none;
+  position: relative;
+  display: block;
+}
+
+/* Explicitly ensure no decorations or pseudo-elements */
+.sidebar-section-heading:after,
+.sidebar-section-heading:before {
+  content: none;
+  display: none;
+  border: none;
+  height: 0;
+  width: 0;
+  position: static;
+}
+
+/* Explicitly remove any dividers or borders */
+.sidebar-card .MuiDivider-root {
+  display: none;
+}
+
+.sidebar-link-item {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: none;
+}
+
+.sidebar-list {
+  margin-top: 8px;
+  padding-left: 0;
+}
+
+.link-list-item {
+  margin-bottom: 8px;
+  list-style-type: none;
+}
+
+.link-list-item:last-child {
+  margin-bottom: 0;
+}
+
+.link-light {
+  color: #c0c0c0;
+  text-decoration: none;
+  word-break: break-word;
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.link-light:hover {
+  color: #ffffff;
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.link-block {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+/* Override MUI styles for dark mode */
+.sidebar-card .MuiTypography-root {
+  color: #e0e0e0;
+}
+
+.sidebar-card .MuiAlert-root {
+  background-color: rgba(60, 60, 60, 0.2);
+  color: #e0e0e0;
+  border: none;
+}
+
+.sidebar-card .MuiAlert-icon {
+  color: #e0e0e0;
+}
