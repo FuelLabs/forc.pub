@@ -35,9 +35,9 @@ export PATH="${HOME}/.cargo/bin:${PATH}"
 
 You will also need to install [Node.js](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs).
 
-To run the Postgres database locally, you will need [Docker](https://docs.docker.com/engine/install/).
+To run the application locally, you will need [Docker](https://docs.docker.com/engine/install/) with Docker Compose.
 
-To connect to the database, you will need the [Diesel CLI](https://diesel.rs/guides/getting-started).
+To connect to the database for development, you may optionally install the [Diesel CLI](https://diesel.rs/guides/getting-started).
 
 Diesel is the Rust ORM used to create and run database migrations. It requires a separate C library called `libpq` to be installed as well.
 
@@ -75,28 +75,58 @@ cargo run --bin forc.pub
 
 ### Running the `forc.pub` server
 
-Before starting the server, the local database must be up and running.
+The easiest way to run the complete application stack locally is using Docker Compose, which will start the database, backend server, and pgAdmin interface.
+
+First, set up the environment by creating a `.env.local` file with your configuration. You'll need to add your Pinata test gateway details and Github App env (if testing github login functionality).
+
+Now start all services with:
 
 ```sh
-./scripts/start_local_db.sh
+./scripts/start-local-server.sh
 ```
 
-Next, set up the environment by copying `.env.example` to `.env.local`, and modifying `.env.local` with your Pinata test gateway details and Github App env (if testing github login functionality).
+This will start:
+- **PostgreSQL database** on port `${POSTGRES_PORT:-5432}`
+- **Backend server** on port `8080`
+- **pgAdmin** (database admin UI) on port `${PGADMIN_PORT:-5050}`
 
-Now we can run the server with:
+You can access:
+- Backend API: http://localhost:8080
+- pgAdmin interface: http://localhost:5050
+
+**Database Access**: When connecting to the database server through pgAdmin, use password in `.env.local` (default: `localpw`).
+
+To force rebuild the application image:
 
 ```sh
-cargo run
+./scripts/start-local-server.sh -f
 ```
 
-Alternatively, the server can be run locally with Docker, as it is in the deployed environment.
+To view logs:
 
 ```sh
-./scripts/start_local_server.sh
-
-# Force the server image to be rebuilt
-./scripts/start_local_server.sh -f
+docker compose logs -f
 ```
+
+To stop all services:
+
+```sh
+docker compose down
+```
+
+### Alternative: Running components separately
+
+If you prefer to run components separately for development:
+
+1. Start just the database and pgAdmin:
+   ```sh
+   docker compose up -d db pgadmin
+   ```
+
+2. Run the backend server locally:
+   ```sh
+   cargo run
+   ```
 
 ### Manually trigger the APIs
 
@@ -115,6 +145,7 @@ The frontend requires npm and node to be installed.
 ```sh
 cd app
 npm i
+npm run build
 npm start
 ```
 
