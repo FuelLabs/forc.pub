@@ -1,7 +1,13 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import React, {
+  Suspense,
+  useCallback,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useIsMobile } from "../hooks/useIsMobile";
 import InputAdornment from "@mui/material/InputAdornment";
 import { styled, useTheme } from "@mui/material";
@@ -12,23 +18,12 @@ import "./SearchBar.css";
 
 function SearchBarComponent() {
   const isMobile = useIsMobile();
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const theme = useTheme();
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const input = document.querySelector<HTMLInputElement>(
-        ".search-input input",
-      );
-      if (input) {
-        input.value = params.get("q") || "";
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  const [searchValue, setSearchValue] = useState(
+    searchParams.get("query") || "",
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Create a styled version of Input with placeholder color override
   const StyledInput = styled(Input)({
@@ -41,39 +36,68 @@ function SearchBarComponent() {
     },
   });
 
+  const updateSearchParams = useCallback((value: string) => {
+    const url = new URL(window.location.href);
+
+    if (value === "") {
+      url.searchParams.delete("query");
+      url.searchParams.delete("page");
+      url.pathname = "/";
+    } else {
+      url.searchParams.set("query", value);
+      url.searchParams.set("page", "1");
+      url.pathname = "/search";
+    }
+
+    window.history.pushState({}, "", url);
+  }, []);
+
+  // Sync URL changes back to input
+  useEffect(() => {
+    const query = searchParams.get("query") || "";
+    if (query !== searchValue) {
+      setSearchValue(query);
+    }
+  }, [searchParams, searchValue]);
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
-      const params = new URLSearchParams(window.location.search);
+      setSearchValue(newValue);
+      updateSearchParams(newValue);
+    },
+    [updateSearchParams],
+  );
 
-      if (newValue) {
-        params.set("q", newValue);
-        const newUrl =
-          pathname === "/search"
-            ? `${pathname}?${params.toString()}`
-            : `/search?${params.toString()}`;
-        window.history.pushState({ path: newUrl }, "", newUrl);
-      } else if (pathname === "/search") {
-        window.history.pushState({ path: "/" }, "", "/");
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Escape") {
+        setSearchValue("");
+        updateSearchParams("");
       }
     },
-    [pathname],
+    [updateSearchParams],
   );
 
   return (
-    <div className={isMobile ? "search-container-mobile" : "search-container"}>
+    <div
+      className={isMobile ? "search-container-mobile" : "search-container"}
+      style={{ margin: 0, paddingLeft: "20px" }}
+    >
       <Suspense key="search-bar" fallback={<div>Loading...</div>}>
         <StyledInput
           className="search-input"
           placeholder="Search packages..."
           fullWidth
           disableUnderline
-          defaultValue={
-            new URLSearchParams(window.location.search).get("q") || ""
-          }
+          value={searchValue}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          inputRef={inputRef}
           inputProps={{
             "aria-label": "search",
+            type: "search",
+            autoComplete: "off",
           }}
           startAdornment={
             <InputAdornment position="start">
