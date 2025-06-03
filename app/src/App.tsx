@@ -3,7 +3,6 @@
 import React, { ReactNode, Suspense } from "react";
 import { AppBar, Toolbar, Box, useTheme } from "@mui/material";
 import UserButton from "./features/toolbar/components/UserButton";
-import { useIsMobile } from "./features/toolbar/hooks/useIsMobile";
 import SearchBar from "./features/toolbar/components/SearchBar";
 
 interface AppProps {
@@ -11,7 +10,6 @@ interface AppProps {
 }
 
 function App({ children }: AppProps) {
-  const isMobile = useIsMobile();
   const theme = useTheme();
 
   return (
@@ -32,19 +30,23 @@ function App({ children }: AppProps) {
           sx={{
             backgroundColor: "#181818",
             boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+            padding: { xs: "8px 16px", sm: "6px 24px" },
+            gap: { xs: 1, sm: 2 },
+            flexWrap: { xs: "wrap", sm: "nowrap" },
+            alignItems: "center",
           }}
         >
           <Box
             onClick={() => (window.location.href = "/")}
             sx={{
-              flexGrow: 1,
-              display: "block",
               color: theme.palette.primary.main,
               fontSize: "24px",
               fontFamily: "monospace",
               cursor: "pointer",
               fontWeight: "bold",
               transition: "color 0.2s ease-in-out",
+              flexShrink: 0,
+              order: { xs: 1, sm: 1 },
               "&:hover": {
                 color: theme.palette.primary.light,
               },
@@ -52,12 +54,29 @@ function App({ children }: AppProps) {
           >
             forc.pub
           </Box>
-          {!isMobile && <SearchBar />}
-          <Suspense fallback={<div>Loading...</div>}>
-            <UserButton />
-          </Suspense>
+          <Box
+            sx={{
+              flexGrow: 1,
+              order: { xs: 3, sm: 2 },
+              flexBasis: { xs: "100%", sm: "auto" },
+            }}
+          >
+            <Suspense fallback={<div></div>}>
+              <SearchBar />
+            </Suspense>
+          </Box>
+          <Box
+            sx={{
+              flexShrink: 0,
+              order: { xs: 2, sm: 3 },
+              marginLeft: { xs: "auto", sm: 0 },
+            }}
+          >
+            <Suspense fallback={<div>Loading...</div>}>
+              <UserButton />
+            </Suspense>
+          </Box>
         </Toolbar>
-        {isMobile && <SearchBar />}
       </AppBar>
       <Box
         component="main"
