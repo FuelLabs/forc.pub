@@ -1,117 +1,121 @@
 "use client";
 
-import React, {
-  Suspense,
-  useCallback,
-  useState,
-  useRef,
-  useEffect,
-} from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useIsMobile } from "../hooks/useIsMobile";
+import React, { useCallback, useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import InputAdornment from "@mui/material/InputAdornment";
-import { styled, useTheme } from "@mui/material";
+import { styled, useTheme, useMediaQuery } from "@mui/material";
 import Input from "@mui/material/Input";
 import SearchIcon from "@mui/icons-material/Search";
-import dynamic from "next/dynamic";
 import "./SearchBar.css";
 
-function SearchBarComponent() {
-  const isMobile = useIsMobile();
+const StyledInput = styled(Input)(({ theme }) => ({
+  "& input::placeholder": {
+    color: theme.palette.text.secondary,
+    opacity: 1,
+  },
+  "& input": {
+    color: theme.palette.text.primary,
+  },
+}));
+
+function SearchBar() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchValue, setSearchValue] = useState(
-    searchParams.get("query") || "",
+    () => searchParams.get("query") || "",
   );
-  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Create a styled version of Input with placeholder color override
-  const StyledInput = styled(Input)({
-    "& input::placeholder": {
-      color: theme.palette.text.secondary,
-      opacity: 1,
+  const updateURL = useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      const url = trimmed
+        ? `/?query=${encodeURIComponent(trimmed)}&page=1`
+        : "/";
+      router.replace(url, { scroll: false });
     },
-    "& input": {
-      color: theme.palette.text.primary,
+    [router],
+  );
+
+  const debouncedUpdateURL = useCallback(
+    (value: string) => {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = setTimeout(() => updateURL(value), 400);
     },
-  });
+    [updateURL],
+  );
 
-  const updateSearchParams = useCallback((value: string) => {
-    const url = new URL(window.location.href);
-
-    if (value === "") {
-      url.searchParams.delete("query");
-      url.searchParams.delete("page");
-      url.pathname = "/";
-    } else {
-      url.searchParams.set("query", value);
-      url.searchParams.set("page", "1");
-      url.pathname = "/search";
-    }
-
-    window.history.pushState({}, "", url);
-  }, []);
-
-  // Sync URL changes back to input
   useEffect(() => {
     const query = searchParams.get("query") || "";
-    if (query !== searchValue) {
-      setSearchValue(query);
-    }
-  }, [searchParams, searchValue]);
+    setSearchValue(query);
+  }, [searchParams]);
+
+  useEffect(() => {
+    return () => clearTimeout(debounceTimeoutRef.current);
+  }, []);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       setSearchValue(newValue);
-      updateSearchParams(newValue);
+      debouncedUpdateURL(newValue);
     },
-    [updateSearchParams],
+    [debouncedUpdateURL],
   );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: React.KeyboardEvent) => {
       if (e.key === "Escape") {
         setSearchValue("");
-        updateSearchParams("");
+        clearTimeout(debounceTimeoutRef.current);
+        updateURL("");
+      } else if (e.key === "Enter") {
+        clearTimeout(debounceTimeoutRef.current);
+        updateURL(searchValue);
       }
     },
-    [updateSearchParams],
+    [searchValue, updateURL],
   );
 
   return (
     <div
-      className={isMobile ? "search-container-mobile" : "search-container"}
-      style={{ margin: 0, paddingLeft: "20px" }}
+      className="search-container"
+      style={{
+        margin: 0,
+        width: "100%",
+        marginBottom: isMobile ? "0.25em" : "0",
+      }}
     >
-      <Suspense key="search-bar" fallback={<div>Loading...</div>}>
-        <StyledInput
-          className="search-input"
-          placeholder="Search packages..."
-          fullWidth
-          disableUnderline
-          value={searchValue}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          inputRef={inputRef}
-          inputProps={{
-            "aria-label": "search",
-            type: "search",
-            autoComplete: "off",
-          }}
-          startAdornment={
-            <InputAdornment position="start">
-              <SearchIcon className="search-icon" />
-            </InputAdornment>
-          }
-        />
-      </Suspense>
+      <StyledInput
+        className="search-input"
+        placeholder="Search packages..."
+        fullWidth
+        disableUnderline
+        value={searchValue}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        sx={{
+          height: isMobile ? "2.5rem" : "auto",
+          "& input": {
+            height: isMobile ? "2.5rem" : "auto",
+            padding: isMobile ? "0.5rem 0.5rem" : "auto",
+          },
+        }}
+        inputProps={{
+          "aria-label": "search",
+          type: "search",
+          autoComplete: "off",
+        }}
+        startAdornment={
+          <InputAdornment position="start">
+            <SearchIcon className="search-icon" />
+          </InputAdornment>
+        }
+      />
     </div>
   );
 }
-
-const SearchBar = dynamic(() => Promise.resolve(SearchBarComponent), {
-  ssr: false,
-});
 
 export default SearchBar;

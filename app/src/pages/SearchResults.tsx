@@ -1,11 +1,7 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
-import {
-  useRouter,
-  useSearchParams,
-  ReadonlyURLSearchParams,
-} from "next/navigation";
+import React, { Suspense, useEffect, useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Box,
   Card,
@@ -18,54 +14,81 @@ import HTTP, { PackagePreview } from "../utils/http";
 import { formatDate } from "../utils/date";
 import NextLink from "next/link";
 
-export interface SearchResultsProps {
-  searchParams: URLSearchParams | ReadonlyURLSearchParams;
-}
-
 const PER_PAGE = 10;
 
-function SearchResults({ searchParams }: SearchResultsProps) {
+function SearchResults() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [results, setResults] = useState<PackagePreview[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const abortControllerRef = useRef<AbortController>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const query = searchParams.get("query")?.trim() || "";
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   useEffect(() => {
-    const query = searchParams.get("query");
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    setCurrentPage(page);
+    // Clear any pending search timeout
+    clearTimeout(searchTimeoutRef.current);
 
     if (!query) {
       setResults([]);
+      setTotalPages(1);
+      setTotalCount(0);
+      setError(null);
+      setLoading(false);
+      abortControllerRef.current?.abort();
       return;
     }
+
+    // Cancel previous request
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
 
     setLoading(true);
     setError(null);
 
-    HTTP.get("/search", {
-      params: {
-        query,
-        page: page.toString(),
-        per_page: PER_PAGE.toString(),
-      },
-    })
-      .then((response) => {
-        setResults(response.data.data);
-        setTotalPages(response.data.totalPages);
-        setTotalCount(response.data.totalCount);
+    // Add small delay to reduce cancelled requests when typing fast
+    searchTimeoutRef.current = setTimeout(() => {
+      HTTP.get("/search", {
+        params: {
+          query,
+          page: currentPage.toString(),
+          per_page: PER_PAGE.toString(),
+        },
+        signal: abortControllerRef.current?.signal,
       })
-      .catch((err) => {
-        setError("Failed to fetch search results");
-        console.error("Search error:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [searchParams]);
+        .then((response) => {
+          setResults(response.data.data);
+          setTotalPages(response.data.totalPages);
+          setTotalCount(response.data.totalCount);
+        })
+        .catch((err) => {
+          if (err.name !== "AbortError") {
+            setError("Failed to fetch search results");
+            console.error("Search error:", err);
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }, 100); // 100ms delay to reduce cancelled requests
+
+    return () => {
+      clearTimeout(searchTimeoutRef.current);
+      abortControllerRef.current?.abort();
+    };
+  }, [query, currentPage]);
+
+  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", page.toString());
+    router.replace(`/?${newParams.toString()}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const containerStyles = {
     maxWidth: "1200px",
@@ -77,7 +100,12 @@ function SearchResults({ searchParams }: SearchResultsProps) {
   if (loading) {
     return (
       <Box sx={containerStyles} mt={4} display="flex" justifyContent="center">
-        <CircularProgress />
+        <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <CircularProgress />
+          <Typography color="text.secondary">
+            Searching for &quot;{query}&quot;...
+          </Typography>
+        </Box>
       </Box>
     );
   }
@@ -85,15 +113,27 @@ function SearchResults({ searchParams }: SearchResultsProps) {
   if (error) {
     return (
       <Box sx={containerStyles} mt={4}>
+        <Typography color="error" variant="h6" gutterBottom>
+          Search Error
+        </Typography>
         <Typography color="error">{error}</Typography>
+        <Typography color="text.secondary" mt={2}>
+          Please try again or contact support if the problem persists.
+        </Typography>
       </Box>
     );
   }
 
   if (results.length === 0) {
     return (
-      <Box sx={containerStyles} mt={4}>
-        <Typography>No results found</Typography>
+      <Box sx={containerStyles} mt={4} textAlign="center">
+        <Typography variant="h6" gutterBottom>
+          No packages found
+        </Typography>
+        <Typography color="text.secondary">
+          No results found for &quot;{query}&quot;. Try different keywords or
+          check your spelling.
+        </Typography>
       </Box>
     );
   }
@@ -105,14 +145,15 @@ function SearchResults({ searchParams }: SearchResultsProps) {
           Search Results
         </Typography>
         <Typography color="text.secondary">
-          Found {totalCount} package{totalCount === 1 ? "" : "s"}
+          Found {totalCount} package{totalCount === 1 ? "" : "s"} for &quot;
+          {query}&quot;
         </Typography>
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {results.map((result) => (
           <NextLink
-            key={result.name}
+            key={`${result.name}-${result.version}`}
             href={`/package/${result.name}`}
             style={{ textDecoration: "none" }}
           >
@@ -131,12 +172,7 @@ function SearchResults({ searchParams }: SearchResultsProps) {
               }}
             >
               <CardContent
-                sx={{
-                  py: 3,
-                  pl: 3,
-                  pr: 4,
-                  "&:last-child": { pb: 3 },
-                }}
+                sx={{ py: 3, pl: 3, pr: 4, "&:last-child": { pb: 3 } }}
               >
                 <Box
                   sx={{
@@ -174,12 +210,9 @@ function SearchResults({ searchParams }: SearchResultsProps) {
 
                   <Typography
                     variant="body2"
-                    sx={{
-                      color: "text.primary",
-                      lineHeight: 1.5,
-                    }}
+                    sx={{ color: "text.primary", lineHeight: 1.5 }}
                   >
-                    {result.description || ""}
+                    {result.description || "No description available"}
                   </Typography>
 
                   <Typography
@@ -201,25 +234,15 @@ function SearchResults({ searchParams }: SearchResultsProps) {
       </Box>
 
       {totalPages > 1 && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            mt: 4,
-            mb: 2,
-          }}
-        >
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4, mb: 2 }}>
           <Pagination
             count={totalPages}
             page={currentPage}
-            onChange={(_, page) => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("page", page.toString());
-              router.replace(`/search?${newParams.toString()}`);
-            }}
+            onChange={handlePageChange}
             color="primary"
             showFirstButton
             showLastButton
+            size="large"
           />
         </Box>
       )}
@@ -228,11 +251,9 @@ function SearchResults({ searchParams }: SearchResultsProps) {
 }
 
 export default function SearchResultsWrapper() {
-  const searchParams = useSearchParams();
-
   return (
     <Suspense fallback={<div>Loading search results...</div>}>
-      <SearchResults searchParams={searchParams} />
+      <SearchResults />
     </Suspense>
   );
 }
