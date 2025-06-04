@@ -42,14 +42,16 @@ To connect to the database for development, you may optionally install the [Dies
 Diesel is the Rust ORM used to create and run database migrations. It requires a separate C library called `libpq` to be installed as well.
 
 ```sh
-# Mac only
+# Mac
 brew install libpq
-
-# Ubuntu only
+# or Ubuntu/Debian
 apt-get install libpq5
 
 # Install diesel CLI
 cargo install diesel_cli --no-default-features --features postgres
+
+# Install cargo-binstall
+cargo install cargo-binstall
 
 # On macOS-arm64, you may need additional rust flags:
 RUSTFLAGS='-L /opt/homebrew/opt/libpq/lib' cargo install diesel_cli --no-default-features --features postgres

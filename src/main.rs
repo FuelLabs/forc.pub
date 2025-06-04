@@ -26,7 +26,7 @@ use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, Up
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::models::PackageVersionInfo;
+use forc_pub::models::{PackagePreview, PackageVersionInfo};
 use forc_pub::util::{load_env, validate_or_format_semver};
 use rocket::http::Status;
 use rocket::tokio::task;
@@ -340,6 +340,23 @@ fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Cust
 }
 
 // Indicates the service is running
+#[get("/search?<query>&<pagination..>")]
+fn search(
+    db: &State<Database>,
+    query: String,
+    pagination: Pagination,
+) -> ApiResult<PaginatedResponse<PackagePreview>> {
+    if query.trim().is_empty() || query.len() > 100 {
+        return Err(ApiError::Generic(
+            "Invalid query parameter".into(),
+            Status::BadRequest,
+        ));
+    }
+
+    let result = db.transaction(|conn| conn.search_packages(query, pagination))?;
+    Ok(Json(result))
+}
+
 #[get("/health")]
 fn health() -> String {
     "true".to_string()
@@ -369,13 +386,14 @@ async fn rocket() -> _ {
                 user,
                 new_token,
                 delete_token,
+                tokens,
                 publish,
                 upload_project,
-                tokens,
                 packages,
                 package,
                 package_versions,
                 recent_packages,
+                search,
                 all_options,
                 health
             ],

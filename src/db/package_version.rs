@@ -367,4 +367,84 @@ impl DbConn<'_> {
             )
             .collect())
     }
+
+    /// Search for packages by name or description using fuzzy search.
+    pub fn search_packages(
+        &mut self,
+        query: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreview>, DatabaseError> {
+        let query_lower = query.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank,
+                    -- Combined relevance scoring
+                    GREATEST(
+                        similarity($1, LOWER(p.package_name)),
+                        CASE 
+                            WHEN LOWER(p.package_name) ILIKE '%' || $1 || '%' THEN 0.7
+                            ELSE 0.0
+                        END,
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3
+                    ) AS relevance_score
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                WHERE 
+                    LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(p.package_name)) > 0.2 OR
+                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1 AND relevance_score > 0.1
+            ORDER BY relevance_score DESC, created_at DESC
+            OFFSET $2
+            LIMIT $3;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err: diesel::result::Error| {
+            DatabaseError::QueryFailed("search packages".to_string(), err)
+        })?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_versions pv ON pv.package_id = p.id
+            WHERE 
+                LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                similarity($1, LOWER(p.package_name)) > 0.2 OR
+                similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search count".to_string(), err))?
+        .count;
+
+        Ok(PaginatedResponse {
+            data: packages,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
 }

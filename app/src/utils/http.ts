@@ -4,6 +4,22 @@ import { SERVER_URI } from "../constants";
 import { RecentPackagesResponse } from "../features/dashboard/hooks/useFetchRecentPackages";
 import { FullPackage } from "../features/detail/hooks/usePackageDetail";
 
+export interface SearchResponse {
+  data: PackagePreview[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  perPage: number;
+}
+
+export interface PackagePreview {
+  name: string;
+  version: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthenticatedUser {
   fullName: string;
   email?: string;
@@ -101,6 +117,16 @@ type Routes = [
     route: "/recent_packages";
     method: "GET";
     jsonResponse: RecentPackagesResponse;
+  },
+  {
+    route: "/search";
+    method: "GET";
+    queryParams: {
+      query: string;
+      page?: string;
+      per_page?: string;
+    };
+    jsonResponse: SearchResponse;
   },
   {
     route: "/package";
