@@ -346,6 +346,13 @@ fn search(
     query: String,
     pagination: Pagination,
 ) -> ApiResult<PaginatedResponse<PackagePreview>> {
+    if query.trim().is_empty() || query.len() > 100 {
+        return Err(ApiError::Generic(
+            "Invalid query parameter".into(),
+            Status::BadRequest,
+        ));
+    }
+
     let result = db.transaction(|conn| conn.search_packages(query, pagination))?;
     Ok(Json(result))
 }
