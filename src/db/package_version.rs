@@ -368,13 +368,13 @@ impl DbConn<'_> {
             .collect())
     }
 
-    /// Search for packages by name or description.
+    /// Search for packages by name or description using fuzzy search.
     pub fn search_packages(
         &mut self,
         query: String,
         pagination: Pagination,
     ) -> Result<PaginatedResponse<PackagePreview>, DatabaseError> {
-        let query = format!("%{}%", query.to_lowercase());
+        let query_lower = query.to_lowercase();
 
         let packages = diesel::sql_query(
             r#"WITH ranked_versions AS (
@@ -385,10 +385,22 @@ impl DbConn<'_> {
                     pv.package_description AS description, 
                     p.created_at AS created_at, 
                     pv.created_at AS updated_at,
-                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank,
+                    -- Combined relevance scoring
+                    GREATEST(
+                        similarity($1, LOWER(p.package_name)),
+                        CASE 
+                            WHEN LOWER(p.package_name) ILIKE '%' || $1 || '%' THEN 0.7
+                            ELSE 0.0
+                        END,
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3
+                    ) AS relevance_score
                 FROM package_versions pv
                 JOIN packages p ON pv.package_id = p.id
-                WHERE p.package_name ILIKE $1 OR pv.package_description ILIKE $1
+                WHERE 
+                    LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(p.package_name)) > 0.2 OR
+                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
             )
             SELECT 
                 name, 
@@ -397,13 +409,13 @@ impl DbConn<'_> {
                 created_at, 
                 updated_at
             FROM ranked_versions
-            WHERE rank = 1
-            ORDER BY created_at DESC
+            WHERE rank = 1 AND relevance_score > 0.1
+            ORDER BY relevance_score DESC, created_at DESC
             OFFSET $2
             LIMIT $3;
             "#,
         )
-        .bind::<diesel::sql_types::Text, _>(query.clone())
+        .bind::<diesel::sql_types::Text, _>(query_lower.clone())
         .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
         .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
         .load::<PackagePreview>(self.inner())
@@ -413,15 +425,16 @@ impl DbConn<'_> {
 
         // Count total matches
         let total = diesel::sql_query(
-            r#"SELECT COUNT(*) FROM (
-                SELECT DISTINCT p.id
-                FROM packages p
-                JOIN package_versions pv ON pv.package_id = p.id
-                WHERE p.package_name ILIKE $1 OR pv.package_description ILIKE $1
-            ) AS matches;
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_versions pv ON pv.package_id = p.id
+            WHERE 
+                LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                similarity($1, LOWER(p.package_name)) > 0.2 OR
+                similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
             "#,
         )
-        .bind::<diesel::sql_types::Text, _>(query)
+        .bind::<diesel::sql_types::Text, _>(query_lower)
         .get_result::<CountResult>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("search count".to_string(), err))?
         .count;
