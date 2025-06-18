@@ -16,7 +16,8 @@
 .search-input {
   width: 100%;
   height: 100%;
-  background-color: #333333;
+  background-color: inherit !important;
+  border: 1px solid #333333;
   color: #e0e0e0;
   padding: 2px 4px;
 }

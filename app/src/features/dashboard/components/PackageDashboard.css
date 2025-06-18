@@ -4,8 +4,9 @@
 }
 
 .section-title {
-  border-bottom: 2px solid #90caf9;
+  border-bottom: 2px solid #00f58c;
   padding-bottom: 8px;
+  margin-bottom: 24px !important;
   color: #ffffff;
   font-weight: 500;
 }
@@ -36,7 +37,7 @@
 }
 
 .package-name {
-  color: #90caf9;
+  color: #00f58c;
   margin-bottom: 8px;
 }
 
@@ -51,7 +52,7 @@
 }
 
 .arrow-icon {
-  color: #90caf9;
+  color: #00f58c;
   margin-left: 16px;
   align-self: center;
   font-size: 1.2rem;

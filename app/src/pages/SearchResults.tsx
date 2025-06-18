@@ -93,7 +93,7 @@ function SearchResults() {
   const containerStyles = {
     maxWidth: "1200px",
     mx: "auto",
-    px: 3,
+    px: { xs: 1, sm: 2, md: 3 },
     width: "100%",
   };
 
@@ -150,7 +150,7 @@ function SearchResults() {
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 1.5, sm: 2 }, marginBottom: { xs: 2, sm: 4 } }}>
         {results.map((result) => (
           <NextLink
             key={`${result.name}-${result.version}`}
@@ -172,14 +172,20 @@ function SearchResults() {
               }}
             >
               <CardContent
-                sx={{ py: 3, pl: 3, pr: 4, "&:last-child": { pb: 3 } }}
+                sx={{
+                  py: { xs: 2, sm: 3 },
+                  pl: { xs: 2, sm: 3 },
+                  pr: { xs: 2, sm: 4 },
+                  "&:last-child": { pb: { xs: 2, sm: 3 } },
+                }}
               >
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "200px 1fr 130px",
-                    gap: 3,
-                    alignItems: "center",
+                    gridTemplateColumns: { xs: "1fr", sm: "200px 1fr 130px" },
+                    gap: { xs: 1.5, sm: 3 },
+                    alignItems: { xs: "start", sm: "center" },
+                    rowGap: { xs: 0.5, sm: 0 },
                   }}
                 >
                   <Box>
@@ -189,7 +195,7 @@ function SearchResults() {
                       sx={{
                         color: "primary.main",
                         fontWeight: 600,
-                        fontSize: "1.1rem",
+                        fontSize: { xs: "1rem", sm: "1.1rem" },
                         display: "block",
                         mb: 0.5,
                       }}
@@ -201,7 +207,7 @@ function SearchResults() {
                       sx={{
                         color: "text.secondary",
                         fontFamily: "monospace",
-                        fontSize: "0.85rem",
+                        fontSize: { xs: "0.8rem", sm: "0.85rem" },
                       }}
                     >
                       v{result.version}
@@ -210,7 +216,7 @@ function SearchResults() {
 
                   <Typography
                     variant="body2"
-                    sx={{ color: "text.primary", lineHeight: 1.5 }}
+                    sx={{ color: "text.primary", lineHeight: 1.5, fontSize: { xs: "0.9rem", sm: "0.95rem" } }}
                   >
                     {result.description || "No description available"}
                   </Typography>
@@ -219,9 +225,10 @@ function SearchResults() {
                     variant="caption"
                     sx={{
                       color: "text.secondary",
-                      fontSize: "0.8rem",
+                      fontSize: { xs: "0.75rem", sm: "0.8rem" },
                       whiteSpace: "nowrap",
-                      textAlign: "right",
+                      textAlign: { xs: "left", sm: "right" },
+                      mt: { xs: 1, sm: 0 },
                     }}
                   >
                     Updated {formatDate(result.updatedAt)}
@@ -242,7 +249,7 @@ function SearchResults() {
             color="primary"
             showFirstButton
             showLastButton
-            size="large"
+            size="medium"
           />
         </Box>
       )}

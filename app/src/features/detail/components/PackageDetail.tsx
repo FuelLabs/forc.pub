@@ -24,6 +24,7 @@ import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
 import { AbiContent } from "./AbiContent";
 import { VersionsList } from "./VersionsList";
+import CodeBlock from "./CodeBlock";
 
 type TabNames =
   | "Readme"
@@ -45,6 +46,16 @@ interface PackageDetailProps {
   packageName: string;
   version?: string;
 }
+
+// Adapter for ReactMarkdown's code block signature
+// const MarkdownCodeBlock = ({ node, inline, className, children, ...props }: any) => {
+//   // Only use custom CodeBlock for block code, not inline
+//   if (!inline) {
+//     return <CodeBlock className={className}>{children}</CodeBlock>;
+//   }
+//   // For inline code, render as <code>
+//   return <code className={className} {...props}>{children}</code>;
+// };
 
 const PackageDetail: React.FC<PackageDetailProps> = ({
   packageName,
@@ -100,7 +111,9 @@ const PackageDetail: React.FC<PackageDetailProps> = ({
       <CardContent className="card-content">
         {packageData.readme ? (
           <div className="readme-content">
-            <ReactMarkdown>{packageData.readme}</ReactMarkdown>
+            <ReactMarkdown>
+              {packageData.readme}
+            </ReactMarkdown>
           </div>
         ) : (
           <Typography>No readme available for this package.</Typography>
@@ -113,17 +126,20 @@ const PackageDetail: React.FC<PackageDetailProps> = ({
     <div className="package-detail-container">
       <Container maxWidth="lg" className="package-detail-inner">
         <div className="package-header">
-          <Typography variant="h4" gutterBottom className="package-title">
-            {packageData.name}@{packageData.version}
-          </Typography>
-          {packageData.description && (
-            <Typography
-              variant="body1"
-              className="package-description-text-header"
-            >
-              {packageData.description}
+          <div className="package-header-content">
+            <Typography variant="h4" gutterBottom className="package-title">
+              {packageData.name}
+              <span className="package-version">@{packageData.version}</span>
             </Typography>
-          )}
+            {packageData.description && (
+              <Typography
+                variant="body1"
+                className="package-description-text-header"
+              >
+                {packageData.description}
+              </Typography>
+            )}
+          </div>
         </div>
         <Tabs
           value={TABS.indexOf(activeTab)}
@@ -227,7 +243,7 @@ const PackageDetail: React.FC<PackageDetailProps> = ({
                       >
                         <Button
                           variant="contained"
-                          color="secondary"
+                          color="primary"
                           startIcon={<CloudDownloadIcon />}
                         >
                           Download Source Package (.tgz)

@@ -15,6 +15,12 @@ import {
 } from "@mui/material";
 import { FullPackage } from "../hooks/usePackageDetail";
 import "./PackageSidebar.css";
+import GavelIcon from "@mui/icons-material/Gavel";
+import CodeIcon from "@mui/icons-material/Code";
+import GitHubIcon from "@mui/icons-material/GitHub";
+import DescriptionIcon from "@mui/icons-material/Description";
+import HomeIcon from "@mui/icons-material/Home";
+import LinkIcon from "@mui/icons-material/Link";
 
 interface PackageSidebarProps {
   data: FullPackage | null;
@@ -56,38 +62,27 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
     <Card variant="outlined" className="sidebar-card">
       <CardContent>
         {/* Package Information Section */}
-        <Typography variant="subtitle1" className="sidebar-section-heading">
+        <Typography variant="h6" className="sidebar-section-heading">
           Package Information
         </Typography>
-        <Grid container spacing={1} className="info-grid">
+        <Box className="info-grid">
           {data.license && (
-            <>
-              <Grid item xs={6} className="info-label-col">
-                <Typography variant="body2" className="info-label">
-                  License
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2">{data.license}</Typography>
-              </Grid>
-            </>
+            <Box display="flex" alignItems="center" mb={1}>
+              <GavelIcon fontSize="small" className="sidebar-icon" style={{ marginRight: 8, color: '#b0b0b0' }} />
+              <Typography variant="body2" className="info-label">License</Typography>
+              <Typography variant="body2" className="info-value" sx={{ marginLeft: 'auto' }}>{data.license}</Typography>
+            </Box>
           )}
-
-          <Grid item xs={6} className="info-label-col">
-            <Typography variant="body2" className="info-label">
-              Forc Version
-            </Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography variant="body2">{data.forcVersion}</Typography>
-          </Grid>
-        </Grid>
-
-        {/* Removed divider */}
+          <Box display="flex" alignItems="center" mb={1}>
+            <CodeIcon fontSize="small" className="sidebar-icon" style={{ marginRight: 8, color: '#b0b0b0' }} />
+            <Typography variant="body2" className="info-label">Forc Version</Typography>
+            <Typography variant="body2" className="info-value" sx={{ marginLeft: 'auto' }}>{data.forcVersion}</Typography>
+          </Box>
+        </Box>
 
         {data.repository && (
           <div className="sidebar-link-item">
-            <Typography variant="subtitle1" className="sidebar-section-heading">
+            <Typography variant="h6" className="sidebar-section-heading">
               Repository
             </Typography>
             <Link
@@ -95,7 +90,9 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               target="_blank"
               rel="noopener noreferrer"
               className="link-light link-block"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
             >
+              <GitHubIcon fontSize="small" style={{ marginRight: 6 }} />
               {data.repository}
             </Link>
           </div>
@@ -103,16 +100,17 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
 
         {data.documentation && (
           <div className="sidebar-link-item">
-            <Typography variant="subtitle1" className="sidebar-section-heading">
+            <Typography variant="h6" className="sidebar-section-heading">
               Documentation
             </Typography>
-
             <Link
               href={data.documentation}
               target="_blank"
               rel="noopener noreferrer"
               className="link-light link-block"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
             >
+              <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
               {data.documentation}
             </Link>
           </div>
@@ -120,7 +118,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
 
         {data.homepage && (
           <div className="sidebar-link-item">
-            <Typography variant="subtitle1" className="sidebar-section-heading">
+            <Typography variant="h6" className="sidebar-section-heading">
               Homepage
             </Typography>
             <Link
@@ -128,7 +126,9 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               target="_blank"
               rel="noopener noreferrer"
               className="link-light link-block"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
             >
+              <HomeIcon fontSize="small" style={{ marginRight: 6 }} />
               {data.homepage}
             </Link>
           </div>
@@ -136,7 +136,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
 
         {data.urls && data.urls.length > 0 && (
           <div className="sidebar-link-item">
-            <Typography variant="subtitle1" className="sidebar-section-heading">
+            <Typography variant="h6" className="sidebar-section-heading">
               Additional URLs
             </Typography>
             <List dense className="sidebar-list">
@@ -147,7 +147,9 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="link-light link-block"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
                   >
+                    <LinkIcon fontSize="small" style={{ marginRight: 6 }} />
                     {url}
                   </Link>
                 </ListItem>

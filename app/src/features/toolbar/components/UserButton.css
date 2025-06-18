@@ -21,18 +21,26 @@
 
 /* Menu styling */
 .menu-paper {
-  background-color: #2a2a2a;
+  background-color: #181818 !important;
   color: #e0e0e0;
   border: 1px solid #444;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  border-radius: 8px;
+  min-width: 200px !important;
+  margin-top: 8px;
 }
 
 .menu-item {
   color: #e0e0e0;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 10px 22px;
+  border-radius: 6px;
 }
 
 .menu-item:hover {
-  background-color: #3a3a3a;
+  color: #00f58c;
+  background-color: inherit !important;
 }
 
 /* Login button styling */

@@ -1,0 +1,80 @@
+/* TokensTable.css */
+.tokens-table-container {
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  margin-top: 16px;
+  border: none;
+}
+.tokens-table {
+  background: #2a2a2a !important;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.tokens-table-header-row {
+  background: #2a2a2a;
+}
+.tokens-table-header {
+  background: #2a2a2a;
+  border-bottom: 1.5px solid #333;
+  padding: 18px 28px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: left;
+}
+.tokens-table-header-name {
+  color: #00f58c !important;
+  border-top-left-radius: 18px;
+}
+.tokens-table-header-date {
+  color: #b0b0b0 !important;
+}
+.tokens-table-header-actions {
+  border-top-right-radius: 18px;
+}
+.tokens-table-row {
+  background: #2a2a2a;
+}
+.tokens-table-cell {
+  border: none;
+  padding: 18px 28px;
+  text-align: left;
+}
+.tokens-table-name {
+  color: #00f58c !important;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.tokens-table-date {
+  color: #b0b0b0 !important;
+  font-weight: 400 !important;
+  font-size: 0.8rem;
+}
+.tokens-table-actions {
+    text-align: right !important;
+}
+.tokens-table-revoke-btn {
+  font-weight: 600;
+  border-radius: 8px;
+  min-width: 80px;
+  padding: 4px 18px !important;
+  font-size: 0.9rem;
+  box-shadow: none;
+  background: #d32f2f !important;
+  font-weight: 600 !important;
+  color: #fff;
+  border: none;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+.tokens-table-revoke-btn:hover {
+  background: #b71c1c;
+}
+.tokens-table-empty {
+  color: #b0b0b0;
+  padding: 32px;
+  background: #23272f;
+  border: none;
+} 
+.MuiTableCell-root {
+    padding: 8px 24px !important;
+}
