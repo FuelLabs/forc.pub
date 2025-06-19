@@ -11,60 +11,54 @@
 }
 
 .api-tokens-content {
-  width: 100%;
-  max-width: 800px;
+  max-width: 500px;
   margin: 0 auto;
-  padding: 24px 16px;
-  overflow: auto;
+  padding: 32px 16px;
 }
 
 .page-title {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
   color: #ffffff;
   font-weight: bold;
 }
 
-.header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  position: relative;
+.page-description {
+  color: #b0b0b0;
+  margin-bottom: 28px;
+  font-size: 1rem;
 }
 
 .section-title {
-  color: #e0e0e0;
-  margin: 0;
+  color: #00f58c;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-bottom: 2.5px solid #00f58c;
+  padding-bottom: 6px;
 }
 
-.tokens-list-container {
-  display: flex;
-  flex-direction: column;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  border: 1px solid #333;
-}
-
-.empty-state {
-  padding: 20px;
-  border-bottom: 1px solid #444;
-  display: flex;
-  flex-direction: column;
-  color: #b0b0b0;
+.section-divider {
+  display: none;
 }
 
 .form-container {
   display: flex;
-  justify-content: space-between;
+  gap: 16px;
   align-items: center;
-  margin-top: 16px;
-  position: relative;
+  margin-bottom: 8px;
 }
 
 .token-name-field {
-  min-width: 50%;
+  min-width: 0;
+  flex: 1;
+}
+
+.tokens-list-container {
+  margin-top: 12px;
+}
+
+.empty-state {
+  padding: 20px 0;
+  color: #b0b0b0;
 }
 
 /* Override MUI styles for dark mode */
@@ -81,11 +75,11 @@
 }
 
 .api-tokens-container .MuiFormLabel-root.Mui-focused {
-  color: #90caf9;
+  color: #00f58c;
 }
 
 .api-tokens-container .MuiFilledInput-underline:after {
-  border-bottom-color: #90caf9;
+  border-bottom-color: #00f58c;
 }
 
 .generate-button {
@@ -95,4 +89,18 @@
 
 .generate-button:hover {
   background-color: #1565c0;
+}
+
+.tokens-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.create-token-btn {
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 8px;
+  min-width: 120px;
 }

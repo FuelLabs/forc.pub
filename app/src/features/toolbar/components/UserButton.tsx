@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useState } from "react";
-import Lock from "@mui/icons-material/Lock";
 import Button from "@mui/material/Button";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -11,6 +10,7 @@ import { REDIRECT_URI } from "../../../constants";
 import "./UserButton.css";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import GitHubIcon from "@mui/icons-material/GitHub";
 
 export const GITHUB_CLIENT_ID = "Iv1.ebdf596c6c548759";
 
@@ -84,7 +84,11 @@ function UserButton() {
           >
             API Tokens
           </MenuItem>
-          <MenuItem key="logout" onClick={handleLogout} className="menu-item">
+          <MenuItem
+            key="logout"
+            onClick={handleLogout}
+            className="menu-item"
+          >
             Log Out
           </MenuItem>
         </Menu>
@@ -121,9 +125,16 @@ function UserButton() {
             windowDimensions,
           );
         }}
+        sx={{
+          border: '1px solid #333',
+          borderRadius: 1,
+          color: '#fff',
+          fontWeight: 600,
+          px: 2.5,
+        }}
       >
         <>
-          <Lock className="login-icon" />
+          <GitHubIcon className="login-icon" />
           <div className="login-text">Log in with GitHub</div>
         </>
       </Button>

@@ -1,11 +1,21 @@
 /* Dark mode styling for Token Card */
 .token-card {
   padding: 20px;
-  border-bottom: 1px solid #444;
+  border-radius: 8px;
+  border: 1px solid #333;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   background-color: #2a2a2a;
   color: #e0e0e0;
+  margin-bottom: 20px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.token-card:hover {
+  background-color: #383838;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  border-color: #00f58c;
 }
 
 .token-header {
@@ -16,14 +26,26 @@
   position: relative;
 }
 
-.token-name {
+.token-name-accent {
   margin: 0;
-  color: #ffffff;
-  font-weight: 500;
+  color: #00f58c;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.2px;
 }
 
 .revoke-button {
   margin-left: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: #d32f2f;
+  color: #fff;
+  box-shadow: none;
+  transition: background 0.2s;
+}
+
+.revoke-button:hover {
+  background: #b71c1c;
 }
 
 .token-date {
@@ -32,13 +54,55 @@
   margin-bottom: 12px;
 }
 
-.token-warning {
-  margin: 1rem 0;
+.token-warning-modern {
+  margin: 1rem 0 0.5rem 0;
   padding: 8px 12px;
-  background-color: rgba(255, 152, 0, 0.1);
-  border-left: 4px solid #ff9800;
-  border-radius: 4px;
-  color: #ffb74d;
+  border-radius: 6px;
+  font-size: 0.98rem;
+  background: #23272f;
+  border-left: 4px solid #00f58c;
+  color: #fff;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.copyable-token-row {
+  display: flex;
+  align-items: center;
+  background: #23272f;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-family: 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  color: #00f58c;
+  font-size: 1.08rem;
+  word-break: break-all;
+}
+
+.copyable-token-text {
+  flex: 1;
+  user-select: all;
+  color: #00f58c;
+}
+
+.copy-token-btn {
+  margin-left: 10px;
+  font-weight: 600;
+  border-radius: 6px;
+  min-width: 80px;
+  background: transparent;
+  color: #00f58c;
+  border: 1px solid #00f58c;
+  box-shadow: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.copy-token-btn:hover {
+  background: #00f58c;
+  color: #181818;
+  border: 1px solid #00f58c;
 }
 
 /* Style the copyable token component when inside a token card */
@@ -46,4 +110,125 @@
   background-color: #333;
   border: 1px solid #444;
   color: #e0e0e0;
+}
+
+.new-token-card {
+  background: #2a2a2a;
+  border: 2px solid #00f58c;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0,245,140,0.08);
+  margin-bottom: 32px;
+  padding: 24px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.token-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.token-card-name {
+  color: #00f58c;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.token-card-date {
+  color: #b0b0b0;
+  font-size: 0.98rem;
+}
+
+.token-card-warning {
+  display: flex;
+  margin: 18px 0 14px 0;
+  color: #ffd600;
+  font-size: 1.01rem;
+  background: rgba(255,214,0,0.08);
+  border-left: 4px solid #ffd600;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-weight: 500;
+}
+
+.token-card-warning-icon {
+  color: #ffd600;
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+.token-card-value-row {
+  display: flex;
+  align-items: center;
+  background: #181a20;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: 'Fira Mono', monospace;
+  color: #00f58c;
+  font-size: 1rem;
+  word-break: break-all;
+  margin-bottom: 0;
+}
+
+.token-card-value {
+  flex: 1;
+}
+
+.token-card-copy-btn {
+  color: #b0b0b0;
+  margin-left: 8px;
+  transition: color 0.2s;
+}
+
+.token-card-copy-btn:hover {
+  color: #00f58c;
+}
+
+.existing-token-card {
+  border: 1px solid #333;
+  background-color: #2a2a2a;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.done-token-btn {
+  background: #23272f;
+  color: #00f58c;
+  border: 1px solid #00f58c;
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 8px 24px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.done-token-btn:hover {
+  background: #00f58c;
+  color: #181818;
+}
+
+.token-card-revoke-btn {
+  background: #d32f2f;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 6px 18px;
+  margin-left: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.token-card-revoke-btn:hover {
+  background: #b71c1c;
+}
+
+.token-card-revoke-bottom-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
 }
