@@ -161,12 +161,6 @@ function HomePage() {
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: 2,
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  transform: 'translateY(-4px)',
-                  boxShadow: `0 8px 25px rgba(0, 0, 0, 0.15)`,
-                },
               }}
             >
               <Box
