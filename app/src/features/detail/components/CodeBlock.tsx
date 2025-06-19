@@ -63,7 +63,6 @@ const CodeBlock: React.FC<{
     // Render Shiki's HTML output as-is (includes .shiki class)
     return <div dangerouslySetInnerHTML={{ __html: html }} />;
   }
-  // Fallback: plain code
   return (
     <pre style={{ borderRadius: 8, fontSize: 16, margin: "1em 0", background: "#181a20", color: "#e0e0e0" }}>
       {code}
