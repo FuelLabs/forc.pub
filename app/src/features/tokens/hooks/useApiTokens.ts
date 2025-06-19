@@ -57,7 +57,6 @@ export function useApiTokens(): {
     }
 
     HTTP.get(`/tokens`).then(({ data }) => {
-      console.log(data);
       setTokens([
         ...data.tokens
           .filter((token) => token.id !== newToken?.id)

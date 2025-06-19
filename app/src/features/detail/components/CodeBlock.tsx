@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { createHighlighter, type Highlighter } from "shiki";
-import swayGrammar from "../../../syntaxes/sway.tmlanguage.json";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -19,7 +18,7 @@ async function getSingletonHighlighter(theme: string) {
 const CodeBlock: React.FC<{
   className?: string;
   children: React.ReactNode;
-}> = ({ className, children }) => {
+}> = ({ children }) => {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const code = String(children).trim();

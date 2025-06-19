@@ -24,7 +24,6 @@ import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
 import { AbiContent } from "./AbiContent";
 import { VersionsList } from "./VersionsList";
-import CodeBlock from "./CodeBlock";
 
 type TabNames =
   | "Readme"
@@ -46,16 +45,6 @@ interface PackageDetailProps {
   packageName: string;
   version?: string;
 }
-
-// Adapter for ReactMarkdown's code block signature
-// const MarkdownCodeBlock = ({ node, inline, className, children, ...props }: any) => {
-//   // Only use custom CodeBlock for block code, not inline
-//   if (!inline) {
-//     return <CodeBlock className={className}>{children}</CodeBlock>;
-//   }
-//   // For inline code, render as <code>
-//   return <code className={className} {...props}>{children}</code>;
-// };
 
 const PackageDetail: React.FC<PackageDetailProps> = ({
   packageName,
