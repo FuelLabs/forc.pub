@@ -50,7 +50,7 @@ export function useGithubAuth(): [
         }
       })
       .catch(() => clearGithubCode());
-  }, [githubCode, setGithubUser, clearGithubCode]);
+  }, [githubCode, setGithubUser, clearGithubCode, setSessionId]);
 
   useEffect(() => {
     // Attempt to fetch the logged in user info if the session cookie is set and the user hasn't been fetched.
