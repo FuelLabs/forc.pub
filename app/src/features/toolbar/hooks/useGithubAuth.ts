@@ -44,6 +44,10 @@ export function useGithubAuth(): [
         if (data.user) {
           setGithubUser(data.user);
         }
+        // Store the session ID in the cookie for persistence
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+        }
       })
       .catch(() => clearGithubCode());
   }, [githubCode, setGithubUser, clearGithubCode]);
