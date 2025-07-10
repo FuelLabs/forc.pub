@@ -4,6 +4,7 @@ import React, { useCallback, useState } from "react";
 import Button from "@mui/material/Button";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import CircularProgress from "@mui/material/CircularProgress";
 import { useGithubAuth } from "../hooks/useGithubAuth";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { REDIRECT_URI } from "../../../constants";
@@ -16,7 +17,7 @@ export const GITHUB_CLIENT_ID = "Iv1.ebdf596c6c548759";
 
 function UserButton() {
   const router = useRouter();
-  const [user, logout] = useGithubAuth();
+  const [user, logout, isAuthLoading] = useGithubAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenu = useCallback(
@@ -42,6 +43,21 @@ function UserButton() {
     logout();
     handleNavigate("/");
   }, [handleNavigate, logout]);
+
+  // Show loading spinner while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="button-wrapper">
+        <CircularProgress 
+          size={24} 
+          sx={{ 
+            color: '#fff',
+            marginX: 2 
+          }} 
+        />
+      </div>
+    );
+  }
 
   if (user) {
     return (
