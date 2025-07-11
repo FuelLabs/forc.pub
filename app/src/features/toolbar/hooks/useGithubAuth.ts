@@ -48,6 +48,7 @@ export function useGithubAuth(): [
   const searchParams = useSearchParams();
   const router = useRouter();
   const hasAttemptedUserFetch = useRef(false);
+  const hasAttemptedLogin = useRef(false);
 
   const logout = useCallback(async () => {
     await HTTP.post(`/logout`);
@@ -57,6 +58,7 @@ export function useGithubAuth(): [
     setCachedUser(null); // Clear cached user data
     setIsAuthLoading(false);
     hasAttemptedUserFetch.current = false;
+    hasAttemptedLogin.current = false;
   }, [setGithubUser, setSessionId, router]);
 
   // Initial auth check - wait for cookie to load before making any decisions
@@ -98,10 +100,11 @@ export function useGithubAuth(): [
 
   // Handle login with GitHub code
   useEffect(() => {
-    if (!githubCode || isLoading) {
+    if (!githubCode || hasAttemptedLogin.current) {
       return;
     }
 
+    hasAttemptedLogin.current = true; // Mark login attempt as started
     setIsLoading(true);
     setIsAuthLoading(true);
     HTTP.post(`/login`, { code: githubCode })
@@ -119,12 +122,13 @@ export function useGithubAuth(): [
       })
       .catch(() => {
         clearGithubCode();
+        hasAttemptedLogin.current = false; // Reset on error so we can try again
       })
       .finally(() => {
         setIsLoading(false);
         setIsAuthLoading(false);
       });
-  }, [githubCode, setGithubUser, clearGithubCode, setSessionId, isLoading]);
+  }, [githubCode, setGithubUser, clearGithubCode, setSessionId]);
 
   // Attempt to fetch user info if session exists but user hasn't been fetched
   useEffect(() => {
