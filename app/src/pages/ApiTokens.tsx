@@ -1,8 +1,6 @@
 import React from "react";
 import { useApiTokens } from "../features/tokens/hooks/useApiTokens";
-import { Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Tooltip } from "@mui/material";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import "./ApiTokens.css";
 import TokenCard from "../features/tokens/components/TokenCard";
 import TokensTable from "../features/tokens/components/TokensTable";

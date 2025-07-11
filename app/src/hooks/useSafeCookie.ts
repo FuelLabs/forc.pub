@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 
+interface CookieOptions {
+  expires: number;
+  sameSite: 'strict' | 'lax' | 'none';
+  path: string;
+  secure?: boolean;
+}
+
 export function useSafeCookie(
   key: string,
 ): [string | undefined, (value: string) => void, boolean] {
@@ -21,7 +28,7 @@ export function useSafeCookie(
       return;
     }
 
-    const cookieOptions: any = {
+    const cookieOptions: CookieOptions = {
       expires: 30,
       sameSite: 'lax',
       path: '/'
