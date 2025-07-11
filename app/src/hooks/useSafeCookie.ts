@@ -5,12 +5,14 @@ import Cookies from "js-cookie";
 
 export function useSafeCookie(
   key: string,
-): [string | undefined, (value: string) => void] {
+): [string | undefined, (value: string) => void, boolean] { // Added isLoading as third return value
   const [value, setValue] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(true); // Start with loading = true
 
   useEffect(() => {
     // Only access cookies on the client side
     setValue(Cookies.get(key));
+    setIsLoading(false); // Mark as loaded after we've read the cookie
   }, [key]);
 
   const updateCookie = (newValue: string) => {
@@ -32,5 +34,5 @@ export function useSafeCookie(
     setValue(newValue);
   };
 
-  return [value, updateCookie];
+  return [value, updateCookie, isLoading];
 }
