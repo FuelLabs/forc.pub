@@ -47,7 +47,7 @@ function UserButton() {
   // Show loading spinner while checking authentication
   if (isAuthLoading) {
     return (
-      <div className="button-wrapper">
+      <div className="button-wrapper" role="status" aria-busy="true">
         <CircularProgress 
           size={24} 
           sx={{ 
