@@ -44,9 +44,13 @@ export function useGithubAuth(): [
         if (data.user) {
           setGithubUser(data.user);
         }
+        // Store the session ID in the cookie for persistence
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+        }
       })
       .catch(() => clearGithubCode());
-  }, [githubCode, setGithubUser, clearGithubCode]);
+  }, [githubCode, setGithubUser, clearGithubCode, setSessionId]);
 
   useEffect(() => {
     // Attempt to fetch the logged in user info if the session cookie is set and the user hasn't been fetched.
