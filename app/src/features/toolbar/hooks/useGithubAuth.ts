@@ -47,17 +47,37 @@ export function useGithubAuth(): [
   const router = useRouter();
   const hasAttemptedUserFetch = useRef(false);
   const hasAttemptedLogin = useRef(false);
+  const isLoggingOut = useRef(false);
 
   const logout = useCallback(async () => {
-    await HTTP.post(`/logout`);
-    setSessionId("");
-    router.refresh();
-    setGithubUser(null);
-    setCachedUser(null);
-    setIsAuthLoading(false);
-    hasAttemptedUserFetch.current = false;
-    hasAttemptedLogin.current = false;
-  }, [setGithubUser, setSessionId, router]);
+    // Prevent multiple simultaneous logout calls
+    if (isLoggingOut.current) {
+      return;
+    }
+    
+    isLoggingOut.current = true;
+    
+    try {
+      // Only attempt server logout if we have a valid session
+      if (sessionId) {
+        try {
+          await HTTP.post(`/logout`);
+        } catch {
+          // Session likely expired - server cleanup not needed
+        }
+      }
+      
+      // Always perform local cleanup
+      setSessionId("");
+      setGithubUser(null);
+      setCachedUser(null);
+      setIsAuthLoading(false);
+      hasAttemptedUserFetch.current = false;
+      hasAttemptedLogin.current = false;
+    } finally {
+      isLoggingOut.current = false;
+    }
+  }, [setGithubUser, setSessionId, sessionId]);
 
   useEffect(() => {
     if (isCookieLoading) {
@@ -92,7 +112,7 @@ export function useGithubAuth(): [
   }, [searchParams, saveGithubCode, router, githubCode]);
 
   useEffect(() => {
-    if (!githubCode || hasAttemptedLogin.current) {
+    if (!githubCode || hasAttemptedLogin.current || isLoggingOut.current) {
       return;
     }
 
