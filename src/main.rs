@@ -288,12 +288,37 @@ fn packages(
     }))
 }
 
-#[get("/package?<name>&<version>")]
-fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiResult<FullPackage> {
+#[get("/package?<name>&<version>&<inline_abi>")]
+async fn package(
+    db: &State<Database>,
+    pinata_client: &State<PinataClientImpl>,
+    name: String,
+    version: Option<String>,
+    inline_abi: Option<bool>,
+) -> ApiResult<FullPackage> {
     let db_data =
         db.transaction(|conn| conn.get_full_package_version(name, version.unwrap_or_default()))?;
 
-    Ok(Json(FullPackage::from(db_data)))
+    let mut full_package = FullPackage::from(db_data.clone());
+
+    // If inline_abi is true and we have an ABI hash, fetch the ABI content
+    if inline_abi.unwrap_or(false) {
+        if let Some(abi_hash) = db_data.abi_ipfs_hash {
+            match pinata_client.fetch_ipfs_content(&abi_hash).await {
+                Ok(abi_content) => {
+                    if let Ok(abi_json) = serde_json::from_slice::<serde_json::Value>(&abi_content) {
+                        full_package.abi = Some(abi_json);
+                    }
+                }
+                Err(e) => {
+                    // Log error but don't fail the request
+                    info!("Failed to fetch ABI from IPFS: {}", e);
+                }
+            }
+        }
+    }
+
+    Ok(Json(full_package))
 }
 
 /// Get all versions for a package.

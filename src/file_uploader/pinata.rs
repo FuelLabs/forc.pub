@@ -11,6 +11,10 @@ pub trait PinataClient: Sized {
         &self,
         path: &Path,
     ) -> impl std::future::Future<Output = Result<String, UploadError>> + Send;
+    fn fetch_ipfs_content(
+        &self,
+        ipfs_hash: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<u8>, UploadError>> + Send;
 }
 
 pub struct PinataClientImpl {
@@ -47,6 +51,29 @@ impl PinataClient for PinataClientImpl {
             Err(err) => Err(UploadError::IpfsUploadFailed(err.to_string())),
         }
     }
+
+    /// Fetches content from IPFS using the provided hash.
+    async fn fetch_ipfs_content(&self, ipfs_hash: &str) -> Result<Vec<u8>, UploadError> {
+        let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
+        let url = format!("{pinata_domain}/ipfs/{ipfs_hash}");
+        
+        let response = reqwest::get(&url)
+            .await
+            .map_err(|e| UploadError::IpfsUploadFailed(format!("Failed to fetch from IPFS: {}", e)))?;
+        
+        if !response.status().is_success() {
+            return Err(UploadError::IpfsUploadFailed(format!(
+                "IPFS fetch failed with status: {}",
+                response.status()
+            )));
+        }
+        
+        response
+            .bytes()
+            .await
+            .map(|bytes| bytes.to_vec())
+            .map_err(|e| UploadError::IpfsUploadFailed(format!("Failed to read IPFS content: {}", e)))
+    }
 }
 
 pub fn ipfs_hash_to_abi_url(hash: &str) -> String {
@@ -71,5 +98,9 @@ impl PinataClient for MockPinataClient {
 
     async fn upload_file_to_ipfs(&self, _path: &Path) -> Result<String, UploadError> {
         Ok("ABC123".to_string())
+    }
+
+    async fn fetch_ipfs_content(&self, _ipfs_hash: &str) -> Result<Vec<u8>, UploadError> {
+        Ok(r#"{"abi": "mock"}"#.as_bytes().to_vec())
     }
 }
