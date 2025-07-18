@@ -391,6 +391,23 @@ fn packages_by_category(
     Ok(Json(result))
 }
 
+#[get("/packages/keyword/<keyword>?<pagination..>")]
+fn packages_by_keyword(
+    db: &State<Database>,
+    keyword: String,
+    pagination: Pagination,
+) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
+    if keyword.trim().is_empty() || keyword.len() > 50 {
+        return Err(ApiError::Generic(
+            "Invalid keyword parameter".into(),
+            Status::BadRequest,
+        ));
+    }
+
+    let result = db.transaction(|conn| conn.filter_packages_by_keyword(keyword, pagination))?;
+    Ok(Json(result))
+}
+
 #[get("/health")]
 fn health() -> String {
     "true".to_string()
@@ -429,6 +446,7 @@ async fn rocket() -> _ {
                 recent_packages,
                 search,
                 packages_by_category,
+                packages_by_keyword,
                 all_options,
                 health
             ],

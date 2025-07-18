@@ -29,13 +29,15 @@ function SearchResults() {
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   const query = searchParams.get("query")?.trim() || "";
+  const category = searchParams.get("category")?.trim() || "";
+  const keyword = searchParams.get("keyword")?.trim() || "";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   useEffect(() => {
     // Clear any pending search timeout
     clearTimeout(searchTimeoutRef.current);
 
-    if (!query) {
+    if (!query && !category && !keyword) {
       setResults([]);
       setTotalPages(1);
       setTotalCount(0);
@@ -54,12 +56,33 @@ function SearchResults() {
 
     // Add small delay to reduce cancelled requests when typing fast
     searchTimeoutRef.current = setTimeout(() => {
-      HTTP.get("/search", {
-        params: {
-          query,
-          page: currentPage.toString(),
-          per_page: PER_PAGE.toString(),
-        },
+      // Determine endpoint and params based on filter type
+      let endpoint = "/search";
+      let params: any = {
+        page: currentPage.toString(),
+        per_page: PER_PAGE.toString(),
+      };
+      
+      if (category && !query) {
+        // Pure category filtering
+        endpoint = `/packages/category/${encodeURIComponent(category)}`;
+      } else if (keyword && !query) {
+        // Pure keyword filtering
+        endpoint = `/packages/keyword/${encodeURIComponent(keyword)}`;
+      } else {
+        // General search (with or without filters)
+        let searchQuery = query;
+        if (category) {
+          searchQuery = searchQuery ? `${searchQuery} category:${category}` : `category:${category}`;
+        }
+        if (keyword) {
+          searchQuery = searchQuery ? `${searchQuery} keyword:${keyword}` : `keyword:${keyword}`;
+        }
+        params.query = searchQuery;
+      }
+      
+      HTTP.get(endpoint, {
+        params,
         signal: abortControllerRef.current?.signal,
       })
         .then((response) => {
@@ -82,12 +105,13 @@ function SearchResults() {
       clearTimeout(searchTimeoutRef.current);
       abortControllerRef.current?.abort();
     };
-  }, [query, currentPage]);
+  }, [query, category, keyword, currentPage]);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", page.toString());
-    router.replace(`/?${newParams.toString()}`);
+    router.replace(`/search?${newParams.toString()}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -104,7 +128,7 @@ function SearchResults() {
         <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
           <CircularProgress />
           <Typography color="text.secondary">
-            Searching for &quot;{query}&quot;...
+            {query ? `Searching for "${query}"...` : category ? `Loading packages for category "${category}"...` : keyword ? `Loading packages for keyword "${keyword}"...` : "Loading..."}
           </Typography>
         </Box>
       </Box>
@@ -132,8 +156,7 @@ function SearchResults() {
           No packages found
         </Typography>
         <Typography color="text.secondary">
-          No results found for &quot;{query}&quot;. Try different keywords or
-          check your spelling.
+          {query ? `No results found for "${query}". Try different keywords or check your spelling.` : category ? `No packages found for category "${category}".` : keyword ? `No packages found for keyword "${keyword}".` : "No packages found."}
         </Typography>
       </Box>
     );
@@ -146,9 +169,42 @@ function SearchResults() {
           Search Results
         </Typography>
         <Typography color="text.secondary">
-          Found {totalCount} package{totalCount === 1 ? "" : "s"} for &quot;
-          {query}&quot;
+          Found {totalCount} package{totalCount === 1 ? "" : "s"}
+          {query ? ` for "${query}"` : category ? ` for category "${category}"` : keyword ? ` for keyword "${keyword}"` : ""}
         </Typography>
+        
+        {/* Filter chips */}
+        {(category || keyword) && (
+          <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            <Typography variant="body2" color="text.secondary">Filters:</Typography>
+            {category && (
+              <Chip
+                label={`Category: ${category}`}
+                size="small"
+                color="primary"
+                onDelete={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.delete("category");
+                  newParams.set("page", "1");
+                  router.replace(`/search?${newParams.toString()}`);
+                }}
+              />
+            )}
+            {keyword && (
+              <Chip
+                label={`Keyword: ${keyword}`}
+                size="small"
+                color="secondary"
+                onDelete={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.delete("keyword");
+                  newParams.set("page", "1");
+                  router.replace(`/search?${newParams.toString()}`);
+                }}
+              />
+            )}
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 1.5, sm: 2 }, marginBottom: { xs: 2, sm: 4 } }}>
@@ -246,9 +302,9 @@ function SearchResults() {
                               e.preventDefault();
                               e.stopPropagation();
                               const newParams = new URLSearchParams();
-                              newParams.set("query", category);
+                              newParams.set("category", category);
                               newParams.set("page", "1");
-                              window.location.href = `/?${newParams.toString()}`;
+                              window.location.href = `/search?${newParams.toString()}`;
                             }}
                           />
                         ))}
@@ -271,11 +327,10 @@ function SearchResults() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              // Navigate to keyword search
                               const newParams = new URLSearchParams();
-                              newParams.set("query", keyword);
+                              newParams.set("keyword", keyword);
                               newParams.set("page", "1");
-                              window.location.href = `/?${newParams.toString()}`;
+                              window.location.href = `/search?${newParams.toString()}`;
                             }}
                           />
                         ))}
