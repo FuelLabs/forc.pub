@@ -784,7 +784,7 @@ fn test_filter_by_category() {
             .new_package_version(&token, &request1)
             .expect("version result is ok");
 
-        conn.insert_categories(version_result1.package_id, &vec!["defi".to_string()])
+        conn.insert_categories(version_result1.package_id, &["defi".to_string()])
             .expect("insert categories is ok");
 
         // Create second package with "gaming" category
@@ -805,7 +805,7 @@ fn test_filter_by_category() {
             .new_package_version(&token, &request2)
             .expect("version result is ok");
 
-        conn.insert_categories(version_result2.package_id, &vec!["gaming".to_string()])
+        conn.insert_categories(version_result2.package_id, &["gaming".to_string()])
             .expect("insert categories is ok");
 
         // Test filter by "defi" category
@@ -1004,29 +1004,29 @@ fn test_get_categories_and_keywords_for_packages() {
         // Insert categories and keywords for both packages
         conn.insert_categories(
             version_result1.package_id,
-            &vec!["cat1".to_string(), "common".to_string()],
+            &["cat1".to_string(), "common".to_string()],
         )
         .expect("insert categories is ok");
         conn.insert_keywords(
             version_result1.package_id,
-            &vec!["key1".to_string(), "shared".to_string()],
+            &["key1".to_string(), "shared".to_string()],
         )
         .expect("insert keywords is ok");
 
         conn.insert_categories(
             version_result2.package_id,
-            &vec!["cat2".to_string(), "common".to_string()],
+            &["cat2".to_string(), "common".to_string()],
         )
         .expect("insert categories is ok");
         conn.insert_keywords(
             version_result2.package_id,
-            &vec!["key2".to_string(), "shared".to_string()],
+            &["key2".to_string(), "shared".to_string()],
         )
         .expect("insert keywords is ok");
 
         // Test get_categories_for_packages
         let categories = conn
-            .get_categories_for_packages(&vec![
+            .get_categories_for_packages(&[
                 version_result1.package_id,
                 version_result2.package_id,
             ])
@@ -1040,7 +1040,7 @@ fn test_get_categories_and_keywords_for_packages() {
 
         // Test get_keywords_for_packages
         let keywords = conn
-            .get_keywords_for_packages(&vec![
+            .get_keywords_for_packages(&[
                 version_result1.package_id,
                 version_result2.package_id,
             ])
