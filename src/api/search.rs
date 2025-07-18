@@ -33,10 +33,13 @@ pub struct FullPackage {
     pub urls: Vec<Url>,
     pub readme: Option<String>,
     pub license: Option<String>,
+    pub categories: Vec<String>,
+    pub keywords: Vec<String>,
 }
 
-impl From<crate::models::FullPackage> for FullPackage {
-    fn from(full_package: crate::models::FullPackage) -> Self {
+impl From<crate::models::FullPackageWithCategories> for FullPackage {
+    fn from(full_package_with_categories: crate::models::FullPackageWithCategories) -> Self {
+        let full_package = full_package_with_categories.package;
         fn string_to_url(s: String) -> Option<Url> {
             Url::parse(&s).ok()
         }
@@ -66,6 +69,8 @@ impl From<crate::models::FullPackage> for FullPackage {
                 .collect(),
             license: full_package.license,
             readme: full_package.readme,
+            categories: full_package_with_categories.categories,
+            keywords: full_package_with_categories.keywords,
         }
     }
 }
