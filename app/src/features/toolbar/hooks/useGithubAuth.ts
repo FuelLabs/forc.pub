@@ -151,29 +151,41 @@ export function useGithubAuth(): [
       return;
     }
 
-    if (githubUser || !sessionId || isLoading || hasAttemptedUserFetch.current) {
+    if (githubUser || !sessionId || isLoading) {
       return;
     }
 
-    setIsLoading(true);
-    setIsAuthLoading(true);
-    hasAttemptedUserFetch.current = true;
+    // Reset attempt flag when sessionId changes to allow re-fetching on navigation
+    if (!hasAttemptedUserFetch.current) {
+      setIsLoading(true);
+      setIsAuthLoading(true);
+      hasAttemptedUserFetch.current = true;
 
-    HTTP.get(`/user`)
-      .then(({ data }) => {
-        setGithubUser(data.user);
-        setCachedUser(data.user);
-      })
-      .catch(() => {
-        setSessionId("");
-        setCachedUser(null);
-        hasAttemptedUserFetch.current = false;
-      })
-      .finally(() => {
-        setIsLoading(false);
-        setIsAuthLoading(false);
-      });
+      HTTP.get(`/user`)
+        .then(({ data }) => {
+          setGithubUser(data.user);
+          setCachedUser(data.user);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch user:", error);
+          // Only clear session if it's a 401 (unauthorized)
+          if (error?.response?.status === 401) {
+            setSessionId("");
+            setCachedUser(null);
+          }
+          hasAttemptedUserFetch.current = false;
+        })
+        .finally(() => {
+          setIsLoading(false);
+          setIsAuthLoading(false);
+        });
+    }
   }, [isCookieLoading, githubUser, setGithubUser, setSessionId, sessionId, isLoading]);
+
+  // Reset attempt flag when sessionId changes to allow re-fetching
+  useEffect(() => {
+    hasAttemptedUserFetch.current = false;
+  }, [sessionId]);
 
   return [githubUser, logout, isAuthLoading];
 }

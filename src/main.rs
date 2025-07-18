@@ -66,13 +66,15 @@ async fn login(
     cookies: &CookieJar<'_>,
     request: Json<LoginRequest>,
 ) -> ApiResult<LoginResponse> {
-    let (user, expires_in) = handle_login(request.code.clone()).await?;
-    let session = db.transaction(|conn| conn.new_user_session(&user, expires_in))?;
+    let (user, _github_token_expires_in) = handle_login(request.code.clone()).await?;
+    // Set session to expire in 30 days (matching frontend cookie expectation)
+    let session_expires_in = 30 * 24 * 60 * 60; // 30 days in seconds
+    let session = db.transaction(|conn| conn.new_user_session(&user, session_expires_in))?;
     let session_id = session.id.to_string();
     let mut cookie = Cookie::build((SESSION_COOKIE_NAME, session_id.clone()))
         .path("/")
-        .http_only(true)
-        .same_site(rocket::http::SameSite::Lax);
+        .same_site(rocket::http::SameSite::Lax)
+        .max_age(rocket::time::Duration::seconds(session_expires_in as i64));
     
     // Add secure flag if running in production or https
     if std::env::var("ROCKET_ENV").unwrap_or_default() == "production" 
