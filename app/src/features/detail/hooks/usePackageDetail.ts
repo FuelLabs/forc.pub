@@ -20,6 +20,8 @@ export interface FullPackage {
   urls: string[];
   readme: string | null;
   license: string | null;
+  categories: string[];
+  keywords: string[];
 }
 
 const usePackageDetail = (packageName: string, version?: string) => {
