@@ -1026,10 +1026,7 @@ fn test_get_categories_and_keywords_for_packages() {
 
         // Test get_categories_for_packages
         let categories = conn
-            .get_categories_for_packages(&[
-                version_result1.package_id,
-                version_result2.package_id,
-            ])
+            .get_categories_for_packages(&[version_result1.package_id, version_result2.package_id])
             .expect("get categories for packages is ok");
 
         assert_eq!(categories.len(), 4); // 2 categories per package
@@ -1040,10 +1037,7 @@ fn test_get_categories_and_keywords_for_packages() {
 
         // Test get_keywords_for_packages
         let keywords = conn
-            .get_keywords_for_packages(&[
-                version_result1.package_id,
-                version_result2.package_id,
-            ])
+            .get_keywords_for_packages(&[version_result1.package_id, version_result2.package_id])
             .expect("get keywords for packages is ok");
 
         assert_eq!(keywords.len(), 4); // 2 keywords per package
