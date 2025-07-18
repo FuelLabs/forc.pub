@@ -306,7 +306,8 @@ async fn package(
         if let Some(abi_hash) = db_data.abi_ipfs_hash {
             match pinata_client.fetch_ipfs_content(&abi_hash).await {
                 Ok(abi_content) => {
-                    if let Ok(abi_json) = serde_json::from_slice::<serde_json::Value>(&abi_content) {
+                    if let Ok(abi_json) = serde_json::from_slice::<serde_json::Value>(&abi_content)
+                    {
                         full_package.abi = Some(abi_json);
                     }
                 }

@@ -81,7 +81,9 @@ pub(crate) mod tests {
                 Err(UploadError::IpfsUploadFailed("IPFS error".to_string()))
             }
             async fn fetch_ipfs_content(&self, _ipfs_hash: &str) -> Result<Vec<u8>, UploadError> {
-                Err(UploadError::IpfsUploadFailed("IPFS fetch error".to_string()))
+                Err(UploadError::IpfsUploadFailed(
+                    "IPFS fetch error".to_string(),
+                ))
             }
         }
 

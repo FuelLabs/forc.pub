@@ -426,33 +426,33 @@ fn test_package_categories_keywords() {
 #[tokio::test]
 #[serial]
 async fn test_abi_inlining_with_mock_pinata() {
+    use forc_pub::api::search::FullPackage;
     use forc_pub::file_uploader::pinata::PinataClient;
     use forc_pub::handlers::upload::UploadError;
     use forc_pub::models;
-    use forc_pub::api::search::FullPackage;
-    use std::path::Path;
     use std::env;
+    use std::path::Path;
     // Create a test mock client that returns mock ABI content
     struct TestMockPinataClient;
-    
+
     impl PinataClient for TestMockPinataClient {
         async fn new() -> Result<Self, UploadError> {
             Ok(TestMockPinataClient)
         }
-        
+
         async fn upload_file_to_ipfs(&self, _path: &Path) -> Result<String, UploadError> {
             Ok("test_abi_hash".to_string())
         }
-        
+
         async fn fetch_ipfs_content(&self, _ipfs_hash: &str) -> Result<Vec<u8>, UploadError> {
             // Return a more realistic ABI structure
             Ok(r#"{"types": [{"id": 1, "type": "u64"}], "functions": [{"name": "test_function", "inputs": [], "outputs": []}]}"#.as_bytes().to_vec())
         }
     }
-    
+
     // Set up environment variables
     env::set_var("PINATA_URL", "https://test-pinata.com");
-    
+
     // Create a mock FullPackage from database model (simulating what we'd get from DB)
     let db_full_package = models::FullPackage {
         name: "test-abi-package".to_string(),
@@ -471,16 +471,16 @@ async fn test_abi_inlining_with_mock_pinata() {
         readme: None,
         license: None,
     };
-    
+
     // Test 1: Convert without ABI inlining (default behavior)
     let full_package_without_abi = FullPackage::from(db_full_package.clone());
     assert!(full_package_without_abi.abi_ipfs_url.is_some());
     assert!(full_package_without_abi.abi.is_none());
-    
+
     // Test 2: Simulate ABI inlining process
     let mock_client = TestMockPinataClient;
     let mut full_package_with_abi = FullPackage::from(db_full_package.clone());
-    
+
     // Simulate the inline_abi=true logic from the endpoint
     if let Some(abi_hash) = db_full_package.abi_ipfs_hash {
         match mock_client.fetch_ipfs_content(&abi_hash).await {
@@ -495,25 +495,28 @@ async fn test_abi_inlining_with_mock_pinata() {
             }
         }
     }
-    
+
     // Should have both URL and inline content
     assert!(full_package_with_abi.abi_ipfs_url.is_some());
     assert!(full_package_with_abi.abi.is_some());
-    
+
     // Verify the mock ABI content is correctly fetched and included
     let abi = full_package_with_abi.abi.as_ref().unwrap();
     assert!(abi.get("types").is_some());
     assert!(abi.get("functions").is_some());
-    
+
     let functions = abi.get("functions").unwrap().as_array().unwrap();
     assert_eq!(functions.len(), 1);
-    assert_eq!(functions[0].get("name").unwrap().as_str().unwrap(), "test_function");
-    
+    assert_eq!(
+        functions[0].get("name").unwrap().as_str().unwrap(),
+        "test_function"
+    );
+
     // Test 3: Verify serialization works correctly
     let json_with_abi = serde_json::to_value(&full_package_with_abi).unwrap();
     assert!(json_with_abi.get("abiIpfsUrl").is_some());
     assert!(json_with_abi.get("abi").is_some());
-    
+
     let serialized_abi = json_with_abi.get("abi").unwrap();
     assert!(serialized_abi.get("types").is_some());
     assert!(serialized_abi.get("functions").is_some());
@@ -524,7 +527,7 @@ async fn test_abi_inlining_with_mock_pinata() {
 fn test_full_package_abi_field_serialization() {
     use forc_pub::api::search::FullPackage;
     use forc_pub::models::PackagePreview;
-    
+
     let package_preview_1 = PackagePreview {
         name: "test-package".to_string(),
         version: "0.1.0".to_string(),
@@ -532,7 +535,7 @@ fn test_full_package_abi_field_serialization() {
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    
+
     let package_preview_2 = PackagePreview {
         name: "test-package".to_string(),
         version: "0.1.0".to_string(),
@@ -540,7 +543,7 @@ fn test_full_package_abi_field_serialization() {
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    
+
     // Test without ABI field
     let full_package_without_abi = FullPackage {
         package_preview: package_preview_1,
@@ -556,17 +559,17 @@ fn test_full_package_abi_field_serialization() {
         readme: None,
         license: None,
     };
-    
+
     let json_without_abi = serde_json::to_value(&full_package_without_abi).unwrap();
     assert!(json_without_abi.get("abi").is_none());
     assert!(json_without_abi.get("abiIpfsUrl").is_some());
-    
+
     // Test with ABI field
     let mock_abi = serde_json::json!({
         "abi": "mock",
         "types": []
     });
-    
+
     let full_package_with_abi = FullPackage {
         package_preview: package_preview_2,
         bytecode_identifier: None,
@@ -581,7 +584,7 @@ fn test_full_package_abi_field_serialization() {
         readme: None,
         license: None,
     };
-    
+
     let json_with_abi = serde_json::to_value(&full_package_with_abi).unwrap();
     assert!(json_with_abi.get("abi").is_some());
     assert!(json_with_abi.get("abiIpfsUrl").is_some());
@@ -594,10 +597,10 @@ fn test_full_package_conversion_maintains_abi_none() {
     use forc_pub::api::search::FullPackage;
     use forc_pub::models;
     use std::env;
-    
+
     // Set required environment variable for the test
     env::set_var("PINATA_URL", "https://test-pinata.com");
-    
+
     let db_full_package = models::FullPackage {
         name: "test".to_string(),
         version: "0.1.0".to_string(),
@@ -615,9 +618,9 @@ fn test_full_package_conversion_maintains_abi_none() {
         readme: None,
         license: None,
     };
-    
+
     let api_full_package = FullPackage::from(db_full_package);
-    
+
     // Should have abi_ipfs_url but abi should be None by default
     assert!(api_full_package.abi_ipfs_url.is_some());
     assert!(api_full_package.abi.is_none());
