@@ -53,7 +53,9 @@ impl DbConn<'_> {
             .order_by(schema::package_categories::category.asc())
             .select(PackageCategory::as_select())
             .load(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get categories for package".to_string(), err))
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get categories for package".to_string(), err)
+            })
     }
 
     /// Retrieve all keywords for a package by package ID.
@@ -76,10 +78,15 @@ impl DbConn<'_> {
     ) -> Result<Vec<PackageCategory>, DatabaseError> {
         schema::package_categories::table
             .filter(schema::package_categories::package_id.eq_any(package_ids))
-            .order_by((schema::package_categories::package_id.asc(), schema::package_categories::category.asc()))
+            .order_by((
+                schema::package_categories::package_id.asc(),
+                schema::package_categories::category.asc(),
+            ))
             .select(PackageCategory::as_select())
             .load(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get categories for packages".to_string(), err))
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get categories for packages".to_string(), err)
+            })
     }
 
     /// Retrieve keywords for multiple packages by package IDs.
@@ -89,7 +96,10 @@ impl DbConn<'_> {
     ) -> Result<Vec<PackageKeyword>, DatabaseError> {
         schema::package_keywords::table
             .filter(schema::package_keywords::package_id.eq_any(package_ids))
-            .order_by((schema::package_keywords::package_id.asc(), schema::package_keywords::keyword.asc()))
+            .order_by((
+                schema::package_keywords::package_id.asc(),
+                schema::package_keywords::keyword.asc(),
+            ))
             .select(PackageKeyword::as_select())
             .load(self.inner())
             .map_err(|err| DatabaseError::QueryFailed("get keywords for packages".to_string(), err))

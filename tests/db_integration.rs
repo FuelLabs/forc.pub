@@ -660,8 +660,12 @@ fn test_search_with_categories() {
         assert_eq!(search_result.data.len(), 1);
         assert_eq!(search_result.data[0].package.name, "web3-utils");
         assert_eq!(search_result.data[0].categories.len(), 2);
-        assert!(search_result.data[0].categories.contains(&"blockchain".to_string()));
-        assert!(search_result.data[0].categories.contains(&"web3".to_string()));
+        assert!(search_result.data[0]
+            .categories
+            .contains(&"blockchain".to_string()));
+        assert!(search_result.data[0]
+            .categories
+            .contains(&"web3".to_string()));
 
         // Test search by keyword
         let search_result = conn
@@ -677,8 +681,12 @@ fn test_search_with_categories() {
         assert_eq!(search_result.data.len(), 1);
         assert_eq!(search_result.data[0].package.name, "web3-utils");
         assert_eq!(search_result.data[0].keywords.len(), 2);
-        assert!(search_result.data[0].keywords.contains(&"ethereum".to_string()));
-        assert!(search_result.data[0].keywords.contains(&"smart-contracts".to_string()));
+        assert!(search_result.data[0]
+            .keywords
+            .contains(&"ethereum".to_string()));
+        assert!(search_result.data[0]
+            .keywords
+            .contains(&"smart-contracts".to_string()));
 
         // Test search by package name (should still work)
         let search_result = conn
@@ -813,7 +821,9 @@ fn test_filter_by_category() {
 
         assert_eq!(filter_result.data.len(), 1);
         assert_eq!(filter_result.data[0].package.name, "defi-lib");
-        assert!(filter_result.data[0].categories.contains(&"defi".to_string()));
+        assert!(filter_result.data[0]
+            .categories
+            .contains(&"defi".to_string()));
 
         // Test filter by "gaming" category
         let filter_result = conn
@@ -828,7 +838,9 @@ fn test_filter_by_category() {
 
         assert_eq!(filter_result.data.len(), 1);
         assert_eq!(filter_result.data[0].package.name, "game-engine");
-        assert!(filter_result.data[0].categories.contains(&"gaming".to_string()));
+        assert!(filter_result.data[0]
+            .categories
+            .contains(&"gaming".to_string()));
 
         // Test filter by non-existent category
         let filter_result = conn
@@ -892,7 +904,7 @@ fn test_get_full_package_with_categories() {
         // Insert categories and keywords
         let categories = vec!["utilities".to_string(), "testing".to_string()];
         let keywords = vec!["mock".to_string(), "test".to_string(), "unit".to_string()];
-        
+
         conn.insert_categories(version_result.package_id, &categories)
             .expect("insert categories is ok");
         conn.insert_keywords(version_result.package_id, &keywords)
@@ -900,19 +912,25 @@ fn test_get_full_package_with_categories() {
 
         // Test get_full_package_with_categories
         let full_package = conn
-            .get_full_package_with_categories("full-test-package".to_string(), TEST_VERSION_1.to_string())
+            .get_full_package_with_categories(
+                "full-test-package".to_string(),
+                TEST_VERSION_1.to_string(),
+            )
             .expect("get full package with categories is ok");
 
         assert_eq!(full_package.package.name, "full-test-package");
         assert_eq!(full_package.package.version, TEST_VERSION_1);
-        assert_eq!(full_package.package.description, Some("Full test package description".into()));
+        assert_eq!(
+            full_package.package.description,
+            Some("Full test package description".into())
+        );
         assert_eq!(full_package.package.license, Some("MIT".into()));
-        
+
         // Check categories
         assert_eq!(full_package.categories.len(), 2);
         assert!(full_package.categories.contains(&"utilities".to_string()));
         assert!(full_package.categories.contains(&"testing".to_string()));
-        
+
         // Check keywords
         assert_eq!(full_package.keywords.len(), 3);
         assert!(full_package.keywords.contains(&"mock".to_string()));
@@ -984,19 +1002,34 @@ fn test_get_categories_and_keywords_for_packages() {
             .expect("version result is ok");
 
         // Insert categories and keywords for both packages
-        conn.insert_categories(version_result1.package_id, &vec!["cat1".to_string(), "common".to_string()])
-            .expect("insert categories is ok");
-        conn.insert_keywords(version_result1.package_id, &vec!["key1".to_string(), "shared".to_string()])
-            .expect("insert keywords is ok");
+        conn.insert_categories(
+            version_result1.package_id,
+            &vec!["cat1".to_string(), "common".to_string()],
+        )
+        .expect("insert categories is ok");
+        conn.insert_keywords(
+            version_result1.package_id,
+            &vec!["key1".to_string(), "shared".to_string()],
+        )
+        .expect("insert keywords is ok");
 
-        conn.insert_categories(version_result2.package_id, &vec!["cat2".to_string(), "common".to_string()])
-            .expect("insert categories is ok");
-        conn.insert_keywords(version_result2.package_id, &vec!["key2".to_string(), "shared".to_string()])
-            .expect("insert keywords is ok");
+        conn.insert_categories(
+            version_result2.package_id,
+            &vec!["cat2".to_string(), "common".to_string()],
+        )
+        .expect("insert categories is ok");
+        conn.insert_keywords(
+            version_result2.package_id,
+            &vec!["key2".to_string(), "shared".to_string()],
+        )
+        .expect("insert keywords is ok");
 
         // Test get_categories_for_packages
         let categories = conn
-            .get_categories_for_packages(&vec![version_result1.package_id, version_result2.package_id])
+            .get_categories_for_packages(&vec![
+                version_result1.package_id,
+                version_result2.package_id,
+            ])
             .expect("get categories for packages is ok");
 
         assert_eq!(categories.len(), 4); // 2 categories per package
@@ -1007,7 +1040,10 @@ fn test_get_categories_and_keywords_for_packages() {
 
         // Test get_keywords_for_packages
         let keywords = conn
-            .get_keywords_for_packages(&vec![version_result1.package_id, version_result2.package_id])
+            .get_keywords_for_packages(&vec![
+                version_result1.package_id,
+                version_result2.package_id,
+            ])
             .expect("get keywords for packages is ok");
 
         assert_eq!(keywords.len(), 4); // 2 keywords per package
