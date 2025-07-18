@@ -3,7 +3,8 @@ use super::{models, schema, DbConn};
 use crate::api::pagination::{PaginatedResponse, Pagination};
 use crate::handlers::publish::PublishInfo;
 use crate::models::{
-    ApiToken, AuthorInfo, CountResult, FullPackage, FullPackageWithCategories, PackagePreview, PackagePreviewWithCategories, PackageVersionInfo,
+    ApiToken, AuthorInfo, CountResult, FullPackage, FullPackageWithCategories, PackagePreview,
+    PackagePreviewWithCategories, PackageVersionInfo,
 };
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
@@ -485,57 +486,74 @@ impl DbConn<'_> {
     ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
         // First get the basic search results
         let basic_results = self.search_packages(query, pagination)?;
-        
+
         // Extract package names to get package IDs for categories/keywords lookup
-        let package_names: Vec<String> = basic_results.data.iter().map(|p| p.name.clone()).collect();
-        
+        let package_names: Vec<String> =
+            basic_results.data.iter().map(|p| p.name.clone()).collect();
+
         // Get package IDs for these packages
         let package_ids: Vec<Uuid> = schema::packages::table
             .filter(schema::packages::package_name.eq_any(&package_names))
             .select(schema::packages::id)
             .load::<Uuid>(self.inner())
             .map_err(|err| DatabaseError::QueryFailed("get package ids".to_string(), err))?;
-        
+
         // Get categories and keywords for these packages
         let categories = self.get_categories_for_packages(&package_ids)?;
         let keywords = self.get_keywords_for_packages(&package_ids)?;
-        
+
         // Create a map of package_id -> package_name for quick lookup
         let package_id_to_name: std::collections::HashMap<Uuid, String> = schema::packages::table
             .filter(schema::packages::package_name.eq_any(&package_names))
             .select((schema::packages::id, schema::packages::package_name))
             .load::<(Uuid, String)>(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get package id to name mapping".to_string(), err))?
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package id to name mapping".to_string(), err)
+            })?
             .into_iter()
             .collect();
-        
+
         // Create maps for quick lookup
-        let mut package_categories: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-        let mut package_keywords: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-        
+        let mut package_categories: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        let mut package_keywords: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+
         for category in categories {
             if let Some(package_name) = package_id_to_name.get(&category.package_id) {
-                package_categories.entry(package_name.clone()).or_default().push(category.category);
+                package_categories
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(category.category);
             }
         }
-        
+
         for keyword in keywords {
             if let Some(package_name) = package_id_to_name.get(&keyword.package_id) {
-                package_keywords.entry(package_name.clone()).or_default().push(keyword.keyword);
+                package_keywords
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(keyword.keyword);
             }
         }
-        
+
         // Combine results
         let enhanced_results: Vec<PackagePreviewWithCategories> = basic_results
             .data
             .into_iter()
             .map(|package| PackagePreviewWithCategories {
-                categories: package_categories.get(&package.name).cloned().unwrap_or_default(),
-                keywords: package_keywords.get(&package.name).cloned().unwrap_or_default(),
+                categories: package_categories
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
+                keywords: package_keywords
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
                 package,
             })
             .collect();
-        
+
         Ok(PaginatedResponse {
             data: enhanced_results,
             total_count: basic_results.total_count,
@@ -608,49 +626,70 @@ impl DbConn<'_> {
 
         // Extract package names to get package IDs for categories/keywords lookup
         let package_names: Vec<String> = packages.iter().map(|p| p.name.clone()).collect();
-        
+
         // Get package IDs for these packages
         let package_ids: Vec<Uuid> = schema::packages::table
             .filter(schema::packages::package_name.eq_any(&package_names))
             .select(schema::packages::id)
             .load::<Uuid>(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get package ids for category filter".to_string(), err))?;
-        
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package ids for category filter".to_string(), err)
+            })?;
+
         // Get categories and keywords for these packages
         let categories = self.get_categories_for_packages(&package_ids)?;
         let keywords = self.get_keywords_for_packages(&package_ids)?;
-        
+
         // Create a map of package_id -> package_name for quick lookup
         let package_id_to_name: std::collections::HashMap<Uuid, String> = schema::packages::table
             .filter(schema::packages::package_name.eq_any(&package_names))
             .select((schema::packages::id, schema::packages::package_name))
             .load::<(Uuid, String)>(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get package id to name mapping for category filter".to_string(), err))?
+            .map_err(|err| {
+                DatabaseError::QueryFailed(
+                    "get package id to name mapping for category filter".to_string(),
+                    err,
+                )
+            })?
             .into_iter()
             .collect();
-        
+
         // Create maps for quick lookup
-        let mut package_categories: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-        let mut package_keywords: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-        
+        let mut package_categories: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        let mut package_keywords: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+
         for category in categories {
             if let Some(package_name) = package_id_to_name.get(&category.package_id) {
-                package_categories.entry(package_name.clone()).or_default().push(category.category);
+                package_categories
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(category.category);
             }
         }
-        
+
         for keyword in keywords {
             if let Some(package_name) = package_id_to_name.get(&keyword.package_id) {
-                package_keywords.entry(package_name.clone()).or_default().push(keyword.keyword);
+                package_keywords
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(keyword.keyword);
             }
         }
-        
+
         // Combine results
         let enhanced_results: Vec<PackagePreviewWithCategories> = packages
             .into_iter()
             .map(|package| PackagePreviewWithCategories {
-                categories: package_categories.get(&package.name).cloned().unwrap_or_default(),
-                keywords: package_keywords.get(&package.name).cloned().unwrap_or_default(),
+                categories: package_categories
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
+                keywords: package_keywords
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
                 package,
             })
             .collect();
@@ -672,18 +711,20 @@ impl DbConn<'_> {
     ) -> Result<FullPackageWithCategories, DatabaseError> {
         // First get the basic package info
         let package = self.get_full_package_version(pkg_name, version)?;
-        
+
         // Get package ID for this package
         let package_id: Uuid = schema::packages::table
             .filter(schema::packages::package_name.eq(&package.name))
             .select(schema::packages::id)
             .first(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get package id for full package".to_string(), err))?;
-        
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package id for full package".to_string(), err)
+            })?;
+
         // Get categories and keywords for this package
         let categories = self.get_categories_for_package(package_id)?;
         let keywords = self.get_keywords_for_package(package_id)?;
-        
+
         Ok(FullPackageWithCategories {
             package,
             categories: categories.into_iter().map(|c| c.category).collect(),

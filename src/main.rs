@@ -26,7 +26,9 @@ use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, Up
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::models::{FullPackageWithCategories, PackagePreviewWithCategories, PackageVersionInfo};
+use forc_pub::models::{
+    FullPackageWithCategories, PackagePreviewWithCategories, PackageVersionInfo,
+};
 use forc_pub::util::{load_env, validate_or_format_semver};
 use rocket::http::Status;
 use rocket::tokio::task;
@@ -277,17 +279,21 @@ fn packages(
     let updated_after = updated_after.and_then(|date_str| DateTime::<Utc>::from_str(date_str).ok());
     let db_data =
         db.transaction(|conn| conn.get_full_packages(updated_after, pagination.clone()))?;
-    
+
     // For now, convert to FullPackageWithCategories with empty categories/keywords
     // This endpoint could be enhanced later to include categories if needed
-    let data = db_data.data.into_iter().map(|pkg| {
-        let full_package_with_categories = FullPackageWithCategories {
-            package: pkg,
-            categories: vec![], // Empty for now
-            keywords: vec![], // Empty for now
-        };
-        FullPackage::from(full_package_with_categories)
-    }).collect();
+    let data = db_data
+        .data
+        .into_iter()
+        .map(|pkg| {
+            let full_package_with_categories = FullPackageWithCategories {
+                package: pkg,
+                categories: vec![], // Empty for now
+                keywords: vec![],   // Empty for now
+            };
+            FullPackage::from(full_package_with_categories)
+        })
+        .collect();
 
     Ok(Json(PaginatedResponse {
         data,
@@ -300,8 +306,9 @@ fn packages(
 
 #[get("/package?<name>&<version>")]
 fn package(db: &State<Database>, name: String, version: Option<String>) -> ApiResult<FullPackage> {
-    let db_data =
-        db.transaction(|conn| conn.get_full_package_with_categories(name, version.unwrap_or_default()))?;
+    let db_data = db.transaction(|conn| {
+        conn.get_full_package_with_categories(name, version.unwrap_or_default())
+    })?;
 
     Ok(Json(FullPackage::from(db_data)))
 }
