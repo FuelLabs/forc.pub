@@ -167,47 +167,47 @@ fn test_session_auth_for_api_token_generation() {
     let _ = db.transaction(|conn| {
         // Regression test for API token generation with session authentication
         // This test ensures that users with valid sessions can create API tokens
-        
+
         // Create a user session (simulating successful login)
         let session = conn
             .new_user_session(&mock_user_1(), 3600) // 1 hour expiration
             .expect("session creation should succeed");
-        
+
         // Verify session is valid and user can be retrieved
         let user = conn
             .get_user_for_session(session.id)
             .expect("user should be retrievable with valid session");
-        
+
         // Verify user properties match expected values
         assert_eq!(user.github_login, TEST_LOGIN_1);
         assert_eq!(user.full_name, TEST_FULL_NAME_1);
         assert!(user.is_admin);
-        
+
         // Test that the user can create an API token with valid session
         let (api_token, plain_token) = conn
             .new_token(user.id, "Session Auth Test Token".into())
             .expect("API token creation should succeed with valid session");
-        
+
         assert_eq!(api_token.friendly_name, "Session Auth Test Token");
         assert_eq!(api_token.user_id, user.id);
         let plain_token_str: String = plain_token.into();
         assert!(plain_token_str.starts_with("pub_"));
         assert_eq!(plain_token_str.len(), 36); // "pub_" + 32 chars
-        
+
         // Verify the token can be retrieved and verified
         let retrieved_token = conn
             .get_token(plain_token_str.clone().into())
             .expect("token should be retrievable");
         assert_eq!(retrieved_token.id, api_token.id);
         assert_eq!(retrieved_token.user_id, user.id);
-        
+
         // Test that tokens are properly associated with the user
         let user_tokens = conn
             .get_tokens_for_user(user.id)
             .expect("should be able to get tokens for user");
         assert_eq!(user_tokens.len(), 1);
         assert_eq!(user_tokens[0].id, api_token.id);
-        
+
         Ok::<(), diesel::result::Error>(())
     });
 }
@@ -218,32 +218,32 @@ fn test_expired_session_auth() {
     let db = &mut setup_db();
     let _ = db.transaction(|conn| {
         // Test that expired sessions cannot be used for API operations
-        
+
         // Create a session with very short expiration (should be expired immediately)
         let session = conn
             .new_user_session(&mock_user_1(), 0) // Expired session (0 seconds)
             .expect("session creation should succeed");
-        
+
         // Try to get user with expired session - this should fail in the session auth middleware
-        // Note: This tests the database layer. The middleware layer (SessionAuth) 
+        // Note: This tests the database layer. The middleware layer (SessionAuth)
         // checks session.expires_at > Utc::now() before allowing access
         let session_record = conn
             .get_session(session.id)
             .expect("session record should exist");
-        
+
         // Verify session is expired
         assert!(session_record.expires_at < Utc::now());
-        
+
         // The user can still be retrieved from the database, but the SessionAuth middleware
         // would reject this due to expiration check in session_auth.rs:56
         let user = conn
             .get_user_for_session(session.id)
             .expect("user exists in database");
-        
+
         // This demonstrates that the database layer works, but session expiration
         // is enforced at the middleware level for security
         assert_eq!(user.github_login, TEST_LOGIN_1);
-        
+
         Ok::<(), diesel::result::Error>(())
     });
 }
