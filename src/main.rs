@@ -69,15 +69,30 @@ async fn login(
     let (user, expires_in) = handle_login(request.code.clone()).await?;
     let session = db.transaction(|conn| conn.new_user_session(&user, expires_in))?;
     let session_id = session.id.to_string();
-    cookies.add(Cookie::build((SESSION_COOKIE_NAME, session_id.clone())));
+    let mut cookie = Cookie::build((SESSION_COOKIE_NAME, session_id.clone()))
+        .path("/")
+        .http_only(true)
+        .same_site(rocket::http::SameSite::Lax);
+    
+    // Add secure flag if running in production or https
+    if std::env::var("ROCKET_ENV").unwrap_or_default() == "production" 
+        || std::env::var("ROCKET_TLS").is_ok() {
+        cookie = cookie.secure(true);
+    }
+    
+    cookies.add(cookie);
     Ok(Json(LoginResponse { user, session_id }))
 }
 
 /// The endpoint to log out.
 #[post("/logout")]
-async fn logout(db: &State<Database>, auth: SessionAuth) -> ApiResult<EmptyResponse> {
+async fn logout(db: &State<Database>, cookies: &CookieJar<'_>, auth: SessionAuth) -> ApiResult<EmptyResponse> {
     let session_id = auth.session_id;
     let _ = db.transaction(|conn| conn.delete_session(session_id))?;
+    
+    // Remove the session cookie
+    cookies.remove(Cookie::build(SESSION_COOKIE_NAME).path("/"));
+    
     Ok(Json(EmptyResponse))
 }
 
