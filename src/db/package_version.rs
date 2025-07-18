@@ -3,7 +3,7 @@ use super::{models, schema, DbConn};
 use crate::api::pagination::{PaginatedResponse, Pagination};
 use crate::handlers::publish::PublishInfo;
 use crate::models::{
-    ApiToken, AuthorInfo, CountResult, FullPackage, PackagePreview, PackageVersionInfo,
+    ApiToken, AuthorInfo, CountResult, FullPackage, FullPackageWithCategories, PackagePreview, PackagePreviewWithCategories, PackageVersionInfo,
 };
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
@@ -368,7 +368,7 @@ impl DbConn<'_> {
             .collect())
     }
 
-    /// Search for packages by name or description using fuzzy search.
+    /// Search for packages by name, description, categories, or keywords using fuzzy search.
     pub fn search_packages(
         &mut self,
         query: String,
@@ -386,21 +386,44 @@ impl DbConn<'_> {
                     p.created_at AS created_at, 
                     pv.created_at AS updated_at,
                     ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank,
-                    -- Combined relevance scoring
+                    -- Combined relevance scoring including categories and keywords
                     GREATEST(
                         similarity($1, LOWER(p.package_name)),
                         CASE 
                             WHEN LOWER(p.package_name) ILIKE '%' || $1 || '%' THEN 0.7
                             ELSE 0.0
                         END,
-                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3,
+                        -- Category matches get high relevance
+                        COALESCE(MAX(
+                            CASE 
+                                WHEN LOWER(pc.category) ILIKE '%' || $1 || '%' THEN 0.8
+                                WHEN similarity($1, LOWER(pc.category)) > 0.3 THEN 0.6
+                                ELSE 0.0
+                            END
+                        ), 0.0),
+                        -- Keyword matches get medium relevance  
+                        COALESCE(MAX(
+                            CASE 
+                                WHEN LOWER(pk.keyword) ILIKE '%' || $1 || '%' THEN 0.7
+                                WHEN similarity($1, LOWER(pk.keyword)) > 0.3 THEN 0.5
+                                ELSE 0.0
+                            END
+                        ), 0.0)
                     ) AS relevance_score
                 FROM package_versions pv
                 JOIN packages p ON pv.package_id = p.id
+                LEFT JOIN package_categories pc ON p.id = pc.package_id
+                LEFT JOIN package_keywords pk ON p.id = pk.package_id
                 WHERE 
                     LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
                     similarity($1, LOWER(p.package_name)) > 0.2 OR
-                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1 OR
+                    LOWER(pc.category) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(pc.category)) > 0.3 OR
+                    LOWER(pk.keyword) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(pk.keyword)) > 0.3
+                GROUP BY p.id, p.package_name, pv.id, pv.num, pv.package_description, p.created_at, pv.created_at
             )
             SELECT 
                 name, 
@@ -423,15 +446,21 @@ impl DbConn<'_> {
             DatabaseError::QueryFailed("search packages".to_string(), err)
         })?;
 
-        // Count total matches
+        // Count total matches including categories and keywords
         let total = diesel::sql_query(
             r#"SELECT COUNT(DISTINCT p.id) AS count
             FROM packages p
             JOIN package_versions pv ON pv.package_id = p.id
+            LEFT JOIN package_categories pc ON p.id = pc.package_id
+            LEFT JOIN package_keywords pk ON p.id = pk.package_id
             WHERE 
                 LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
                 similarity($1, LOWER(p.package_name)) > 0.2 OR
-                similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1 OR
+                LOWER(pc.category) ILIKE '%' || $1 || '%' OR
+                similarity($1, LOWER(pc.category)) > 0.3 OR
+                LOWER(pk.keyword) ILIKE '%' || $1 || '%' OR
+                similarity($1, LOWER(pk.keyword)) > 0.3
             "#,
         )
         .bind::<diesel::sql_types::Text, _>(query_lower)
@@ -445,6 +474,220 @@ impl DbConn<'_> {
             total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
             current_page: pagination.page(),
             per_page: pagination.limit(),
+        })
+    }
+
+    /// Search for packages with categories and keywords included in the response.
+    pub fn search_packages_with_categories(
+        &mut self,
+        query: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        // First get the basic search results
+        let basic_results = self.search_packages(query, pagination)?;
+        
+        // Extract package names to get package IDs for categories/keywords lookup
+        let package_names: Vec<String> = basic_results.data.iter().map(|p| p.name.clone()).collect();
+        
+        // Get package IDs for these packages
+        let package_ids: Vec<Uuid> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select(schema::packages::id)
+            .load::<Uuid>(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed("get package ids".to_string(), err))?;
+        
+        // Get categories and keywords for these packages
+        let categories = self.get_categories_for_packages(&package_ids)?;
+        let keywords = self.get_keywords_for_packages(&package_ids)?;
+        
+        // Create a map of package_id -> package_name for quick lookup
+        let package_id_to_name: std::collections::HashMap<Uuid, String> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select((schema::packages::id, schema::packages::package_name))
+            .load::<(Uuid, String)>(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed("get package id to name mapping".to_string(), err))?
+            .into_iter()
+            .collect();
+        
+        // Create maps for quick lookup
+        let mut package_categories: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        let mut package_keywords: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        
+        for category in categories {
+            if let Some(package_name) = package_id_to_name.get(&category.package_id) {
+                package_categories.entry(package_name.clone()).or_default().push(category.category);
+            }
+        }
+        
+        for keyword in keywords {
+            if let Some(package_name) = package_id_to_name.get(&keyword.package_id) {
+                package_keywords.entry(package_name.clone()).or_default().push(keyword.keyword);
+            }
+        }
+        
+        // Combine results
+        let enhanced_results: Vec<PackagePreviewWithCategories> = basic_results
+            .data
+            .into_iter()
+            .map(|package| PackagePreviewWithCategories {
+                categories: package_categories.get(&package.name).cloned().unwrap_or_default(),
+                keywords: package_keywords.get(&package.name).cloned().unwrap_or_default(),
+                package,
+            })
+            .collect();
+        
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: basic_results.total_count,
+            total_pages: basic_results.total_pages,
+            current_page: basic_results.current_page,
+            per_page: basic_results.per_page,
+        })
+    }
+
+    /// Filter packages by category.
+    pub fn filter_packages_by_category(
+        &mut self,
+        category: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        let category_lower = category.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                JOIN package_categories pc ON p.id = pc.package_id
+                WHERE 
+                    LOWER(pc.category) = $1 OR
+                    LOWER(pc.category) ILIKE '%' || $1 || '%'
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1
+            ORDER BY created_at DESC
+            OFFSET $2
+            LIMIT $3;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(category_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err: diesel::result::Error| {
+            DatabaseError::QueryFailed("filter packages by category".to_string(), err)
+        })?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_categories pc ON p.id = pc.package_id
+            WHERE 
+                LOWER(pc.category) = $1 OR
+                LOWER(pc.category) ILIKE '%' || $1 || '%'
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(category_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("count category filter".to_string(), err))?
+        .count;
+
+        // Extract package names to get package IDs for categories/keywords lookup
+        let package_names: Vec<String> = packages.iter().map(|p| p.name.clone()).collect();
+        
+        // Get package IDs for these packages
+        let package_ids: Vec<Uuid> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select(schema::packages::id)
+            .load::<Uuid>(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed("get package ids for category filter".to_string(), err))?;
+        
+        // Get categories and keywords for these packages
+        let categories = self.get_categories_for_packages(&package_ids)?;
+        let keywords = self.get_keywords_for_packages(&package_ids)?;
+        
+        // Create a map of package_id -> package_name for quick lookup
+        let package_id_to_name: std::collections::HashMap<Uuid, String> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select((schema::packages::id, schema::packages::package_name))
+            .load::<(Uuid, String)>(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed("get package id to name mapping for category filter".to_string(), err))?
+            .into_iter()
+            .collect();
+        
+        // Create maps for quick lookup
+        let mut package_categories: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        let mut package_keywords: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        
+        for category in categories {
+            if let Some(package_name) = package_id_to_name.get(&category.package_id) {
+                package_categories.entry(package_name.clone()).or_default().push(category.category);
+            }
+        }
+        
+        for keyword in keywords {
+            if let Some(package_name) = package_id_to_name.get(&keyword.package_id) {
+                package_keywords.entry(package_name.clone()).or_default().push(keyword.keyword);
+            }
+        }
+        
+        // Combine results
+        let enhanced_results: Vec<PackagePreviewWithCategories> = packages
+            .into_iter()
+            .map(|package| PackagePreviewWithCategories {
+                categories: package_categories.get(&package.name).cloned().unwrap_or_default(),
+                keywords: package_keywords.get(&package.name).cloned().unwrap_or_default(),
+                package,
+            })
+            .collect();
+
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
+
+    /// Get a full package with categories and keywords by name and version.
+    pub fn get_full_package_with_categories(
+        &mut self,
+        pkg_name: String,
+        version: String,
+    ) -> Result<FullPackageWithCategories, DatabaseError> {
+        // First get the basic package info
+        let package = self.get_full_package_version(pkg_name, version)?;
+        
+        // Get package ID for this package
+        let package_id: Uuid = schema::packages::table
+            .filter(schema::packages::package_name.eq(&package.name))
+            .select(schema::packages::id)
+            .first(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed("get package id for full package".to_string(), err))?;
+        
+        // Get categories and keywords for this package
+        let categories = self.get_categories_for_package(package_id)?;
+        let keywords = self.get_keywords_for_package(package_id)?;
+        
+        Ok(FullPackageWithCategories {
+            package,
+            categories: categories.into_iter().map(|c| c.category).collect(),
+            keywords: keywords.into_iter().map(|k| k.keyword).collect(),
         })
     }
 }

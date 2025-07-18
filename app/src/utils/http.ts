@@ -18,6 +18,8 @@ export interface PackagePreview {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  categories: string[];
+  keywords: string[];
 }
 
 export interface AuthenticatedUser {
