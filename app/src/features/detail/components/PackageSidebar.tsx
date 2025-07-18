@@ -109,9 +109,9 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                   }}
                   onClick={() => {
                     const newParams = new URLSearchParams();
-                    newParams.set("query", category);
+                    newParams.set("category", category);
                     newParams.set("page", "1");
-                    window.location.href = `/?${newParams.toString()}`;
+                    window.location.href = `/search?${newParams.toString()}`;
                   }}
                 />
               ))}
@@ -146,9 +146,9 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                   }}
                   onClick={() => {
                     const newParams = new URLSearchParams();
-                    newParams.set("query", keyword);
+                    newParams.set("keyword", keyword);
                     newParams.set("page", "1");
-                    window.location.href = `/?${newParams.toString()}`;
+                    window.location.href = `/search?${newParams.toString()}`;
                   }}
                 />
               ))}

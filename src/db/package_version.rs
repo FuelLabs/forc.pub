@@ -6,6 +6,7 @@ use crate::models::{
     ApiToken, AuthorInfo, CountResult, FullPackage, FullPackageWithCategories, PackagePreview,
     PackagePreviewWithCategories, PackageVersionInfo,
 };
+use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::sql_types::Timestamptz;
@@ -659,6 +660,140 @@ impl DbConn<'_> {
             std::collections::HashMap::new();
         let mut package_keywords: std::collections::HashMap<String, Vec<String>> =
             std::collections::HashMap::new();
+
+        for category in categories {
+            if let Some(package_name) = package_id_to_name.get(&category.package_id) {
+                package_categories
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(category.category);
+            }
+        }
+
+        for keyword in keywords {
+            if let Some(package_name) = package_id_to_name.get(&keyword.package_id) {
+                package_keywords
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(keyword.keyword);
+            }
+        }
+
+        // Combine results
+        let enhanced_results: Vec<PackagePreviewWithCategories> = packages
+            .into_iter()
+            .map(|package| PackagePreviewWithCategories {
+                categories: package_categories
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
+                keywords: package_keywords
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
+                package,
+            })
+            .collect();
+
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
+
+    /// Filter packages by keyword with pagination and include categories/keywords.
+    pub fn filter_packages_by_keyword(
+        &mut self,
+        keyword: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        let keyword_lower = keyword.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                JOIN package_keywords pk ON p.id = pk.package_id
+                WHERE 
+                    LOWER(pk.keyword) = $1 OR
+                    LOWER(pk.keyword) ILIKE '%' || $1 || '%'
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1
+            ORDER BY created_at DESC
+            OFFSET $2
+            LIMIT $3;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(keyword_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err: diesel::result::Error| {
+            DatabaseError::QueryFailed("filter packages by keyword".to_string(), err)
+        })?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_keywords pk ON p.id = pk.package_id
+            WHERE 
+                LOWER(pk.keyword) = $1 OR
+                LOWER(pk.keyword) ILIKE '%' || $1 || '%'
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(keyword_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("count keyword filter".to_string(), err))?
+        .count;
+
+        // Extract package names to get package IDs for categories/keywords lookup
+        let package_names: Vec<String> = packages.iter().map(|p| p.name.clone()).collect();
+
+        // Get package IDs for these packages
+        let package_ids: Vec<Uuid> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select(schema::packages::id)
+            .load::<Uuid>(self.inner())
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package ids for keyword filter".to_string(), err)
+            })?;
+
+        // Get categories and keywords for these packages
+        let categories = self.get_categories_for_packages(&package_ids)?;
+        let keywords = self.get_keywords_for_packages(&package_ids)?;
+
+        // Create maps for easier lookup
+        let package_id_to_name: HashMap<Uuid, String> = schema::packages::table
+            .filter(schema::packages::id.eq_any(&package_ids))
+            .select((schema::packages::id, schema::packages::package_name))
+            .load::<(Uuid, String)>(self.inner())
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package id to name mapping".to_string(), err)
+            })?
+            .into_iter()
+            .collect();
+
+        let mut package_categories: HashMap<String, Vec<String>> = HashMap::new();
+        let mut package_keywords: HashMap<String, Vec<String>> = HashMap::new();
 
         for category in categories {
             if let Some(package_name) = package_id_to_name.get(&category.package_id) {
