@@ -108,7 +108,10 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                     }
                   }}
                   onClick={() => {
-                    window.location.href = `/packages/category/${encodeURIComponent(category)}`;
+                    const newParams = new URLSearchParams();
+                    newParams.set("query", category);
+                    newParams.set("page", "1");
+                    window.location.href = `/?${newParams.toString()}`;
                   }}
                 />
               ))}

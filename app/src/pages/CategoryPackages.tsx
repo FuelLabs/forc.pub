@@ -241,8 +241,10 @@ function CategoryPackages({ categoryName }: CategoryPackagesProps) {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              // Navigate to category filter
-                              window.location.href = `/packages/category/${encodeURIComponent(category)}`;
+                              const newParams = new URLSearchParams();
+                              newParams.set("query", category);
+                              newParams.set("page", "1");
+                              window.location.href = `/?${newParams.toString()}`;
                             }}
                           />
                         ))}

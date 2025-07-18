@@ -245,11 +245,10 @@ function SearchResults() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              // Navigate to category filter
                               const newParams = new URLSearchParams();
-                              newParams.set("category", category);
+                              newParams.set("query", category);
                               newParams.set("page", "1");
-                              window.location.href = `/packages/category/${encodeURIComponent(category)}`;
+                              window.location.href = `/?${newParams.toString()}`;
                             }}
                           />
                         ))}
