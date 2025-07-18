@@ -815,3 +815,128 @@ fn test_get_categories_and_keywords_for_packages() {
         Ok::<(), diesel::result::Error>(())
     });
 }
+
+#[test]
+#[serial]
+fn test_keywords_specific_functionality() {
+    let db = &mut setup_db();
+    let _ = db.transaction(|conn| {
+        // Set up session, user, token, and upload.
+        let session = conn
+            .new_user_session(&mock_user_1(), 1000)
+            .expect("session is ok");
+        let user = conn.get_user_for_session(session.id).expect("user is ok");
+        let (token, _) = conn
+            .new_token(user.id, "test token".to_string())
+            .expect("token is ok");
+        let upload = conn
+            .new_upload(&NewUpload {
+                id: uuid::Uuid::new_v4(),
+                forc_version: TEST_VERSION_1.into(),
+                source_code_ipfs_hash: "test-ipfs-hash".into(),
+                abi_ipfs_hash: None,
+                bytecode_identifier: None,
+                readme: None,
+                forc_manifest: TEST_MANIFEST.into(),
+            })
+            .expect("upload is ok");
+
+        // Create package with ONLY keywords (no categories)
+        let request = PublishInfo {
+            package_name: "keyword-only-package".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("A package with only keywords for testing".into()),
+            repository: None,
+            documentation: None,
+            homepage: None,
+            urls: vec![],
+            readme: None,
+            license: None,
+        };
+
+        let version_result = conn
+            .new_package_version(&token, &request)
+            .expect("version result is ok");
+
+        // Insert ONLY keywords (no categories)
+        let keywords = vec![
+            "rust".to_string(),
+            "blockchain".to_string(),
+            "smart-contracts".to_string(),
+            "defi".to_string(),
+            "testing".to_string(),
+        ];
+        conn.insert_keywords(version_result.package_id, &keywords)
+            .expect("insert keywords is ok");
+
+        // Test 1: Search by specific keyword
+        let search_result = conn
+            .search_packages_with_categories(
+                "rust".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("search by rust keyword is ok");
+
+        assert_eq!(search_result.data.len(), 1);
+        assert_eq!(search_result.data[0].package.name, "keyword-only-package");
+        assert_eq!(search_result.data[0].categories.len(), 0); // No categories
+        assert_eq!(search_result.data[0].keywords.len(), 5); // All keywords
+        assert!(search_result.data[0].keywords.contains(&"rust".to_string()));
+        assert!(search_result.data[0].keywords.contains(&"blockchain".to_string()));
+        assert!(search_result.data[0].keywords.contains(&"smart-contracts".to_string()));
+
+        // Test 2: Search by compound keyword
+        let search_result = conn
+            .search_packages_with_categories(
+                "smart-contracts".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("search by smart-contracts keyword is ok");
+
+        assert_eq!(search_result.data.len(), 1);
+        assert_eq!(search_result.data[0].package.name, "keyword-only-package");
+        assert!(search_result.data[0].keywords.contains(&"smart-contracts".to_string()));
+
+        // Test 3: Search by partial keyword match
+        let search_result = conn
+            .search_packages_with_categories(
+                "contract".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("search by partial keyword is ok");
+
+        assert_eq!(search_result.data.len(), 1);
+        assert_eq!(search_result.data[0].package.name, "keyword-only-package");
+
+        // Test 4: Test get_keywords_for_package
+        let package_keywords = conn
+            .get_keywords_for_package(version_result.package_id)
+            .expect("get keywords for package is ok");
+
+        assert_eq!(package_keywords.len(), 5);
+        let keyword_names: Vec<String> = package_keywords.iter().map(|k| k.keyword.clone()).collect();
+        assert!(keyword_names.contains(&"rust".to_string()));
+        assert!(keyword_names.contains(&"blockchain".to_string()));
+        assert!(keyword_names.contains(&"smart-contracts".to_string()));
+        assert!(keyword_names.contains(&"defi".to_string()));
+        assert!(keyword_names.contains(&"testing".to_string()));
+
+        // Test 5: Verify keywords are sorted alphabetically
+        let sorted_keywords: Vec<String> = package_keywords.iter().map(|k| k.keyword.clone()).collect();
+        let mut expected_sorted = keywords.clone();
+        expected_sorted.sort();
+        assert_eq!(sorted_keywords, expected_sorted);
+
+        Ok::<(), diesel::result::Error>(())
+    });
+}
