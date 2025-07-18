@@ -11,13 +11,18 @@ import {
   Pagination,
   Chip,
 } from "@mui/material";
-import HTTP, { PackagePreview } from "../utils/http";
+import { PackagePreview } from "../utils/http";
 import { formatDate } from "../utils/date";
+import { SERVER_URI } from "../constants";
 import NextLink from "next/link";
 
 const PER_PAGE = 10;
 
-function SearchResults() {
+interface CategoryPackagesProps {
+  categoryName: string;
+}
+
+function CategoryPackages({ categoryName }: CategoryPackagesProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [results, setResults] = useState<PackagePreview[]>([]);
@@ -26,16 +31,11 @@ function SearchResults() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const abortControllerRef = useRef<AbortController>();
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const query = searchParams.get("query")?.trim() || "";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   useEffect(() => {
-    // Clear any pending search timeout
-    clearTimeout(searchTimeoutRef.current);
-
-    if (!query) {
+    if (!categoryName) {
       setResults([]);
       setTotalPages(1);
       setTotalCount(0);
@@ -52,42 +52,40 @@ function SearchResults() {
     setLoading(true);
     setError(null);
 
-    // Add small delay to reduce cancelled requests when typing fast
-    searchTimeoutRef.current = setTimeout(() => {
-      HTTP.get("/search", {
-        params: {
-          query,
-          page: currentPage.toString(),
-          per_page: PER_PAGE.toString(),
-        },
-        signal: abortControllerRef.current?.signal,
+    fetch(`${SERVER_URI}/packages/category/${encodeURIComponent(categoryName)}?page=${currentPage}&per_page=${PER_PAGE}`, {
+      signal: abortControllerRef.current?.signal,
+      credentials: 'include',
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch packages");
+        }
+        return response.json();
       })
-        .then((response) => {
-          setResults(response.data.data);
-          setTotalPages(response.data.totalPages);
-          setTotalCount(response.data.totalCount);
-        })
-        .catch((err) => {
-          if (err.name !== "AbortError") {
-            setError("Failed to fetch search results");
-            console.error("Search error:", err);
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }, 100); // 100ms delay to reduce cancelled requests
+      .then((data) => {
+        setResults(data.data);
+        setTotalPages(data.totalPages);
+        setTotalCount(data.totalCount);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          setError("Failed to fetch packages for this category");
+          console.error("Category packages error:", err);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     return () => {
-      clearTimeout(searchTimeoutRef.current);
       abortControllerRef.current?.abort();
     };
-  }, [query, currentPage]);
+  }, [categoryName, currentPage]);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", page.toString());
-    router.replace(`/?${newParams.toString()}`);
+    router.replace(`/packages/category/${encodeURIComponent(categoryName)}?${newParams.toString()}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -104,7 +102,7 @@ function SearchResults() {
         <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
           <CircularProgress />
           <Typography color="text.secondary">
-            Searching for &quot;{query}&quot;...
+            Loading packages for category &quot;{categoryName}&quot;...
           </Typography>
         </Box>
       </Box>
@@ -115,7 +113,7 @@ function SearchResults() {
     return (
       <Box sx={containerStyles} mt={4}>
         <Typography color="error" variant="h6" gutterBottom>
-          Search Error
+          Error Loading Packages
         </Typography>
         <Typography color="error">{error}</Typography>
         <Typography color="text.secondary" mt={2}>
@@ -132,8 +130,7 @@ function SearchResults() {
           No packages found
         </Typography>
         <Typography color="text.secondary">
-          No results found for &quot;{query}&quot;. Try different keywords or
-          check your spelling.
+          No packages found for category &quot;{categoryName}&quot;.
         </Typography>
       </Box>
     );
@@ -143,11 +140,10 @@ function SearchResults() {
     <Box mt={4} sx={containerStyles}>
       <Box mb={4}>
         <Typography variant="h5" gutterBottom>
-          Search Results
+          Packages in Category: {categoryName}
         </Typography>
         <Typography color="text.secondary">
-          Found {totalCount} package{totalCount === 1 ? "" : "s"} for &quot;
-          {query}&quot;
+          Found {totalCount} package{totalCount === 1 ? "" : "s"} in category &quot;{categoryName}&quot;
         </Typography>
       </Box>
 
@@ -246,9 +242,6 @@ function SearchResults() {
                               e.preventDefault();
                               e.stopPropagation();
                               // Navigate to category filter
-                              const newParams = new URLSearchParams();
-                              newParams.set("category", category);
-                              newParams.set("page", "1");
                               window.location.href = `/packages/category/${encodeURIComponent(category)}`;
                             }}
                           />
@@ -320,10 +313,10 @@ function SearchResults() {
   );
 }
 
-export default function SearchResultsWrapper() {
+export default function CategoryPackagesWrapper({ categoryName }: CategoryPackagesProps) {
   return (
-    <Suspense fallback={<div>Loading search results...</div>}>
-      <SearchResults />
+    <Suspense fallback={<div>Loading category packages...</div>}>
+      <CategoryPackages categoryName={categoryName} />
     </Suspense>
   );
 }

@@ -45,6 +45,8 @@ fn setup_db() -> Database {
 
 fn clear_tables(db: &mut Database) {
     db.transaction(|conn| {
+        diesel::delete(forc_pub::schema::package_categories::table).execute(conn.inner())?;
+        diesel::delete(forc_pub::schema::package_keywords::table).execute(conn.inner())?;
         diesel::delete(forc_pub::schema::package_versions::table).execute(conn.inner())?;
         diesel::delete(forc_pub::schema::packages::table).execute(conn.inner())?;
         diesel::delete(forc_pub::schema::api_tokens::table).execute(conn.inner())?;
@@ -593,6 +595,111 @@ fn test_full_package_abi_field_serialization() {
 
 #[test]
 #[serial]
+fn test_search_with_categories() {
+    let db = &mut setup_db();
+    let _ = db.transaction(|conn| {
+        // Set up session, user, token, and upload.
+        let session = conn
+            .new_user_session(&mock_user_1(), 1000)
+            .expect("session is ok");
+        let user = conn.get_user_for_session(session.id).expect("user is ok");
+        let (token, _) = conn
+            .new_token(user.id, "test token".to_string())
+            .expect("token is ok");
+        let upload = conn
+            .new_upload(&NewUpload {
+                id: uuid::Uuid::new_v4(),
+                forc_version: TEST_VERSION_1.into(),
+                source_code_ipfs_hash: "test-ipfs-hash".into(),
+                abi_ipfs_hash: None,
+                bytecode_identifier: None,
+                readme: None,
+                forc_manifest: TEST_MANIFEST.into(),
+            })
+            .expect("upload is ok");
+
+        // Create a package with categories and keywords
+        let request = PublishInfo {
+            package_name: "web3-utils".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("Web3 utilities for blockchain development".into()),
+            repository: None,
+            documentation: None,
+            homepage: None,
+            urls: vec![],
+            readme: None,
+            license: None,
+        };
+
+        let version_result = conn
+            .new_package_version(&token, &request)
+            .expect("version result is ok");
+
+        // Insert categories
+        let categories = vec!["blockchain".to_string(), "web3".to_string()];
+        conn.insert_categories(version_result.package_id, &categories)
+            .expect("insert categories is ok");
+
+        // Insert keywords
+        let keywords = vec!["ethereum".to_string(), "smart-contracts".to_string()];
+        conn.insert_keywords(version_result.package_id, &keywords)
+            .expect("insert keywords is ok");
+
+        // Test search by category
+        let search_result = conn
+            .search_packages_with_categories(
+                "blockchain".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("search by category is ok");
+
+        assert_eq!(search_result.data.len(), 1);
+        assert_eq!(search_result.data[0].package.name, "web3-utils");
+        assert_eq!(search_result.data[0].categories.len(), 2);
+        assert!(search_result.data[0].categories.contains(&"blockchain".to_string()));
+        assert!(search_result.data[0].categories.contains(&"web3".to_string()));
+
+        // Test search by keyword
+        let search_result = conn
+            .search_packages_with_categories(
+                "ethereum".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("search by keyword is ok");
+
+        assert_eq!(search_result.data.len(), 1);
+        assert_eq!(search_result.data[0].package.name, "web3-utils");
+        assert_eq!(search_result.data[0].keywords.len(), 2);
+        assert!(search_result.data[0].keywords.contains(&"ethereum".to_string()));
+        assert!(search_result.data[0].keywords.contains(&"smart-contracts".to_string()));
+
+        // Test search by package name (should still work)
+        let search_result = conn
+            .search_packages_with_categories(
+                "web3".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("search by name is ok");
+
+        assert_eq!(search_result.data.len(), 1);
+        assert_eq!(search_result.data[0].package.name, "web3-utils");
+
+        Ok::<(), diesel::result::Error>(())
+    });
+}
+
+#[test]
+#[serial]
 fn test_full_package_conversion_maintains_abi_none() {
     use forc_pub::api::search::FullPackage;
     use forc_pub::models;
@@ -624,4 +731,291 @@ fn test_full_package_conversion_maintains_abi_none() {
     // Should have abi_ipfs_url but abi should be None by default
     assert!(api_full_package.abi_ipfs_url.is_some());
     assert!(api_full_package.abi.is_none());
+}
+
+#[test]
+#[serial]
+fn test_filter_by_category() {
+    let db = &mut setup_db();
+    let _ = db.transaction(|conn| {
+        // Set up session, user, token, and upload.
+        let session = conn
+            .new_user_session(&mock_user_1(), 1000)
+            .expect("session is ok");
+        let user = conn.get_user_for_session(session.id).expect("user is ok");
+        let (token, _) = conn
+            .new_token(user.id, "test token".to_string())
+            .expect("token is ok");
+        let upload = conn
+            .new_upload(&NewUpload {
+                id: uuid::Uuid::new_v4(),
+                forc_version: TEST_VERSION_1.into(),
+                source_code_ipfs_hash: "test-ipfs-hash".into(),
+                abi_ipfs_hash: None,
+                bytecode_identifier: None,
+                readme: None,
+                forc_manifest: TEST_MANIFEST.into(),
+            })
+            .expect("upload is ok");
+
+        // Create first package with "defi" category
+        let request1 = PublishInfo {
+            package_name: "defi-lib".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("DeFi utilities".into()),
+            repository: None,
+            documentation: None,
+            homepage: None,
+            urls: vec![],
+            readme: None,
+            license: None,
+        };
+
+        let version_result1 = conn
+            .new_package_version(&token, &request1)
+            .expect("version result is ok");
+
+        conn.insert_categories(version_result1.package_id, &vec!["defi".to_string()])
+            .expect("insert categories is ok");
+
+        // Create second package with "gaming" category
+        let request2 = PublishInfo {
+            package_name: "game-engine".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("Gaming utilities".into()),
+            repository: None,
+            documentation: None,
+            homepage: None,
+            urls: vec![],
+            readme: None,
+            license: None,
+        };
+
+        let version_result2 = conn
+            .new_package_version(&token, &request2)
+            .expect("version result is ok");
+
+        conn.insert_categories(version_result2.package_id, &vec!["gaming".to_string()])
+            .expect("insert categories is ok");
+
+        // Test filter by "defi" category
+        let filter_result = conn
+            .filter_packages_by_category(
+                "defi".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("filter by defi category is ok");
+
+        assert_eq!(filter_result.data.len(), 1);
+        assert_eq!(filter_result.data[0].package.name, "defi-lib");
+        assert!(filter_result.data[0].categories.contains(&"defi".to_string()));
+
+        // Test filter by "gaming" category
+        let filter_result = conn
+            .filter_packages_by_category(
+                "gaming".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("filter by gaming category is ok");
+
+        assert_eq!(filter_result.data.len(), 1);
+        assert_eq!(filter_result.data[0].package.name, "game-engine");
+        assert!(filter_result.data[0].categories.contains(&"gaming".to_string()));
+
+        // Test filter by non-existent category
+        let filter_result = conn
+            .filter_packages_by_category(
+                "nonexistent".to_string(),
+                Pagination {
+                    page: Some(1),
+                    per_page: Some(10),
+                },
+            )
+            .expect("filter by nonexistent category is ok");
+
+        assert_eq!(filter_result.data.len(), 0);
+
+        Ok::<(), diesel::result::Error>(())
+    });
+}
+
+#[test]
+#[serial]
+fn test_get_full_package_with_categories() {
+    let db = &mut setup_db();
+    let _ = db.transaction(|conn| {
+        // Set up session, user, token, and upload.
+        let session = conn
+            .new_user_session(&mock_user_1(), 1000)
+            .expect("session is ok");
+        let user = conn.get_user_for_session(session.id).expect("user is ok");
+        let (token, _) = conn
+            .new_token(user.id, "test token".to_string())
+            .expect("token is ok");
+        let upload = conn
+            .new_upload(&NewUpload {
+                id: uuid::Uuid::new_v4(),
+                forc_version: TEST_VERSION_1.into(),
+                source_code_ipfs_hash: "test-ipfs-hash".into(),
+                abi_ipfs_hash: None,
+                bytecode_identifier: None,
+                readme: Some("Test README".into()),
+                forc_manifest: TEST_MANIFEST.into(),
+            })
+            .expect("upload is ok");
+
+        let request = PublishInfo {
+            package_name: "full-test-package".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("Full test package description".into()),
+            repository: Url::parse(TEST_URL_REPO).ok(),
+            documentation: Url::parse(TEST_URL_DOC).ok(),
+            homepage: Url::parse(TEST_URL_HOME).ok(),
+            urls: vec![Url::parse(TEST_URL_OTHER).expect("other url")],
+            readme: Some("Test README".into()),
+            license: Some("MIT".into()),
+        };
+
+        let version_result = conn
+            .new_package_version(&token, &request)
+            .expect("version result is ok");
+
+        // Insert categories and keywords
+        let categories = vec!["utilities".to_string(), "testing".to_string()];
+        let keywords = vec!["mock".to_string(), "test".to_string(), "unit".to_string()];
+        
+        conn.insert_categories(version_result.package_id, &categories)
+            .expect("insert categories is ok");
+        conn.insert_keywords(version_result.package_id, &keywords)
+            .expect("insert keywords is ok");
+
+        // Test get_full_package_with_categories
+        let full_package = conn
+            .get_full_package_with_categories("full-test-package".to_string(), TEST_VERSION_1.to_string())
+            .expect("get full package with categories is ok");
+
+        assert_eq!(full_package.package.name, "full-test-package");
+        assert_eq!(full_package.package.version, TEST_VERSION_1);
+        assert_eq!(full_package.package.description, Some("Full test package description".into()));
+        assert_eq!(full_package.package.license, Some("MIT".into()));
+        
+        // Check categories
+        assert_eq!(full_package.categories.len(), 2);
+        assert!(full_package.categories.contains(&"utilities".to_string()));
+        assert!(full_package.categories.contains(&"testing".to_string()));
+        
+        // Check keywords
+        assert_eq!(full_package.keywords.len(), 3);
+        assert!(full_package.keywords.contains(&"mock".to_string()));
+        assert!(full_package.keywords.contains(&"test".to_string()));
+        assert!(full_package.keywords.contains(&"unit".to_string()));
+
+        Ok::<(), diesel::result::Error>(())
+    });
+}
+
+#[test]
+#[serial]
+fn test_get_categories_and_keywords_for_packages() {
+    let db = &mut setup_db();
+    let _ = db.transaction(|conn| {
+        // Set up session, user, token, and upload.
+        let session = conn
+            .new_user_session(&mock_user_1(), 1000)
+            .expect("session is ok");
+        let user = conn.get_user_for_session(session.id).expect("user is ok");
+        let (token, _) = conn
+            .new_token(user.id, "test token".to_string())
+            .expect("token is ok");
+        let upload = conn
+            .new_upload(&NewUpload {
+                id: uuid::Uuid::new_v4(),
+                forc_version: TEST_VERSION_1.into(),
+                source_code_ipfs_hash: "test-ipfs-hash".into(),
+                abi_ipfs_hash: None,
+                bytecode_identifier: None,
+                readme: None,
+                forc_manifest: TEST_MANIFEST.into(),
+            })
+            .expect("upload is ok");
+
+        // Create two packages
+        let request1 = PublishInfo {
+            package_name: "package-one".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("First package".into()),
+            repository: None,
+            documentation: None,
+            homepage: None,
+            urls: vec![],
+            readme: None,
+            license: None,
+        };
+
+        let version_result1 = conn
+            .new_package_version(&token, &request1)
+            .expect("version result is ok");
+
+        let request2 = PublishInfo {
+            package_name: "package-two".into(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some("Second package".into()),
+            repository: None,
+            documentation: None,
+            homepage: None,
+            urls: vec![],
+            readme: None,
+            license: None,
+        };
+
+        let version_result2 = conn
+            .new_package_version(&token, &request2)
+            .expect("version result is ok");
+
+        // Insert categories and keywords for both packages
+        conn.insert_categories(version_result1.package_id, &vec!["cat1".to_string(), "common".to_string()])
+            .expect("insert categories is ok");
+        conn.insert_keywords(version_result1.package_id, &vec!["key1".to_string(), "shared".to_string()])
+            .expect("insert keywords is ok");
+
+        conn.insert_categories(version_result2.package_id, &vec!["cat2".to_string(), "common".to_string()])
+            .expect("insert categories is ok");
+        conn.insert_keywords(version_result2.package_id, &vec!["key2".to_string(), "shared".to_string()])
+            .expect("insert keywords is ok");
+
+        // Test get_categories_for_packages
+        let categories = conn
+            .get_categories_for_packages(&vec![version_result1.package_id, version_result2.package_id])
+            .expect("get categories for packages is ok");
+
+        assert_eq!(categories.len(), 4); // 2 categories per package
+        let category_names: Vec<String> = categories.iter().map(|c| c.category.clone()).collect();
+        assert!(category_names.contains(&"cat1".to_string()));
+        assert!(category_names.contains(&"cat2".to_string()));
+        assert!(category_names.contains(&"common".to_string()));
+
+        // Test get_keywords_for_packages
+        let keywords = conn
+            .get_keywords_for_packages(&vec![version_result1.package_id, version_result2.package_id])
+            .expect("get keywords for packages is ok");
+
+        assert_eq!(keywords.len(), 4); // 2 keywords per package
+        let keyword_names: Vec<String> = keywords.iter().map(|k| k.keyword.clone()).collect();
+        assert!(keyword_names.contains(&"key1".to_string()));
+        assert!(keyword_names.contains(&"key2".to_string()));
+        assert!(keyword_names.contains(&"shared".to_string()));
+
+        Ok::<(), diesel::result::Error>(())
+    });
 }
