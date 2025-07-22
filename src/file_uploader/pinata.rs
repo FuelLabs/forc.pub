@@ -58,11 +58,11 @@ impl PinataClient for PinataClientImpl {
         let url = format!("{pinata_domain}/ipfs/{ipfs_hash}");
 
         let response = reqwest::get(&url).await.map_err(|e| {
-            UploadError::IpfsUploadFailed(format!("Failed to fetch from IPFS: {}", e))
+            UploadError::IpfsFetchFailed(format!("Failed to fetch from IPFS: {}", e))
         })?;
 
         if !response.status().is_success() {
-            return Err(UploadError::IpfsUploadFailed(format!(
+            return Err(UploadError::IpfsFetchFailed(format!(
                 "IPFS fetch failed with status: {}",
                 response.status()
             )));
@@ -73,7 +73,7 @@ impl PinataClient for PinataClientImpl {
             .await
             .map(|bytes| bytes.to_vec())
             .map_err(|e| {
-                UploadError::IpfsUploadFailed(format!("Failed to read IPFS content: {}", e))
+                UploadError::IpfsFetchFailed(format!("Failed to read IPFS content: {}", e))
             })
     }
 }
