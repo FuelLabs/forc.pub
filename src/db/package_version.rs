@@ -6,10 +6,10 @@ use crate::models::{
     ApiToken, AuthorInfo, CountResult, FullPackage, FullPackageWithCategories, PackagePreview,
     PackagePreviewWithCategories, PackageVersionInfo,
 };
-use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::sql_types::Timestamptz;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 impl DbConn<'_> {

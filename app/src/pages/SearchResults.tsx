@@ -58,7 +58,7 @@ function SearchResults() {
     searchTimeoutRef.current = setTimeout(() => {
       // Determine endpoint and params based on filter type
       let endpoint = "/search";
-      let params: any = {
+      const params: Record<string, string> = {
         page: currentPage.toString(),
         per_page: PER_PAGE.toString(),
       };
