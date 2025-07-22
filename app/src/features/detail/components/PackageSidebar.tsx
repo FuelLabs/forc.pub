@@ -111,7 +111,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                     const newParams = new URLSearchParams();
                     newParams.set("category", category);
                     newParams.set("page", "1");
-                    window.location.href = `/search?${newParams.toString()}`;
+                    window.location.href = `/?${newParams.toString()}`;
                   }}
                 />
               ))}
@@ -148,7 +148,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                     const newParams = new URLSearchParams();
                     newParams.set("keyword", keyword);
                     newParams.set("page", "1");
-                    window.location.href = `/search?${newParams.toString()}`;
+                    window.location.href = `/?${newParams.toString()}`;
                   }}
                 />
               ))}

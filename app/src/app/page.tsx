@@ -23,6 +23,8 @@ import SearchResultsWrapper from "../pages/SearchResults";
 function HomePage() {
   const searchParams = useSearchParams();
   const query = searchParams.get("query")?.trim();
+  const category = searchParams.get("category")?.trim();
+  const keyword = searchParams.get("keyword")?.trim();
   const theme = useTheme();
 
   const HeroSection = () => (
@@ -187,7 +189,7 @@ function HomePage() {
   return (
     <App>
       <Box>
-        {query ? (
+        {(query || category || keyword) ? (
           <SearchResultsWrapper />
         ) : (
           <>
