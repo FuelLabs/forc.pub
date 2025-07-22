@@ -371,6 +371,41 @@ fn search(
     }
 
     let result = db.transaction(|conn| conn.search_packages_with_categories(query, pagination))?;
+    
+    Ok(Json(result))
+}
+
+#[get("/search?<category>&<page..>", rank = 2)]
+fn search_by_category(
+    db: &State<Database>,
+    category: String,
+    page: Pagination,
+) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
+    if category.trim().is_empty() || category.len() > 50 {
+        return Err(ApiError::Generic(
+            "Invalid category parameter".into(),
+            Status::BadRequest,
+        ));
+    }
+
+    let result = db.transaction(|conn| conn.filter_packages_by_category(category, page))?;
+    Ok(Json(result))
+}
+
+#[get("/search?<keyword>&<page..>", rank = 3)]
+fn search_by_keyword(
+    db: &State<Database>,
+    keyword: String,
+    page: Pagination,
+) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
+    if keyword.trim().is_empty() || keyword.len() > 50 {
+        return Err(ApiError::Generic(
+            "Invalid keyword parameter".into(),
+            Status::BadRequest,
+        ));
+    }
+
+    let result = db.transaction(|conn| conn.filter_packages_by_keyword(keyword, page))?;
     Ok(Json(result))
 }
 
@@ -445,6 +480,8 @@ async fn rocket() -> _ {
                 package_versions,
                 recent_packages,
                 search,
+                search_by_category,
+                search_by_keyword,
                 packages_by_category,
                 packages_by_keyword,
                 all_options,

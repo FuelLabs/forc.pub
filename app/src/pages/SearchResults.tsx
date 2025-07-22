@@ -65,10 +65,10 @@ function SearchResults() {
       
       if (category && !query) {
         // Pure category filtering
-        endpoint = `/packages/category/${encodeURIComponent(category)}`;
+        params.category = category;
       } else if (keyword && !query) {
         // Pure keyword filtering
-        endpoint = `/packages/keyword/${encodeURIComponent(keyword)}`;
+        params.keyword = keyword;
       } else {
         // General search (with or without filters)
         let searchQuery = query;
@@ -110,7 +110,7 @@ function SearchResults() {
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", page.toString());
-    router.replace(`/search?${newParams.toString()}`);
+    router.replace(`/?${newParams.toString()}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -186,7 +186,7 @@ function SearchResults() {
                   const newParams = new URLSearchParams(searchParams);
                   newParams.delete("category");
                   newParams.set("page", "1");
-                  router.replace(`/search?${newParams.toString()}`);
+                  router.replace(`/?${newParams.toString()}`);
                 }}
               />
             )}
@@ -199,7 +199,7 @@ function SearchResults() {
                   const newParams = new URLSearchParams(searchParams);
                   newParams.delete("keyword");
                   newParams.set("page", "1");
-                  router.replace(`/search?${newParams.toString()}`);
+                  router.replace(`/?${newParams.toString()}`);
                 }}
               />
             )}
@@ -304,7 +304,7 @@ function SearchResults() {
                               const newParams = new URLSearchParams();
                               newParams.set("category", category);
                               newParams.set("page", "1");
-                              window.location.href = `/search?${newParams.toString()}`;
+                              window.location.href = `/?${newParams.toString()}`;
                             }}
                           />
                         ))}
@@ -330,7 +330,7 @@ function SearchResults() {
                               const newParams = new URLSearchParams();
                               newParams.set("keyword", keyword);
                               newParams.set("page", "1");
-                              window.location.href = `/search?${newParams.toString()}`;
+                              window.location.href = `/?${newParams.toString()}`;
                             }}
                           />
                         ))}
