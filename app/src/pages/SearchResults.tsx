@@ -9,6 +9,7 @@ import {
   Typography,
   CircularProgress,
   Pagination,
+  Chip,
 } from "@mui/material";
 import HTTP, { PackagePreview } from "../utils/http";
 import { formatDate } from "../utils/date";
@@ -28,13 +29,15 @@ function SearchResults() {
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   const query = searchParams.get("query")?.trim() || "";
+  const category = searchParams.get("category")?.trim() || "";
+  const keyword = searchParams.get("keyword")?.trim() || "";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   useEffect(() => {
     // Clear any pending search timeout
     clearTimeout(searchTimeoutRef.current);
 
-    if (!query) {
+    if (!query && !category && !keyword) {
       setResults([]);
       setTotalPages(1);
       setTotalCount(0);
@@ -53,12 +56,33 @@ function SearchResults() {
 
     // Add small delay to reduce cancelled requests when typing fast
     searchTimeoutRef.current = setTimeout(() => {
-      HTTP.get("/search", {
-        params: {
-          query,
-          page: currentPage.toString(),
-          per_page: PER_PAGE.toString(),
-        },
+      // Determine endpoint and params based on filter type
+      let endpoint = "/search";
+      const params: Record<string, string> = {
+        page: currentPage.toString(),
+        per_page: PER_PAGE.toString(),
+      };
+      
+      if (category && !query) {
+        // Pure category filtering
+        params.category = category;
+      } else if (keyword && !query) {
+        // Pure keyword filtering
+        params.keyword = keyword;
+      } else {
+        // General search (with or without filters)
+        let searchQuery = query;
+        if (category) {
+          searchQuery = searchQuery ? `${searchQuery} category:${category}` : `category:${category}`;
+        }
+        if (keyword) {
+          searchQuery = searchQuery ? `${searchQuery} keyword:${keyword}` : `keyword:${keyword}`;
+        }
+        params.query = searchQuery;
+      }
+      
+      HTTP.get(endpoint, {
+        params,
         signal: abortControllerRef.current?.signal,
       })
         .then((response) => {
@@ -81,12 +105,13 @@ function SearchResults() {
       clearTimeout(searchTimeoutRef.current);
       abortControllerRef.current?.abort();
     };
-  }, [query, currentPage]);
+  }, [query, category, keyword, currentPage]);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", page.toString());
     router.replace(`/?${newParams.toString()}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -103,7 +128,7 @@ function SearchResults() {
         <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
           <CircularProgress />
           <Typography color="text.secondary">
-            Searching for &quot;{query}&quot;...
+            {query ? `Searching for "${query}"...` : category ? `Loading packages for category "${category}"...` : keyword ? `Loading packages for keyword "${keyword}"...` : "Loading..."}
           </Typography>
         </Box>
       </Box>
@@ -131,8 +156,7 @@ function SearchResults() {
           No packages found
         </Typography>
         <Typography color="text.secondary">
-          No results found for &quot;{query}&quot;. Try different keywords or
-          check your spelling.
+          {query ? `No results found for "${query}". Try different keywords or check your spelling.` : category ? `No packages found for category "${category}".` : keyword ? `No packages found for keyword "${keyword}".` : "No packages found."}
         </Typography>
       </Box>
     );
@@ -145,9 +169,42 @@ function SearchResults() {
           Search Results
         </Typography>
         <Typography color="text.secondary">
-          Found {totalCount} package{totalCount === 1 ? "" : "s"} for &quot;
-          {query}&quot;
+          Found {totalCount} package{totalCount === 1 ? "" : "s"}
+          {query ? ` for "${query}"` : category ? ` for category "${category}"` : keyword ? ` for keyword "${keyword}"` : ""}
         </Typography>
+        
+        {/* Filter chips */}
+        {(category || keyword) && (
+          <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            <Typography variant="body2" color="text.secondary">Filters:</Typography>
+            {category && (
+              <Chip
+                label={`Category: ${category}`}
+                size="small"
+                color="primary"
+                onDelete={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.delete("category");
+                  newParams.set("page", "1");
+                  router.replace(`/?${newParams.toString()}`);
+                }}
+              />
+            )}
+            {keyword && (
+              <Chip
+                label={`Keyword: ${keyword}`}
+                size="small"
+                color="secondary"
+                onDelete={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.delete("keyword");
+                  newParams.set("page", "1");
+                  router.replace(`/?${newParams.toString()}`);
+                }}
+              />
+            )}
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: { xs: 1.5, sm: 2 }, marginBottom: { xs: 2, sm: 4 } }}>
@@ -214,12 +271,72 @@ function SearchResults() {
                     </Typography>
                   </Box>
 
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "text.primary", lineHeight: 1.5, fontSize: { xs: "0.9rem", sm: "0.95rem" } }}
-                  >
-                    {result.description || "No description available"}
-                  </Typography>
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.primary", lineHeight: 1.5, fontSize: { xs: "0.9rem", sm: "0.95rem" }, mb: 1 }}
+                    >
+                      {result.description || "No description available"}
+                    </Typography>
+                    
+                    {/* Categories and Keywords Tags */}
+                    {(result.categories?.length > 0 || result.keywords?.length > 0) && (
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}>
+                        {result.categories?.map((category) => (
+                          <Chip
+                            key={category}
+                            label={category}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            sx={{ 
+                              fontSize: "0.75rem", 
+                              height: "20px",
+                              cursor: "pointer",
+                              "&:hover": {
+                                backgroundColor: "primary.main",
+                                color: "white",
+                              }
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const newParams = new URLSearchParams();
+                              newParams.set("category", category);
+                              newParams.set("page", "1");
+                              window.location.href = `/?${newParams.toString()}`;
+                            }}
+                          />
+                        ))}
+                        {result.keywords?.map((keyword) => (
+                          <Chip
+                            key={keyword}
+                            label={keyword}
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            sx={{ 
+                              fontSize: "0.75rem", 
+                              height: "20px",
+                              cursor: "pointer",
+                              "&:hover": {
+                                backgroundColor: "secondary.main",
+                                color: "white",
+                              }
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const newParams = new URLSearchParams();
+                              newParams.set("keyword", keyword);
+                              newParams.set("page", "1");
+                              window.location.href = `/?${newParams.toString()}`;
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
 
                   <Typography
                     variant="caption"
