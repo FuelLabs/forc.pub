@@ -26,6 +26,10 @@ pub struct FullPackage {
     pub source_code_ipfs_url: String,
     pub abi_ipfs_url: Option<String>,
 
+    // Inline ABI data (only populated when requested)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub abi: Option<serde_json::Value>,
+
     // Version Metadata
     pub repository: Option<Url>,
     pub documentation: Option<Url>,
@@ -55,6 +59,7 @@ impl From<crate::models::FullPackage> for FullPackage {
             abi_ipfs_url: full_package
                 .abi_ipfs_hash
                 .map(|hash| ipfs_hash_to_abi_url(&hash)),
+            abi: None, // Will be populated when inline_abi is requested
             repository: full_package.repository.and_then(string_to_url),
             documentation: full_package.documentation.and_then(string_to_url),
             homepage: full_package.homepage.and_then(string_to_url),

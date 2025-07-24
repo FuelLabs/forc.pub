@@ -80,6 +80,11 @@ pub(crate) mod tests {
             async fn upload_file_to_ipfs(&self, _path: &Path) -> Result<String, UploadError> {
                 Err(UploadError::IpfsUploadFailed("IPFS error".to_string()))
             }
+            async fn fetch_ipfs_content(&self, _ipfs_hash: &str) -> Result<Vec<u8>, UploadError> {
+                Err(UploadError::IpfsUploadFailed(
+                    "IPFS fetch error".to_string(),
+                ))
+            }
         }
 
         let pinata_client = FailingPinataClient;

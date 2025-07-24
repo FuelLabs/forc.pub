@@ -75,6 +75,9 @@ pub enum UploadError {
 
     #[error("Upload does not contain a Forc manifest.")]
     MissingForcManifest,
+
+    #[error("Failed to fetch from IPFS. Err: {0}")]
+    IpfsFetchFailed(String),
 }
 
 /// Handles the project upload process by:
