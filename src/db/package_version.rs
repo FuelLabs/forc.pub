@@ -993,7 +993,9 @@ impl DbConn<'_> {
         .bind::<diesel::sql_types::Text, _>(query_lower)
         .bind::<diesel::sql_types::Text, _>(category_lower)
         .get_result::<CountResult>(self.inner())
-        .map_err(|err| DatabaseError::QueryFailed("search with category filter count".to_string(), err))?
+        .map_err(|err| {
+            DatabaseError::QueryFailed("search with category filter count".to_string(), err)
+        })?
         .count;
 
         // Get enhanced results with categories and keywords
@@ -1087,7 +1089,9 @@ impl DbConn<'_> {
         .bind::<diesel::sql_types::Text, _>(query_lower)
         .bind::<diesel::sql_types::Text, _>(keyword_lower)
         .get_result::<CountResult>(self.inner())
-        .map_err(|err| DatabaseError::QueryFailed("search with keyword filter count".to_string(), err))?
+        .map_err(|err| {
+            DatabaseError::QueryFailed("search with keyword filter count".to_string(), err)
+        })?
         .count;
 
         // Get enhanced results with categories and keywords
@@ -1148,7 +1152,9 @@ impl DbConn<'_> {
         .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
         .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
         .load::<PackagePreview>(self.inner())
-        .map_err(|err| DatabaseError::QueryFailed("search with category and keyword filter".to_string(), err))?;
+        .map_err(|err| {
+            DatabaseError::QueryFailed("search with category and keyword filter".to_string(), err)
+        })?;
 
         // Count total matches
         let total = diesel::sql_query(
@@ -1164,7 +1170,12 @@ impl DbConn<'_> {
         .bind::<diesel::sql_types::Text, _>(category_lower)
         .bind::<diesel::sql_types::Text, _>(keyword_lower)
         .get_result::<CountResult>(self.inner())
-        .map_err(|err| DatabaseError::QueryFailed("search with category and keyword filter count".to_string(), err))?
+        .map_err(|err| {
+            DatabaseError::QueryFailed(
+                "search with category and keyword filter count".to_string(),
+                err,
+            )
+        })?
         .count;
 
         // Get enhanced results with categories and keywords
@@ -1266,7 +1277,9 @@ impl DbConn<'_> {
         .bind::<diesel::sql_types::Text, _>(category_lower)
         .bind::<diesel::sql_types::Text, _>(keyword_lower)
         .get_result::<CountResult>(self.inner())
-        .map_err(|err| DatabaseError::QueryFailed("search with all filters count".to_string(), err))?
+        .map_err(|err| {
+            DatabaseError::QueryFailed("search with all filters count".to_string(), err)
+        })?
         .count;
 
         // Get enhanced results with categories and keywords
@@ -1294,7 +1307,9 @@ impl DbConn<'_> {
             .filter(schema::packages::package_name.eq_any(&package_names))
             .select(schema::packages::id)
             .load::<Uuid>(self.inner())
-            .map_err(|err| DatabaseError::QueryFailed("get package ids for enhancement".to_string(), err))?;
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package ids for enhancement".to_string(), err)
+            })?;
 
         // Get categories and keywords for these packages
         let categories = self.get_categories_for_packages(&package_ids)?;
@@ -1306,7 +1321,10 @@ impl DbConn<'_> {
             .select((schema::packages::id, schema::packages::package_name))
             .load::<(Uuid, String)>(self.inner())
             .map_err(|err| {
-                DatabaseError::QueryFailed("get package id to name mapping for enhancement".to_string(), err)
+                DatabaseError::QueryFailed(
+                    "get package id to name mapping for enhancement".to_string(),
+                    err,
+                )
             })?
             .into_iter()
             .collect();
