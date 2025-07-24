@@ -320,7 +320,7 @@ async fn package(
 
     // If inline_abi is true and we have an ABI hash, fetch the ABI content
     if inline_abi.unwrap_or(false) {
-        if let Some(abi_hash) = db_data.abi_ipfs_hash {
+        if let Some(abi_hash) = &db_data.package.abi_ipfs_hash {
             match pinata_client.fetch_ipfs_content(&abi_hash).await {
                 Ok(abi_content) => {
                     if let Ok(abi_json) = serde_json::from_slice::<serde_json::Value>(&abi_content)
