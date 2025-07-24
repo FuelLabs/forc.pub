@@ -124,7 +124,9 @@ type Routes = [
     route: "/search";
     method: "GET";
     queryParams: {
-      query: string;
+      q?: string;
+      category?: string;
+      keyword?: string;
       page?: string;
       per_page?: string;
     };

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -31,6 +32,7 @@ interface PackageSidebarProps {
 }
 
 const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
+  const router = useRouter();
   if (loading) {
     return (
       <Box
@@ -111,7 +113,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                     const newParams = new URLSearchParams();
                     newParams.set("category", category);
                     newParams.set("page", "1");
-                    window.location.href = `/?${newParams.toString()}`;
+                    router.push(`/?${newParams.toString()}`);
                   }}
                 />
               ))}
@@ -148,7 +150,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
                     const newParams = new URLSearchParams();
                     newParams.set("keyword", keyword);
                     newParams.set("page", "1");
-                    window.location.href = `/?${newParams.toString()}`;
+                    router.push(`/?${newParams.toString()}`);
                   }}
                 />
               ))}

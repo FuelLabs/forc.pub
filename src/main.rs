@@ -356,56 +356,52 @@ fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Cust
     )
 }
 
-// Indicates the service is running
-#[get("/search?<query>&<pagination..>")]
+/// Combined search endpoint that handles different combinations of search parameters.
+#[get("/search?<q>&<category>&<keyword>&<pagination..>")]
 fn search(
     db: &State<Database>,
-    query: String,
+    q: Option<String>,        // General search query
+    category: Option<String>, // Category filter
+    keyword: Option<String>,  // Keyword filter
     pagination: Pagination,
 ) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
-    if query.trim().is_empty() || query.len() > 100 {
-        return Err(ApiError::Generic(
-            "Invalid query parameter".into(),
-            Status::BadRequest,
-        ));
+    // Validate parameters
+    if let Some(ref query) = q {
+        if query.trim().is_empty() || query.len() > 100 {
+            return Err(ApiError::Generic(
+                "Invalid query parameter".into(),
+                Status::BadRequest,
+            ));
+        }
     }
-
-    let result = db.transaction(|conn| conn.search_packages_with_categories(query, pagination))?;
     
-    Ok(Json(result))
-}
+    if let Some(ref cat) = category {
+        if cat.trim().is_empty() || cat.len() > 50 {
+            return Err(ApiError::Generic(
+                "Invalid category parameter".into(),
+                Status::BadRequest,
+            ));
+        }
+    }
+    
+    if let Some(ref kw) = keyword {
+        if kw.trim().is_empty() || kw.len() > 50 {
+            return Err(ApiError::Generic(
+                "Invalid keyword parameter".into(),
+                Status::BadRequest,
+            ));
+        }
+    }
 
-#[get("/search?<category>&<page..>", rank = 2)]
-fn search_by_category(
-    db: &State<Database>,
-    category: String,
-    page: Pagination,
-) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
-    if category.trim().is_empty() || category.len() > 50 {
+    // Check if at least one search criteria is provided
+    if q.is_none() && category.is_none() && keyword.is_none() {
         return Err(ApiError::Generic(
-            "Invalid category parameter".into(),
+            "At least one search parameter (q, category, or keyword) must be provided".into(),
             Status::BadRequest,
         ));
     }
 
-    let result = db.transaction(|conn| conn.filter_packages_by_category(category, page))?;
-    Ok(Json(result))
-}
-
-#[get("/search?<keyword>&<page..>", rank = 3)]
-fn search_by_keyword(
-    db: &State<Database>,
-    keyword: String,
-    page: Pagination,
-) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
-    if keyword.trim().is_empty() || keyword.len() > 50 {
-        return Err(ApiError::Generic(
-            "Invalid keyword parameter".into(),
-            Status::BadRequest,
-        ));
-    }
-
-    let result = db.transaction(|conn| conn.filter_packages_by_keyword(keyword, page))?;
+    let result = db.transaction(|conn| conn.search_packages_combined(q, category, keyword, pagination))?;
     Ok(Json(result))
 }
 
@@ -480,8 +476,6 @@ async fn rocket() -> _ {
                 package_versions,
                 recent_packages,
                 search,
-                search_by_category,
-                search_by_keyword,
                 packages_by_category,
                 packages_by_keyword,
                 all_options,
