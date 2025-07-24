@@ -866,4 +866,489 @@ impl DbConn<'_> {
             keywords: keywords.into_iter().map(|k| k.keyword).collect(),
         })
     }
+
+    /// Combined search function that handles different combinations of search parameters.
+    pub fn search_packages_combined(
+        &mut self,
+        query: Option<String>,
+        category: Option<String>,
+        keyword: Option<String>,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        match (query, category, keyword) {
+            (Some(q), None, None) => {
+                // Text search only
+                self.search_packages_with_categories(q, pagination)
+            }
+            (None, Some(cat), None) => {
+                // Category filter only
+                self.filter_packages_by_category(cat, pagination)
+            }
+            (None, None, Some(kw)) => {
+                // Keyword filter only
+                self.filter_packages_by_keyword(kw, pagination)
+            }
+            (Some(q), Some(cat), None) => {
+                // Combined text search + category filter
+                self.search_with_category_filter(q, cat, pagination)
+            }
+            (Some(q), None, Some(kw)) => {
+                // Combined text search + keyword filter
+                self.search_with_keyword_filter(q, kw, pagination)
+            }
+            (None, Some(cat), Some(kw)) => {
+                // Combined category + keyword filter
+                self.search_with_category_and_keyword_filter(cat, kw, pagination)
+            }
+            (Some(q), Some(cat), Some(kw)) => {
+                // All three: text search + category + keyword filter
+                self.search_with_all_filters(q, cat, kw, pagination)
+            }
+            (None, None, None) => {
+                // No search criteria provided - return error
+                Err(DatabaseError::QueryFailed(
+                    "search combined".to_string(),
+                    diesel::result::Error::NotFound,
+                ))
+            }
+        }
+    }
+
+    /// Search with text query and category filter.
+    pub fn search_with_category_filter(
+        &mut self,
+        query: String,
+        category: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        let query_lower = query.to_lowercase();
+        let category_lower = category.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank,
+                    -- Combined relevance scoring
+                    GREATEST(
+                        similarity($1, LOWER(p.package_name)),
+                        CASE 
+                            WHEN LOWER(p.package_name) ILIKE '%' || $1 || '%' THEN 0.7
+                            ELSE 0.0
+                        END,
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3
+                    ) AS relevance_score
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                JOIN package_categories pc ON p.id = pc.package_id
+                WHERE 
+                    (LOWER(pc.category) = $2 OR LOWER(pc.category) ILIKE '%' || $2 || '%')
+                    AND (
+                        LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                        similarity($1, LOWER(p.package_name)) > 0.2 OR
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                    )
+                GROUP BY p.id, p.package_name, pv.id, pv.num, pv.package_description, p.created_at, pv.created_at
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1 AND relevance_score > 0.1
+            ORDER BY relevance_score DESC, created_at DESC
+            OFFSET $3
+            LIMIT $4;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower.clone())
+        .bind::<diesel::sql_types::Text, _>(category_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with category filter".to_string(), err))?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_versions pv ON pv.package_id = p.id
+            JOIN package_categories pc ON p.id = pc.package_id
+            WHERE 
+                (LOWER(pc.category) = $2 OR LOWER(pc.category) ILIKE '%' || $2 || '%')
+                AND (
+                    LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(p.package_name)) > 0.2 OR
+                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                )
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower)
+        .bind::<diesel::sql_types::Text, _>(category_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with category filter count".to_string(), err))?
+        .count;
+
+        // Get enhanced results with categories and keywords
+        let enhanced_results = self.enhance_results_with_categories_and_keywords(packages)?;
+
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
+
+    /// Search with text query and keyword filter.
+    pub fn search_with_keyword_filter(
+        &mut self,
+        query: String,
+        keyword: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        let query_lower = query.to_lowercase();
+        let keyword_lower = keyword.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank,
+                    -- Combined relevance scoring
+                    GREATEST(
+                        similarity($1, LOWER(p.package_name)),
+                        CASE 
+                            WHEN LOWER(p.package_name) ILIKE '%' || $1 || '%' THEN 0.7
+                            ELSE 0.0
+                        END,
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3
+                    ) AS relevance_score
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                JOIN package_keywords pk ON p.id = pk.package_id
+                WHERE 
+                    (LOWER(pk.keyword) = $2 OR LOWER(pk.keyword) ILIKE '%' || $2 || '%')
+                    AND (
+                        LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                        similarity($1, LOWER(p.package_name)) > 0.2 OR
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                    )
+                GROUP BY p.id, p.package_name, pv.id, pv.num, pv.package_description, p.created_at, pv.created_at
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1 AND relevance_score > 0.1
+            ORDER BY relevance_score DESC, created_at DESC
+            OFFSET $3
+            LIMIT $4;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower.clone())
+        .bind::<diesel::sql_types::Text, _>(keyword_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with keyword filter".to_string(), err))?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_versions pv ON pv.package_id = p.id
+            JOIN package_keywords pk ON p.id = pk.package_id
+            WHERE 
+                (LOWER(pk.keyword) = $2 OR LOWER(pk.keyword) ILIKE '%' || $2 || '%')
+                AND (
+                    LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(p.package_name)) > 0.2 OR
+                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                )
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower)
+        .bind::<diesel::sql_types::Text, _>(keyword_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with keyword filter count".to_string(), err))?
+        .count;
+
+        // Get enhanced results with categories and keywords
+        let enhanced_results = self.enhance_results_with_categories_and_keywords(packages)?;
+
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
+
+    /// Search with both category and keyword filters.
+    pub fn search_with_category_and_keyword_filter(
+        &mut self,
+        category: String,
+        keyword: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        let category_lower = category.to_lowercase();
+        let keyword_lower = keyword.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                JOIN package_categories pc ON p.id = pc.package_id
+                JOIN package_keywords pk ON p.id = pk.package_id
+                WHERE 
+                    (LOWER(pc.category) = $1 OR LOWER(pc.category) ILIKE '%' || $1 || '%')
+                    AND (LOWER(pk.keyword) = $2 OR LOWER(pk.keyword) ILIKE '%' || $2 || '%')
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1
+            ORDER BY created_at DESC
+            OFFSET $3
+            LIMIT $4;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(category_lower.clone())
+        .bind::<diesel::sql_types::Text, _>(keyword_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with category and keyword filter".to_string(), err))?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_categories pc ON p.id = pc.package_id
+            JOIN package_keywords pk ON p.id = pk.package_id
+            WHERE 
+                (LOWER(pc.category) = $1 OR LOWER(pc.category) ILIKE '%' || $1 || '%')
+                AND (LOWER(pk.keyword) = $2 OR LOWER(pk.keyword) ILIKE '%' || $2 || '%')
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(category_lower)
+        .bind::<diesel::sql_types::Text, _>(keyword_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with category and keyword filter count".to_string(), err))?
+        .count;
+
+        // Get enhanced results with categories and keywords
+        let enhanced_results = self.enhance_results_with_categories_and_keywords(packages)?;
+
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
+
+    /// Search with text query, category, and keyword filters.
+    pub fn search_with_all_filters(
+        &mut self,
+        query: String,
+        category: String,
+        keyword: String,
+        pagination: Pagination,
+    ) -> Result<PaginatedResponse<PackagePreviewWithCategories>, DatabaseError> {
+        let query_lower = query.to_lowercase();
+        let category_lower = category.to_lowercase();
+        let keyword_lower = keyword.to_lowercase();
+
+        let packages = diesel::sql_query(
+            r#"WITH ranked_versions AS (
+                SELECT 
+                    p.id AS package_id,
+                    p.package_name AS name, 
+                    pv.num AS version, 
+                    pv.package_description AS description, 
+                    p.created_at AS created_at, 
+                    pv.created_at AS updated_at,
+                    ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank,
+                    -- Combined relevance scoring
+                    GREATEST(
+                        similarity($1, LOWER(p.package_name)),
+                        CASE 
+                            WHEN LOWER(p.package_name) ILIKE '%' || $1 || '%' THEN 0.7
+                            ELSE 0.0
+                        END,
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) * 0.3
+                    ) AS relevance_score
+                FROM package_versions pv
+                JOIN packages p ON pv.package_id = p.id
+                JOIN package_categories pc ON p.id = pc.package_id
+                JOIN package_keywords pk ON p.id = pk.package_id
+                WHERE 
+                    (LOWER(pc.category) = $2 OR LOWER(pc.category) ILIKE '%' || $2 || '%')
+                    AND (LOWER(pk.keyword) = $3 OR LOWER(pk.keyword) ILIKE '%' || $3 || '%')
+                    AND (
+                        LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                        similarity($1, LOWER(p.package_name)) > 0.2 OR
+                        similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                    )
+                GROUP BY p.id, p.package_name, pv.id, pv.num, pv.package_description, p.created_at, pv.created_at
+            )
+            SELECT 
+                name, 
+                version, 
+                description, 
+                created_at, 
+                updated_at
+            FROM ranked_versions
+            WHERE rank = 1 AND relevance_score > 0.1
+            ORDER BY relevance_score DESC, created_at DESC
+            OFFSET $4
+            LIMIT $5;
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower.clone())
+        .bind::<diesel::sql_types::Text, _>(category_lower.clone())
+        .bind::<diesel::sql_types::Text, _>(keyword_lower.clone())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.offset())
+        .bind::<diesel::sql_types::BigInt, _>(pagination.limit())
+        .load::<PackagePreview>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with all filters".to_string(), err))?;
+
+        // Count total matches
+        let total = diesel::sql_query(
+            r#"SELECT COUNT(DISTINCT p.id) AS count
+            FROM packages p
+            JOIN package_versions pv ON pv.package_id = p.id
+            JOIN package_categories pc ON p.id = pc.package_id
+            JOIN package_keywords pk ON p.id = pk.package_id
+            WHERE 
+                (LOWER(pc.category) = $2 OR LOWER(pc.category) ILIKE '%' || $2 || '%')
+                AND (LOWER(pk.keyword) = $3 OR LOWER(pk.keyword) ILIKE '%' || $3 || '%')
+                AND (
+                    LOWER(p.package_name) ILIKE '%' || $1 || '%' OR
+                    similarity($1, LOWER(p.package_name)) > 0.2 OR
+                    similarity($1, LOWER(COALESCE(pv.package_description, ''))) > 0.1
+                )
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(query_lower)
+        .bind::<diesel::sql_types::Text, _>(category_lower)
+        .bind::<diesel::sql_types::Text, _>(keyword_lower)
+        .get_result::<CountResult>(self.inner())
+        .map_err(|err| DatabaseError::QueryFailed("search with all filters count".to_string(), err))?
+        .count;
+
+        // Get enhanced results with categories and keywords
+        let enhanced_results = self.enhance_results_with_categories_and_keywords(packages)?;
+
+        Ok(PaginatedResponse {
+            data: enhanced_results,
+            total_count: total,
+            total_pages: ((total as f64) / (pagination.limit() as f64)).ceil() as i64,
+            current_page: pagination.page(),
+            per_page: pagination.limit(),
+        })
+    }
+
+    /// Helper function to enhance PackagePreview results with categories and keywords.
+    fn enhance_results_with_categories_and_keywords(
+        &mut self,
+        packages: Vec<PackagePreview>,
+    ) -> Result<Vec<PackagePreviewWithCategories>, DatabaseError> {
+        // Extract package names to get package IDs for categories/keywords lookup
+        let package_names: Vec<String> = packages.iter().map(|p| p.name.clone()).collect();
+
+        // Get package IDs for these packages
+        let package_ids: Vec<Uuid> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select(schema::packages::id)
+            .load::<Uuid>(self.inner())
+            .map_err(|err| DatabaseError::QueryFailed("get package ids for enhancement".to_string(), err))?;
+
+        // Get categories and keywords for these packages
+        let categories = self.get_categories_for_packages(&package_ids)?;
+        let keywords = self.get_keywords_for_packages(&package_ids)?;
+
+        // Create a map of package_id -> package_name for quick lookup
+        let package_id_to_name: HashMap<Uuid, String> = schema::packages::table
+            .filter(schema::packages::package_name.eq_any(&package_names))
+            .select((schema::packages::id, schema::packages::package_name))
+            .load::<(Uuid, String)>(self.inner())
+            .map_err(|err| {
+                DatabaseError::QueryFailed("get package id to name mapping for enhancement".to_string(), err)
+            })?
+            .into_iter()
+            .collect();
+
+        // Create maps for quick lookup
+        let mut package_categories: HashMap<String, Vec<String>> = HashMap::new();
+        let mut package_keywords: HashMap<String, Vec<String>> = HashMap::new();
+
+        for category in categories {
+            if let Some(package_name) = package_id_to_name.get(&category.package_id) {
+                package_categories
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(category.category);
+            }
+        }
+
+        for keyword in keywords {
+            if let Some(package_name) = package_id_to_name.get(&keyword.package_id) {
+                package_keywords
+                    .entry(package_name.clone())
+                    .or_default()
+                    .push(keyword.keyword);
+            }
+        }
+
+        // Combine results
+        let enhanced_results: Vec<PackagePreviewWithCategories> = packages
+            .into_iter()
+            .map(|package| PackagePreviewWithCategories {
+                categories: package_categories
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
+                keywords: package_keywords
+                    .get(&package.name)
+                    .cloned()
+                    .unwrap_or_default(),
+                package,
+            })
+            .collect();
+
+        Ok(enhanced_results)
+    }
 }

@@ -28,7 +28,7 @@ function SearchResults() {
   const abortControllerRef = useRef<AbortController>();
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const query = searchParams.get("query")?.trim() || "";
+  const query = searchParams.get("q")?.trim() || "";
   const category = searchParams.get("category")?.trim() || "";
   const keyword = searchParams.get("keyword")?.trim() || "";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
@@ -56,29 +56,22 @@ function SearchResults() {
 
     // Add small delay to reduce cancelled requests when typing fast
     searchTimeoutRef.current = setTimeout(() => {
-      // Determine endpoint and params based on filter type
-      let endpoint = "/search";
+      // Use the unified search endpoint with optional parameters
+      const endpoint = "/search";
       const params: Record<string, string> = {
         page: currentPage.toString(),
         per_page: PER_PAGE.toString(),
       };
       
-      if (category && !query) {
-        // Pure category filtering
+      // Add search parameters only if they exist
+      if (query) {
+        params.q = query;
+      }
+      if (category) {
         params.category = category;
-      } else if (keyword && !query) {
-        // Pure keyword filtering
+      }
+      if (keyword) {
         params.keyword = keyword;
-      } else {
-        // General search (with or without filters)
-        let searchQuery = query;
-        if (category) {
-          searchQuery = searchQuery ? `${searchQuery} category:${category}` : `category:${category}`;
-        }
-        if (keyword) {
-          searchQuery = searchQuery ? `${searchQuery} keyword:${keyword}` : `keyword:${keyword}`;
-        }
-        params.query = searchQuery;
       }
       
       HTTP.get(endpoint, {
@@ -111,7 +104,6 @@ function SearchResults() {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", page.toString());
     router.replace(`/?${newParams.toString()}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -304,7 +296,7 @@ function SearchResults() {
                               const newParams = new URLSearchParams();
                               newParams.set("category", category);
                               newParams.set("page", "1");
-                              window.location.href = `/?${newParams.toString()}`;
+                              router.push(`/?${newParams.toString()}`);
                             }}
                           />
                         ))}
@@ -330,7 +322,7 @@ function SearchResults() {
                               const newParams = new URLSearchParams();
                               newParams.set("keyword", keyword);
                               newParams.set("page", "1");
-                              window.location.href = `/?${newParams.toString()}`;
+                              router.push(`/?${newParams.toString()}`);
                             }}
                           />
                         ))}

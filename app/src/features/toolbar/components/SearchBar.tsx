@@ -24,7 +24,7 @@ function SearchBar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchValue, setSearchValue] = useState(
-    () => searchParams.get("query") || "",
+    () => searchParams.get("q") || "",
   );
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
 
@@ -38,7 +38,7 @@ function SearchBar() {
       const keyword = searchParams.get("keyword");
       
       if (trimmed) {
-        newParams.set("query", trimmed);
+        newParams.set("q", trimmed);
       }
       if (category) {
         newParams.set("category", category);
@@ -63,7 +63,7 @@ function SearchBar() {
   );
 
   useEffect(() => {
-    const query = searchParams.get("query") || "";
+    const query = searchParams.get("q") || "";
     setSearchValue(query);
   }, [searchParams]);
 
