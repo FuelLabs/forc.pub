@@ -374,7 +374,7 @@ fn search(
             ));
         }
     }
-    
+
     if let Some(ref cat) = category {
         if cat.trim().is_empty() || cat.len() > 50 {
             return Err(ApiError::Generic(
@@ -383,7 +383,7 @@ fn search(
             ));
         }
     }
-    
+
     if let Some(ref kw) = keyword {
         if kw.trim().is_empty() || kw.len() > 50 {
             return Err(ApiError::Generic(
@@ -401,7 +401,8 @@ fn search(
         ));
     }
 
-    let result = db.transaction(|conn| conn.search_packages_combined(q, category, keyword, pagination))?;
+    let result =
+        db.transaction(|conn| conn.search_packages_combined(q, category, keyword, pagination))?;
     Ok(Json(result))
 }
 
