@@ -321,7 +321,7 @@ async fn package(
     // If inline_abi is true and we have an ABI hash, fetch the ABI content
     if inline_abi.unwrap_or(false) {
         if let Some(abi_hash) = &db_data.package.abi_ipfs_hash {
-            match pinata_client.fetch_ipfs_content(&abi_hash).await {
+            match pinata_client.fetch_ipfs_content(abi_hash).await {
                 Ok(abi_content) => {
                     if let Ok(abi_json) = serde_json::from_slice::<serde_json::Value>(&abi_content)
                     {
@@ -432,39 +432,6 @@ fn search(
     Ok(Json(result))
 }
 
-#[get("/packages/category/<category>?<pagination..>")]
-fn packages_by_category(
-    db: &State<Database>,
-    category: String,
-    pagination: Pagination,
-) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
-    if category.trim().is_empty() || category.len() > 50 {
-        return Err(ApiError::Generic(
-            "Invalid category parameter".into(),
-            Status::BadRequest,
-        ));
-    }
-
-    let result = db.transaction(|conn| conn.filter_packages_by_category(category, pagination))?;
-    Ok(Json(result))
-}
-
-#[get("/packages/keyword/<keyword>?<pagination..>")]
-fn packages_by_keyword(
-    db: &State<Database>,
-    keyword: String,
-    pagination: Pagination,
-) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
-    if keyword.trim().is_empty() || keyword.len() > 50 {
-        return Err(ApiError::Generic(
-            "Invalid keyword parameter".into(),
-            Status::BadRequest,
-        ));
-    }
-
-    let result = db.transaction(|conn| conn.filter_packages_by_keyword(keyword, pagination))?;
-    Ok(Json(result))
-}
 
 #[get("/health")]
 fn health() -> String {
@@ -503,8 +470,6 @@ async fn rocket() -> _ {
                 package_versions,
                 recent_packages,
                 search,
-                packages_by_category,
-                packages_by_keyword,
                 all_options,
                 health
             ],

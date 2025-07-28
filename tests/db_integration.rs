@@ -8,6 +8,7 @@ use diesel::RunQueryDsl as _;
 use forc_pub::api;
 use forc_pub::api::pagination::Pagination;
 use forc_pub::db::Database;
+use forc_pub::models::FullPackageWithCategories;
 use forc_pub::handlers::publish::PublishInfo;
 use forc_pub::models::{FullPackage, NewUpload, PackageVersion};
 use semver::Version;
@@ -475,13 +476,21 @@ async fn test_abi_inlining_with_mock_pinata() {
     };
 
     // Test 1: Convert without ABI inlining (default behavior)
-    let full_package_without_abi = FullPackage::from(db_full_package.clone());
+    let full_package_without_abi = FullPackage::from(FullPackageWithCategories {
+        package: db_full_package.clone(),
+        categories: vec![],
+        keywords: vec![],
+    });
     assert!(full_package_without_abi.abi_ipfs_url.is_some());
     assert!(full_package_without_abi.abi.is_none());
 
     // Test 2: Simulate ABI inlining process
     let mock_client = TestMockPinataClient;
-    let mut full_package_with_abi = FullPackage::from(db_full_package.clone());
+    let mut full_package_with_abi = FullPackage::from(FullPackageWithCategories {
+        package: db_full_package.clone(),
+        categories: vec![],
+        keywords: vec![],
+    });
 
     // Simulate the inline_abi=true logic from the endpoint
     if let Some(abi_hash) = db_full_package.abi_ipfs_hash {
@@ -560,6 +569,8 @@ fn test_full_package_abi_field_serialization() {
         urls: vec![],
         readme: None,
         license: None,
+        categories: vec![],
+        keywords: vec![],
     };
 
     let json_without_abi = serde_json::to_value(&full_package_without_abi).unwrap();
@@ -585,6 +596,8 @@ fn test_full_package_abi_field_serialization() {
         urls: vec![],
         readme: None,
         license: None,
+        categories: vec![],
+        keywords: vec![],
     };
 
     let json_with_abi = serde_json::to_value(&full_package_with_abi).unwrap();
@@ -734,7 +747,11 @@ fn test_full_package_conversion_maintains_abi_none() {
         license: None,
     };
 
-    let api_full_package = FullPackage::from(db_full_package);
+    let api_full_package = FullPackage::from(FullPackageWithCategories {
+        package: db_full_package,
+        categories: vec![],
+        keywords: vec![],
+    });
 
     // Should have abi_ipfs_url but abi should be None by default
     assert!(api_full_package.abi_ipfs_url.is_some());
