@@ -659,16 +659,18 @@ fn test_search_with_categories() {
         conn.insert_keywords(version_result.package_id, &keywords)
             .expect("insert keywords is ok");
 
-        // Test search by category
+        // Test search by query
         let search_result = conn
-            .search_packages_with_categories(
-                "blockchain".to_string(),
+            .search_packages_combined(
+                Some("blockchain".to_string()),
+                None,
+                None,
                 Pagination {
                     page: Some(1),
                     per_page: Some(10),
                 },
             )
-            .expect("search by category is ok");
+            .expect("search by query is ok");
 
         assert_eq!(search_result.data.len(), 1);
         assert_eq!(search_result.data[0].package.name, "web3-utils");
@@ -680,16 +682,18 @@ fn test_search_with_categories() {
             .categories
             .contains(&"web3".to_string()));
 
-        // Test search by keyword
+        // Test search by query for keyword
         let search_result = conn
-            .search_packages_with_categories(
-                "ethereum".to_string(),
+            .search_packages_combined(
+                Some("ethereum".to_string()),
+                None,
+                None,
                 Pagination {
                     page: Some(1),
                     per_page: Some(10),
                 },
             )
-            .expect("search by keyword is ok");
+            .expect("search by query for keyword is ok");
 
         assert_eq!(search_result.data.len(), 1);
         assert_eq!(search_result.data[0].package.name, "web3-utils");
@@ -703,8 +707,10 @@ fn test_search_with_categories() {
 
         // Test search by package name (should still work)
         let search_result = conn
-            .search_packages_with_categories(
-                "web3".to_string(),
+            .search_packages_combined(
+                Some("web3".to_string()),
+                None,
+                None,
                 Pagination {
                     page: Some(1),
                     per_page: Some(10),
@@ -827,8 +833,10 @@ fn test_filter_by_category() {
 
         // Test filter by "defi" category
         let filter_result = conn
-            .filter_packages_by_category(
-                "defi".to_string(),
+            .search_packages_combined(
+                None,
+                Some("defi".to_string()),
+                None,
                 Pagination {
                     page: Some(1),
                     per_page: Some(10),
@@ -844,8 +852,10 @@ fn test_filter_by_category() {
 
         // Test filter by "gaming" category
         let filter_result = conn
-            .filter_packages_by_category(
-                "gaming".to_string(),
+            .search_packages_combined(
+                None,
+                Some("gaming".to_string()),
+                None,
                 Pagination {
                     page: Some(1),
                     per_page: Some(10),
@@ -861,8 +871,10 @@ fn test_filter_by_category() {
 
         // Test filter by non-existent category
         let filter_result = conn
-            .filter_packages_by_category(
-                "nonexistent".to_string(),
+            .search_packages_combined(
+                None,
+                Some("nonexistent".to_string()),
+                None,
                 Pagination {
                     page: Some(1),
                     per_page: Some(10),
