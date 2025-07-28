@@ -432,7 +432,6 @@ fn search(
     Ok(Json(result))
 }
 
-
 #[get("/health")]
 fn health() -> String {
     "true".to_string()
