@@ -26,7 +26,9 @@ use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, Up
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
-use forc_pub::models::{PackagePreview, PackageVersionInfo};
+use forc_pub::models::{
+    FullPackageWithCategories, PackagePreviewWithCategories, PackageVersionInfo,
+};
 use forc_pub::util::{load_env, validate_or_format_semver};
 use rocket::http::Status;
 use rocket::tokio::task;
@@ -277,7 +279,21 @@ fn packages(
     let updated_after = updated_after.and_then(|date_str| DateTime::<Utc>::from_str(date_str).ok());
     let db_data =
         db.transaction(|conn| conn.get_full_packages(updated_after, pagination.clone()))?;
-    let data = db_data.data.into_iter().map(FullPackage::from).collect();
+
+    // For now, convert to FullPackageWithCategories with empty categories/keywords
+    // This endpoint could be enhanced later to include categories if needed
+    let data = db_data
+        .data
+        .into_iter()
+        .map(|pkg| {
+            let full_package_with_categories = FullPackageWithCategories {
+                package: pkg,
+                categories: vec![], // Empty for now
+                keywords: vec![],   // Empty for now
+            };
+            FullPackage::from(full_package_with_categories)
+        })
+        .collect();
 
     Ok(Json(PaginatedResponse {
         data,
@@ -296,15 +312,16 @@ async fn package(
     version: Option<String>,
     inline_abi: Option<bool>,
 ) -> ApiResult<FullPackage> {
-    let db_data =
-        db.transaction(|conn| conn.get_full_package_version(name, version.unwrap_or_default()))?;
+    let db_data = db.transaction(|conn| {
+        conn.get_full_package_with_categories(name, version.unwrap_or_default())
+    })?;
 
     let mut full_package = FullPackage::from(db_data.clone());
 
     // If inline_abi is true and we have an ABI hash, fetch the ABI content
     if inline_abi.unwrap_or(false) {
-        if let Some(abi_hash) = db_data.abi_ipfs_hash {
-            match pinata_client.fetch_ipfs_content(&abi_hash).await {
+        if let Some(abi_hash) = &db_data.package.abi_ipfs_hash {
+            match pinata_client.fetch_ipfs_content(abi_hash).await {
                 Ok(abi_content) => {
                     if let Ok(abi_json) = serde_json::from_slice::<serde_json::Value>(&abi_content)
                     {
@@ -365,21 +382,53 @@ fn default_catcher(status: Status, _req: &Request<'_>) -> response::status::Cust
     )
 }
 
-// Indicates the service is running
-#[get("/search?<query>&<pagination..>")]
+/// Combined search endpoint that handles different combinations of search parameters.
+#[get("/search?<q>&<category>&<keyword>&<pagination..>")]
 fn search(
     db: &State<Database>,
-    query: String,
+    q: Option<String>,        // General search query
+    category: Option<String>, // Category filter
+    keyword: Option<String>,  // Keyword filter
     pagination: Pagination,
-) -> ApiResult<PaginatedResponse<PackagePreview>> {
-    if query.trim().is_empty() || query.len() > 100 {
+) -> ApiResult<PaginatedResponse<PackagePreviewWithCategories>> {
+    // Validate parameters
+    if let Some(ref query) = q {
+        if query.trim().is_empty() || query.len() > 100 {
+            return Err(ApiError::Generic(
+                "Invalid query parameter".into(),
+                Status::BadRequest,
+            ));
+        }
+    }
+
+    if let Some(ref cat) = category {
+        if cat.trim().is_empty() || cat.len() > 50 {
+            return Err(ApiError::Generic(
+                "Invalid category parameter".into(),
+                Status::BadRequest,
+            ));
+        }
+    }
+
+    if let Some(ref kw) = keyword {
+        if kw.trim().is_empty() || kw.len() > 50 {
+            return Err(ApiError::Generic(
+                "Invalid keyword parameter".into(),
+                Status::BadRequest,
+            ));
+        }
+    }
+
+    // Check if at least one search criteria is provided
+    if q.is_none() && category.is_none() && keyword.is_none() {
         return Err(ApiError::Generic(
-            "Invalid query parameter".into(),
+            "At least one search parameter (q, category, or keyword) must be provided".into(),
             Status::BadRequest,
         ));
     }
 
-    let result = db.transaction(|conn| conn.search_packages(query, pagination))?;
+    let result =
+        db.transaction(|conn| conn.search_packages_combined(q, category, keyword, pagination))?;
     Ok(Json(result))
 }
 

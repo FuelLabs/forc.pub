@@ -201,7 +201,7 @@ pub struct NewPackageKeyword {
     pub keyword: String,
 }
 
-#[derive(QueryableByName, Serialize, Debug)]
+#[derive(QueryableByName, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PackagePreview {
     #[diesel(sql_type = Text)]
@@ -214,6 +214,15 @@ pub struct PackagePreview {
     pub created_at: DateTime<Utc>,
     #[diesel(sql_type = Timestamptz)]
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PackagePreviewWithCategories {
+    #[serde(flatten)]
+    pub package: PackagePreview,
+    pub categories: Vec<String>,
+    pub keywords: Vec<String>,
 }
 
 #[derive(QueryableByName, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -256,6 +265,15 @@ pub struct FullPackage {
     pub readme: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub license: Option<String>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FullPackageWithCategories {
+    #[serde(flatten)]
+    pub package: FullPackage,
+    pub categories: Vec<String>,
+    pub keywords: Vec<String>,
 }
 
 #[derive(QueryableByName)]

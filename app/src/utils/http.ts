@@ -18,6 +18,8 @@ export interface PackagePreview {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  categories: string[];
+  keywords: string[];
 }
 
 export interface AuthenticatedUser {
@@ -122,7 +124,9 @@ type Routes = [
     route: "/search";
     method: "GET";
     queryParams: {
-      query: string;
+      q?: string;
+      category?: string;
+      keyword?: string;
       page?: string;
       per_page?: string;
     };

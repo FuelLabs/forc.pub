@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -11,6 +12,7 @@ import {
   ListItem,
   Link,
   Typography,
+  Chip,
 } from "@mui/material";
 import { FullPackage } from "../hooks/usePackageDetail";
 import "./PackageSidebar.css";
@@ -20,6 +22,8 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import DescriptionIcon from "@mui/icons-material/Description";
 import HomeIcon from "@mui/icons-material/Home";
 import LinkIcon from "@mui/icons-material/Link";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import LabelIcon from "@mui/icons-material/Label";
 
 interface PackageSidebarProps {
   data: FullPackage | null;
@@ -28,6 +32,7 @@ interface PackageSidebarProps {
 }
 
 const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
+  const router = useRouter();
   if (loading) {
     return (
       <Box
@@ -78,6 +83,80 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
             <Typography variant="body2" className="info-value" sx={{ marginLeft: 'auto' }}>{data.forcVersion}</Typography>
           </Box>
         </Box>
+
+        {/* Categories Section */}
+        {data.categories && data.categories.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Box display="flex" alignItems="center" mb={1}>
+              <LabelIcon fontSize="small" className="sidebar-icon" style={{ marginRight: 8, color: '#b0b0b0' }} />
+              <Typography variant="h6" className="sidebar-section-heading">
+                Categories
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+              {data.categories.map((category) => (
+                <Chip
+                  key={category}
+                  label={category}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  sx={{ 
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    "&:hover": {
+                      backgroundColor: "primary.main",
+                      color: "white",
+                    }
+                  }}
+                  onClick={() => {
+                    const newParams = new URLSearchParams();
+                    newParams.set("category", category);
+                    newParams.set("page", "1");
+                    router.push(`/?${newParams.toString()}`);
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Keywords Section */}
+        {data.keywords && data.keywords.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Box display="flex" alignItems="center" mb={1}>
+              <LocalOfferIcon fontSize="small" className="sidebar-icon" style={{ marginRight: 8, color: '#b0b0b0' }} />
+              <Typography variant="h6" className="sidebar-section-heading">
+                Keywords
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+              {data.keywords.map((keyword) => (
+                <Chip
+                  key={keyword}
+                  label={keyword}
+                  size="small"
+                  variant="outlined"
+                  color="secondary"
+                  sx={{ 
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    "&:hover": {
+                      backgroundColor: "secondary.main",
+                      color: "white",
+                    }
+                  }}
+                  onClick={() => {
+                    const newParams = new URLSearchParams();
+                    newParams.set("keyword", keyword);
+                    newParams.set("page", "1");
+                    router.push(`/?${newParams.toString()}`);
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
 
         {data.repository && (
           <div className="sidebar-link-item">

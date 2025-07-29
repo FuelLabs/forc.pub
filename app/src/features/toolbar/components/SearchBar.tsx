@@ -24,19 +24,34 @@ function SearchBar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchValue, setSearchValue] = useState(
-    () => searchParams.get("query") || "",
+    () => searchParams.get("q") || "",
   );
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
 
   const updateURL = useCallback(
     (value: string) => {
       const trimmed = value.trim();
-      const url = trimmed
-        ? `/?query=${encodeURIComponent(trimmed)}&page=1`
-        : "/";
+      const newParams = new URLSearchParams();
+      
+      // Preserve existing category and keyword filters
+      const category = searchParams.get("category");
+      const keyword = searchParams.get("keyword");
+      
+      if (trimmed) {
+        newParams.set("q", trimmed);
+      }
+      if (category) {
+        newParams.set("category", category);
+      }
+      if (keyword) {
+        newParams.set("keyword", keyword);
+      }
+      newParams.set("page", "1");
+      
+      const url = newParams.toString() ? `/?${newParams.toString()}` : "/";
       router.replace(url, { scroll: false });
     },
-    [router],
+    [router, searchParams],
   );
 
   const debouncedUpdateURL = useCallback(
@@ -48,7 +63,7 @@ function SearchBar() {
   );
 
   useEffect(() => {
-    const query = searchParams.get("query") || "";
+    const query = searchParams.get("q") || "";
     setSearchValue(query);
   }, [searchParams]);
 
