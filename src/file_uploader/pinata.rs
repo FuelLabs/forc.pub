@@ -88,6 +88,11 @@ pub fn ipfs_hash_to_tgz_url(hash: &str) -> String {
     format!("{pinata_domain}/ipfs/{hash}?filename={TARBALL_NAME}")
 }
 
+pub fn ipfs_hash_to_docs_url(hash: &str) -> String {
+    let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
+    format!("{pinata_domain}/ipfs/{hash}?filename=docs.tgz")
+}
+
 /// A mock implementation of the PinataClient trait for testing.
 #[cfg(test)]
 pub struct MockPinataClient;
