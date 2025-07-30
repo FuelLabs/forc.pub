@@ -41,6 +41,7 @@ use rocket::{
     response::{
         self,
         stream::{Event, EventStream},
+        Redirect,
     },
     serde::json::Json,
     State,
@@ -432,6 +433,31 @@ fn search(
     Ok(Json(result))
 }
 
+#[get("/docs/<name>/<version>")]
+async fn get_package_docs(
+    db: &State<Database>,
+    name: String,
+    version: String,
+) -> Result<Redirect, Status> {
+    use forc_pub::file_uploader::pinata::ipfs_hash_to_docs_url;
+    
+    let package_result = db.transaction(|conn| {
+        conn.get_full_package_with_categories(name, version)
+    });
+    
+    match package_result {
+        Ok(package_data) => {
+            if let Some(docs_hash) = package_data.package.docs_ipfs_hash {
+                let docs_url = ipfs_hash_to_docs_url(&docs_hash);
+                Ok(Redirect::to(docs_url))
+            } else {
+                Err(Status::NotFound)
+            }
+        }
+        Err(_) => Err(Status::NotFound),
+    }
+}
+
 #[get("/health")]
 fn health() -> String {
     "true".to_string()
@@ -469,6 +495,7 @@ async fn rocket() -> _ {
                 package_versions,
                 recent_packages,
                 search,
+                get_package_docs,
                 all_options,
                 health
             ],
