@@ -89,27 +89,30 @@ async fn generate_and_upload_documentation(
     // Generate documentation
     tracing::info!("Generating documentation for project");
     let output = Command::new("forc")
-        .args(&["doc", "--path", unpacked_dir.to_str().unwrap()])
+        .args(["doc", "--path", unpacked_dir.to_str().unwrap()])
         .current_dir(unpacked_dir)
         .output()
         .map_err(|_| UploadError::FailedToCompile)?;
-    
+
     if !output.status.success() {
         return Err(UploadError::FailedToCompile);
     }
-    
+
     // Upload documentation
     let doc_dir = unpacked_dir.join("out/doc");
     if !doc_dir.exists() {
         return Err(UploadError::FailedToCompile);
     }
-    
+
     let docs_tarball_path = unpacked_dir.join("docs.tgz");
     create_docs_tarball(&doc_dir, &docs_tarball_path)?;
-    
-    tracing::info!("Uploading documentation: {}", docs_tarball_path.to_string_lossy());
+
+    tracing::info!(
+        "Uploading documentation: {}",
+        docs_tarball_path.to_string_lossy()
+    );
     let docs_ipfs_hash = file_uploader.upload_file(&docs_tarball_path).await?;
-    
+
     Ok(docs_ipfs_hash)
 }
 
@@ -118,14 +121,14 @@ fn create_docs_tarball(docs_dir: &Path, output_path: &Path) -> Result<(), Upload
     let tar_gz = File::create(output_path).map_err(|_| UploadError::OpenFile)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = tar::Builder::new(enc);
-    
+
     tar.append_dir_all(".", docs_dir)
         .map_err(|_| UploadError::CopyFiles)?;
     tar.finish().map_err(|_| UploadError::CopyFiles)?;
-    
+
     let enc = tar.into_inner().map_err(|_| UploadError::CopyFiles)?;
     enc.finish().map_err(|_| UploadError::CopyFiles)?;
-    
+
     Ok(())
 }
 
@@ -267,7 +270,8 @@ pub async fn handle_project_upload<'a>(
     };
 
     // Generate and upload documentation
-    let docs_ipfs_hash = generate_and_upload_documentation(&unpacked_dir, file_uploader).await
+    let docs_ipfs_hash = generate_and_upload_documentation(&unpacked_dir, file_uploader)
+        .await
         .map_err(|e| {
             tracing::warn!("Documentation generation failed: {}", e);
         })

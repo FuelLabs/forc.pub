@@ -440,11 +440,10 @@ async fn get_package_docs(
     version: String,
 ) -> Result<Redirect, Status> {
     use forc_pub::file_uploader::pinata::ipfs_hash_to_docs_url;
-    
-    let package_result = db.transaction(|conn| {
-        conn.get_full_package_with_categories(name, version)
-    });
-    
+
+    let package_result =
+        db.transaction(|conn| conn.get_full_package_with_categories(name, version));
+
     match package_result {
         Ok(package_data) => {
             if let Some(docs_hash) = package_data.package.docs_ipfs_hash {

@@ -1096,29 +1096,30 @@ fn test_documentation_functionality() {
     let db = setup_db();
 
     // Set up session, user, token, and upload using the standard pattern
-    let (token, _user, upload) = db.transaction(|conn| {
-        let session = conn
-            .new_user_session(&mock_user_1(), 1000)
-            .expect("session is ok");
-        let user = conn.get_user_for_session(session.id).expect("user is ok");
-        let (token, _) = conn
-            .new_token(user.id, "test token".to_string())
-            .expect("token is ok");
-        let upload = conn
-            .new_upload(&NewUpload {
-                id: uuid::Uuid::new_v4(),
-                forc_version: "0.46.0".to_string(),
-                source_code_ipfs_hash: "QmSourceHash123".to_string(),
-                abi_ipfs_hash: Some("QmAbiHash456".to_string()),
-                bytecode_identifier: Some("0x1234567890abcdef".to_string()),
-                readme: Some(TEST_README.to_string()),
-                forc_manifest: TEST_MANIFEST.to_string(),
-                docs_ipfs_hash: Some("QmDocsHash789".to_string()),
-            })
-            .expect("upload is ok");
-        Ok::<_, diesel::result::Error>((token, user, upload))
-    })
-    .unwrap();
+    let (token, _user, upload) = db
+        .transaction(|conn| {
+            let session = conn
+                .new_user_session(&mock_user_1(), 1000)
+                .expect("session is ok");
+            let user = conn.get_user_for_session(session.id).expect("user is ok");
+            let (token, _) = conn
+                .new_token(user.id, "test token".to_string())
+                .expect("token is ok");
+            let upload = conn
+                .new_upload(&NewUpload {
+                    id: uuid::Uuid::new_v4(),
+                    forc_version: "0.46.0".to_string(),
+                    source_code_ipfs_hash: "QmSourceHash123".to_string(),
+                    abi_ipfs_hash: Some("QmAbiHash456".to_string()),
+                    bytecode_identifier: Some("0x1234567890abcdef".to_string()),
+                    readme: Some(TEST_README.to_string()),
+                    forc_manifest: TEST_MANIFEST.to_string(),
+                    docs_ipfs_hash: Some("QmDocsHash789".to_string()),
+                })
+                .expect("upload is ok");
+            Ok::<_, diesel::result::Error>((token, user, upload))
+        })
+        .unwrap();
 
     // Verify upload was saved with docs hash
     assert_eq!(upload.docs_ipfs_hash, Some("QmDocsHash789".to_string()));
@@ -1126,7 +1127,6 @@ fn test_documentation_functionality() {
     assert_eq!(upload.abi_ipfs_hash, Some("QmAbiHash456".to_string()));
 
     db.transaction(|conn| {
-
         // Create package version using the upload
         let publish_info = PublishInfo {
             package_name: TEST_PACKAGE_NAME.to_string(),
@@ -1144,14 +1144,15 @@ fn test_documentation_functionality() {
         let _package_version = conn.new_package_version(&token, &publish_info)?;
 
         // Test retrieving full package with documentation
-        let full_package = conn.get_full_package_version(
-            TEST_PACKAGE_NAME.to_string(),
-            TEST_VERSION_1.to_string(),
-        )?;
+        let full_package = conn
+            .get_full_package_version(TEST_PACKAGE_NAME.to_string(), TEST_VERSION_1.to_string())?;
 
         assert_eq!(full_package.name, TEST_PACKAGE_NAME);
         assert_eq!(full_package.version, TEST_VERSION_1);
-        assert_eq!(full_package.docs_ipfs_hash, Some("QmDocsHash789".to_string()));
+        assert_eq!(
+            full_package.docs_ipfs_hash,
+            Some("QmDocsHash789".to_string())
+        );
         assert_eq!(full_package.source_code_ipfs_hash, "QmSourceHash123");
         assert_eq!(full_package.abi_ipfs_hash, Some("QmAbiHash456".to_string()));
 
@@ -1161,7 +1162,10 @@ fn test_documentation_functionality() {
             TEST_VERSION_1.to_string(),
         )?;
 
-        assert_eq!(full_package_with_categories.package.docs_ipfs_hash, Some("QmDocsHash789".to_string()));
+        assert_eq!(
+            full_package_with_categories.package.docs_ipfs_hash,
+            Some("QmDocsHash789".to_string())
+        );
 
         // Test upload without documentation
         let upload_without_docs = NewUpload {
@@ -1178,7 +1182,10 @@ fn test_documentation_functionality() {
 
         // Verify upload was saved without docs hash
         assert_eq!(saved_upload_no_docs.docs_ipfs_hash, None);
-        assert_eq!(saved_upload_no_docs.source_code_ipfs_hash, "QmSourceHash999");
+        assert_eq!(
+            saved_upload_no_docs.source_code_ipfs_hash,
+            "QmSourceHash999"
+        );
 
         Ok::<(), forc_pub::db::error::DatabaseError>(())
     })
@@ -1186,39 +1193,39 @@ fn test_documentation_functionality() {
 }
 
 #[test]
-#[serial] 
+#[serial]
 fn test_api_documentation_serialization() {
     use forc_pub::api::search::FullPackage as ApiFullPackage;
 
     let db = setup_db();
 
     // Set up session, user, token, and upload using the standard pattern
-    let (token, _user, upload) = db.transaction(|conn| {
-        let session = conn
-            .new_user_session(&mock_user_1(), 1000)
-            .expect("session is ok");
-        let user = conn.get_user_for_session(session.id).expect("user is ok");
-        let (token, _) = conn
-            .new_token(user.id, "test token".to_string())
-            .expect("token is ok");
-        let upload = conn
-            .new_upload(&NewUpload {
-                id: uuid::Uuid::new_v4(),
-                source_code_ipfs_hash: "QmSourceHash123".to_string(),
-                forc_version: "0.46.0".to_string(),
-                abi_ipfs_hash: Some("QmAbiHash456".to_string()),
-                bytecode_identifier: Some("0x1234567890abcdef".to_string()),
-                readme: Some(TEST_README.to_string()),
-                forc_manifest: TEST_MANIFEST.to_string(),
-                docs_ipfs_hash: Some("QmDocsHash789".to_string()),
-            })
-            .expect("upload is ok");
-        Ok::<_, diesel::result::Error>((token, user, upload))
-    })
-    .unwrap();
+    let (token, _user, upload) = db
+        .transaction(|conn| {
+            let session = conn
+                .new_user_session(&mock_user_1(), 1000)
+                .expect("session is ok");
+            let user = conn.get_user_for_session(session.id).expect("user is ok");
+            let (token, _) = conn
+                .new_token(user.id, "test token".to_string())
+                .expect("token is ok");
+            let upload = conn
+                .new_upload(&NewUpload {
+                    id: uuid::Uuid::new_v4(),
+                    source_code_ipfs_hash: "QmSourceHash123".to_string(),
+                    forc_version: "0.46.0".to_string(),
+                    abi_ipfs_hash: Some("QmAbiHash456".to_string()),
+                    bytecode_identifier: Some("0x1234567890abcdef".to_string()),
+                    readme: Some(TEST_README.to_string()),
+                    forc_manifest: TEST_MANIFEST.to_string(),
+                    docs_ipfs_hash: Some("QmDocsHash789".to_string()),
+                })
+                .expect("upload is ok");
+            Ok::<_, diesel::result::Error>((token, user, upload))
+        })
+        .unwrap();
 
     db.transaction(|conn| {
-
         // Create package version
         let publish_info = PublishInfo {
             package_name: TEST_PACKAGE_NAME.to_string(),
@@ -1253,7 +1260,7 @@ fn test_api_documentation_serialization() {
         // Verify other IPFS URLs are also correct
         assert!(api_package.source_code_ipfs_url.contains("QmSourceHash123"));
         assert!(api_package.source_code_ipfs_url.contains("project.tgz"));
-        
+
         let abi_url = api_package.abi_ipfs_url.as_ref().unwrap();
         assert!(abi_url.contains("QmAbiHash456"));
 
