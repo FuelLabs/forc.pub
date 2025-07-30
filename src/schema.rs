@@ -86,6 +86,7 @@ diesel::table! {
         created_at -> Timestamptz,
         readme -> Nullable<Varchar>,
         forc_manifest -> Varchar,
+        docs_ipfs_hash -> Nullable<Varchar>,
     }
 }
 

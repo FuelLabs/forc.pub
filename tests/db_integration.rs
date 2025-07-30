@@ -186,6 +186,7 @@ fn test_package_versions() {
                     bytecode_identifier: None,
                     readme: Some(TEST_README.into()),
                     forc_manifest: TEST_MANIFEST.into(),
+                    docs_ipfs_hash: Some("test-docs-hash".into()),
                 })
                 .expect("upload is ok");
             Ok::<_, diesel::result::Error>((token, user, upload))
@@ -261,6 +262,7 @@ fn test_package_versions() {
                 forc_version: upload.forc_version,
                 source_code_ipfs_hash: upload.source_code_ipfs_hash,
                 abi_ipfs_hash: upload.abi_ipfs_hash,
+                docs_ipfs_hash: upload.docs_ipfs_hash,
             }
         );
 
@@ -387,6 +389,7 @@ fn test_package_categories_keywords() {
                 bytecode_identifier: None,
                 readme: None,
                 forc_manifest: TEST_MANIFEST.into(),
+                docs_ipfs_hash: Some("test-docs-hash".into()),
             })
             .expect("upload is ok");
 
@@ -467,6 +470,7 @@ async fn test_abi_inlining_with_mock_pinata() {
         forc_version: "0.68.0".to_string(),
         source_code_ipfs_hash: "source_hash_123".to_string(),
         abi_ipfs_hash: Some("abi_hash_456".to_string()),
+        docs_ipfs_hash: Some("docs_hash_789".to_string()),
         repository: None,
         documentation: None,
         homepage: None,
@@ -562,6 +566,7 @@ fn test_full_package_abi_field_serialization() {
         forc_version: "0.68.0".to_string(),
         source_code_ipfs_url: "https://example.com/source".to_string(),
         abi_ipfs_url: Some("https://example.com/abi".to_string()),
+        docs_ipfs_url: Some("https://example.com/docs".to_string()),
         abi: None,
         repository: None,
         documentation: None,
@@ -589,6 +594,7 @@ fn test_full_package_abi_field_serialization() {
         forc_version: "0.68.0".to_string(),
         source_code_ipfs_url: "https://example.com/source".to_string(),
         abi_ipfs_url: Some("https://example.com/abi".to_string()),
+        docs_ipfs_url: Some("https://example.com/docs".to_string()),
         abi: Some(mock_abi.clone()),
         repository: None,
         documentation: None,
@@ -628,6 +634,7 @@ fn test_search_with_categories() {
                 bytecode_identifier: None,
                 readme: None,
                 forc_manifest: TEST_MANIFEST.into(),
+                docs_ipfs_hash: Some("test-docs-hash".into()),
             })
             .expect("upload is ok");
 
@@ -745,6 +752,7 @@ fn test_full_package_conversion_maintains_abi_none() {
         forc_version: "0.68.0".to_string(),
         source_code_ipfs_hash: "source123".to_string(),
         abi_ipfs_hash: Some("abi123".to_string()),
+        docs_ipfs_hash: Some("docs123".to_string()),
         repository: None,
         documentation: None,
         homepage: None,
@@ -786,6 +794,7 @@ fn test_filter_by_category() {
                 bytecode_identifier: None,
                 readme: None,
                 forc_manifest: TEST_MANIFEST.into(),
+                docs_ipfs_hash: Some("test-docs-hash".into()),
             })
             .expect("upload is ok");
 
@@ -910,6 +919,7 @@ fn test_get_full_package_with_categories() {
                 bytecode_identifier: None,
                 readme: Some("Test README".into()),
                 forc_manifest: TEST_MANIFEST.into(),
+                docs_ipfs_hash: Some("test-docs-hash".into()),
             })
             .expect("upload is ok");
 
@@ -992,6 +1002,7 @@ fn test_get_categories_and_keywords_for_packages() {
                 bytecode_identifier: None,
                 readme: None,
                 forc_manifest: TEST_MANIFEST.into(),
+                docs_ipfs_hash: Some("test-docs-hash".into()),
             })
             .expect("upload is ok");
 
@@ -1077,4 +1088,188 @@ fn test_get_categories_and_keywords_for_packages() {
 
         Ok::<(), diesel::result::Error>(())
     });
+}
+
+#[test]
+#[serial]
+fn test_documentation_functionality() {
+    let db = setup_db();
+
+    // Set up session, user, token, and upload using the standard pattern
+    let (token, _user, upload) = db
+        .transaction(|conn| {
+            let session = conn
+                .new_user_session(&mock_user_1(), 1000)
+                .expect("session is ok");
+            let user = conn.get_user_for_session(session.id).expect("user is ok");
+            let (token, _) = conn
+                .new_token(user.id, "test token".to_string())
+                .expect("token is ok");
+            let upload = conn
+                .new_upload(&NewUpload {
+                    id: uuid::Uuid::new_v4(),
+                    forc_version: "0.46.0".to_string(),
+                    source_code_ipfs_hash: "QmSourceHash123".to_string(),
+                    abi_ipfs_hash: Some("QmAbiHash456".to_string()),
+                    bytecode_identifier: Some("0x1234567890abcdef".to_string()),
+                    readme: Some(TEST_README.to_string()),
+                    forc_manifest: TEST_MANIFEST.to_string(),
+                    docs_ipfs_hash: Some("QmDocsHash789".to_string()),
+                })
+                .expect("upload is ok");
+            Ok::<_, diesel::result::Error>((token, user, upload))
+        })
+        .unwrap();
+
+    // Verify upload was saved with docs hash
+    assert_eq!(upload.docs_ipfs_hash, Some("QmDocsHash789".to_string()));
+    assert_eq!(upload.source_code_ipfs_hash, "QmSourceHash123");
+    assert_eq!(upload.abi_ipfs_hash, Some("QmAbiHash456".to_string()));
+
+    db.transaction(|conn| {
+        // Create package version using the upload
+        let publish_info = PublishInfo {
+            package_name: TEST_PACKAGE_NAME.to_string(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some(TEST_DESCRIPTION.to_string()),
+            repository: Some(Url::parse(TEST_URL_REPO).unwrap()),
+            documentation: Some(Url::parse(TEST_URL_DOC).unwrap()),
+            homepage: Some(Url::parse(TEST_URL_HOME).unwrap()),
+            urls: vec![Url::parse(TEST_URL_OTHER).unwrap()],
+            readme: Some(TEST_README.to_string()),
+            license: Some(TEST_LICENSE.to_string()),
+        };
+
+        let _package_version = conn.new_package_version(&token, &publish_info)?;
+
+        // Test retrieving full package with documentation
+        let full_package = conn
+            .get_full_package_version(TEST_PACKAGE_NAME.to_string(), TEST_VERSION_1.to_string())?;
+
+        assert_eq!(full_package.name, TEST_PACKAGE_NAME);
+        assert_eq!(full_package.version, TEST_VERSION_1);
+        assert_eq!(
+            full_package.docs_ipfs_hash,
+            Some("QmDocsHash789".to_string())
+        );
+        assert_eq!(full_package.source_code_ipfs_hash, "QmSourceHash123");
+        assert_eq!(full_package.abi_ipfs_hash, Some("QmAbiHash456".to_string()));
+
+        // Test retrieving full package with categories (should also include docs)
+        let full_package_with_categories = conn.get_full_package_with_categories(
+            TEST_PACKAGE_NAME.to_string(),
+            TEST_VERSION_1.to_string(),
+        )?;
+
+        assert_eq!(
+            full_package_with_categories.package.docs_ipfs_hash,
+            Some("QmDocsHash789".to_string())
+        );
+
+        // Test upload without documentation
+        let upload_without_docs = NewUpload {
+            id: uuid::Uuid::new_v4(),
+            source_code_ipfs_hash: "QmSourceHash999".to_string(),
+            forc_version: "0.46.0".to_string(),
+            abi_ipfs_hash: None,
+            bytecode_identifier: None,
+            readme: None,
+            forc_manifest: TEST_MANIFEST.to_string(),
+            docs_ipfs_hash: None, // No documentation
+        };
+        let saved_upload_no_docs = conn.new_upload(&upload_without_docs)?;
+
+        // Verify upload was saved without docs hash
+        assert_eq!(saved_upload_no_docs.docs_ipfs_hash, None);
+        assert_eq!(
+            saved_upload_no_docs.source_code_ipfs_hash,
+            "QmSourceHash999"
+        );
+
+        Ok::<(), forc_pub::db::error::DatabaseError>(())
+    })
+    .unwrap();
+}
+
+#[test]
+#[serial]
+fn test_api_documentation_serialization() {
+    use forc_pub::api::search::FullPackage as ApiFullPackage;
+
+    let db = setup_db();
+
+    // Set up session, user, token, and upload using the standard pattern
+    let (token, _user, upload) = db
+        .transaction(|conn| {
+            let session = conn
+                .new_user_session(&mock_user_1(), 1000)
+                .expect("session is ok");
+            let user = conn.get_user_for_session(session.id).expect("user is ok");
+            let (token, _) = conn
+                .new_token(user.id, "test token".to_string())
+                .expect("token is ok");
+            let upload = conn
+                .new_upload(&NewUpload {
+                    id: uuid::Uuid::new_v4(),
+                    source_code_ipfs_hash: "QmSourceHash123".to_string(),
+                    forc_version: "0.46.0".to_string(),
+                    abi_ipfs_hash: Some("QmAbiHash456".to_string()),
+                    bytecode_identifier: Some("0x1234567890abcdef".to_string()),
+                    readme: Some(TEST_README.to_string()),
+                    forc_manifest: TEST_MANIFEST.to_string(),
+                    docs_ipfs_hash: Some("QmDocsHash789".to_string()),
+                })
+                .expect("upload is ok");
+            Ok::<_, diesel::result::Error>((token, user, upload))
+        })
+        .unwrap();
+
+    db.transaction(|conn| {
+        // Create package version
+        let publish_info = PublishInfo {
+            package_name: TEST_PACKAGE_NAME.to_string(),
+            upload_id: upload.id,
+            num: Version::parse(TEST_VERSION_1).unwrap(),
+            package_description: Some(TEST_DESCRIPTION.to_string()),
+            repository: Some(Url::parse(TEST_URL_REPO).unwrap()),
+            documentation: Some(Url::parse(TEST_URL_DOC).unwrap()),
+            homepage: Some(Url::parse(TEST_URL_HOME).unwrap()),
+            urls: vec![Url::parse(TEST_URL_OTHER).unwrap()],
+            readme: Some(TEST_README.to_string()),
+            license: Some(TEST_LICENSE.to_string()),
+        };
+
+        conn.new_package_version(&token, &publish_info)?;
+
+        // Get the full package with categories
+        let db_package = conn.get_full_package_with_categories(
+            TEST_PACKAGE_NAME.to_string(),
+            TEST_VERSION_1.to_string(),
+        )?;
+
+        // Convert to API representation
+        let api_package = ApiFullPackage::from(db_package);
+
+        // Verify that docs_ipfs_url is correctly generated
+        assert!(api_package.docs_ipfs_url.is_some());
+        let docs_url = api_package.docs_ipfs_url.as_ref().unwrap();
+        assert!(docs_url.contains("QmDocsHash789"));
+        assert!(docs_url.contains("docs.tgz"));
+
+        // Verify other IPFS URLs are also correct
+        assert!(api_package.source_code_ipfs_url.contains("QmSourceHash123"));
+        assert!(api_package.source_code_ipfs_url.contains("project.tgz"));
+
+        let abi_url = api_package.abi_ipfs_url.as_ref().unwrap();
+        assert!(abi_url.contains("QmAbiHash456"));
+
+        // Test serialization to JSON
+        let json = serde_json::to_string(&api_package).expect("Should serialize to JSON");
+        assert!(json.contains("docsIpfsUrl")); // camelCase serialization
+        assert!(json.contains("QmDocsHash789"));
+
+        Ok::<(), forc_pub::db::error::DatabaseError>(())
+    })
+    .unwrap();
 }
