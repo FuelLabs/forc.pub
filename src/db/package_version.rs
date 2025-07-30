@@ -242,6 +242,7 @@ impl DbConn<'_> {
         
                 u.source_code_ipfs_hash AS source_code_ipfs_hash,
                 u.abi_ipfs_hash AS abi_ipfs_hash,
+                u.docs_ipfs_hash AS docs_ipfs_hash,
         
                 pv.repository AS repository,
                 pv.documentation AS documentation,
@@ -299,6 +300,7 @@ impl DbConn<'_> {
                     u.forc_version AS forc_version,
                     u.source_code_ipfs_hash AS source_code_ipfs_hash,
                     u.abi_ipfs_hash AS abi_ipfs_hash,
+                    u.docs_ipfs_hash AS docs_ipfs_hash,
                     u.readme AS readme,
             
                     pv.repository AS repository,
