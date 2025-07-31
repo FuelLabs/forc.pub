@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::pagination::{PaginatedResponse, Pagination};
 use forc_pub::api::publish::{PublishRequest, PublishResponse, UploadResponse};
-use forc_pub::api::search::{FullPackage, RecentPackagesResponse};
+use forc_pub::api::search::{DownloadLinksResponse, FullPackage, RecentPackagesResponse};
 use forc_pub::api::ApiError;
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
@@ -15,7 +15,8 @@ use forc_pub::api::{
 };
 use forc_pub::db::error::DatabaseError;
 use forc_pub::db::Database;
-use forc_pub::file_uploader::s3::{S3Client, S3ClientImpl};
+use forc_pub::file_uploader::pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url};
+use forc_pub::file_uploader::s3::{ipfs_hash_to_s3_url, S3Client, S3ClientImpl};
 use forc_pub::file_uploader::{
     pinata::{PinataClient, PinataClientImpl},
     FileUploader,
@@ -346,6 +347,34 @@ fn package_versions(db: &State<Database>, name: String) -> ApiResult<Vec<Package
     Ok(Json(versions))
 }
 
+/// Get S3 download links for a package.
+#[get("/package/download?<name>&<version>")]
+fn package_download_links(
+    db: &State<Database>,
+    name: String,
+    version: Option<String>,
+) -> ApiResult<DownloadLinksResponse> {
+    let db_data = db.transaction(|conn| {
+        conn.get_full_package_with_categories(name.clone(), version.unwrap_or_default())
+    })?;
+
+    let source_code_url = ipfs_hash_to_s3_url(&db_data.package.source_code_ipfs_hash)
+        .ok_or_else(|| ApiError::Generic(
+            "S3 configuration not available".to_string(),
+            Status::ServiceUnavailable,
+        ))?;
+
+    let abi_url = db_data.package.abi_ipfs_hash
+        .and_then(|hash| ipfs_hash_to_s3_url(&hash));
+
+    Ok(Json(DownloadLinksResponse {
+        package_name: name,
+        version: db_data.package.version,
+        source_code_s3_url: source_code_url,
+        abi_s3_url: abi_url,
+    }))
+}
+
 #[get("/recent_packages")]
 fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
     let (recently_created, recently_updated) = db.transaction(|conn| {
@@ -467,6 +496,7 @@ async fn rocket() -> _ {
                 packages,
                 package,
                 package_versions,
+                package_download_links,
                 recent_packages,
                 search,
                 all_options,

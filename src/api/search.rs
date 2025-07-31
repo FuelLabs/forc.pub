@@ -14,6 +14,15 @@ pub struct RecentPackagesResponse {
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct DownloadLinksResponse {
+    pub package_name: String,
+    pub version: String,
+    pub source_code_s3_url: String,
+    pub abi_s3_url: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct FullPackage {
     #[serde(flatten)]
     pub package_preview: PackagePreview,
