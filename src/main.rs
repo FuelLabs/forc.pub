@@ -15,7 +15,6 @@ use forc_pub::api::{
 };
 use forc_pub::db::error::DatabaseError;
 use forc_pub::db::Database;
-use forc_pub::file_uploader::pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url};
 use forc_pub::file_uploader::s3::{ipfs_hash_to_s3_url, S3Client, S3ClientImpl};
 use forc_pub::file_uploader::{
     pinata::{PinataClient, PinataClientImpl},
@@ -358,13 +357,17 @@ fn package_download_links(
         conn.get_full_package_with_categories(name.clone(), version.unwrap_or_default())
     })?;
 
-    let source_code_url = ipfs_hash_to_s3_url(&db_data.package.source_code_ipfs_hash)
-        .ok_or_else(|| ApiError::Generic(
-            "S3 configuration not available".to_string(),
-            Status::ServiceUnavailable,
-        ))?;
+    let source_code_url =
+        ipfs_hash_to_s3_url(&db_data.package.source_code_ipfs_hash).ok_or_else(|| {
+            ApiError::Generic(
+                "S3 configuration not available".to_string(),
+                Status::ServiceUnavailable,
+            )
+        })?;
 
-    let abi_url = db_data.package.abi_ipfs_hash
+    let abi_url = db_data
+        .package
+        .abi_ipfs_hash
         .and_then(|hash| ipfs_hash_to_s3_url(&hash));
 
     Ok(Json(DownloadLinksResponse {
