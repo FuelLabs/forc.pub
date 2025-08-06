@@ -73,6 +73,14 @@ impl S3Client for S3ClientImpl {
     }
 }
 
+pub fn ipfs_hash_to_s3_url(hash: &str) -> Option<String> {
+    let bucket_name = env::var("S3_BUCKET_NAME").ok()?;
+    let bucket_region = env::var("S3_BUCKET_REGION").ok()?;
+    Some(format!(
+        "https://{bucket_name}.s3.{bucket_region}.amazonaws.com/{hash}"
+    ))
+}
+
 /// A mock implementation of the S3Client trait for testing.
 #[cfg(test)]
 pub struct MockS3Client;
