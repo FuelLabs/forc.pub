@@ -94,7 +94,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               </Typography>
             </Box>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-              {data.categories.map((category) => (
+              {[...new Set(data.categories)].map((category) => (
                 <Chip
                   key={category}
                   label={category}
@@ -131,7 +131,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               </Typography>
             </Box>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-              {data.keywords.map((keyword) => (
+              {[...new Set(data.keywords)].map((keyword) => (
                 <Chip
                   key={keyword}
                   label={keyword}
