@@ -49,7 +49,7 @@ impl GithubRepoBuilder {
         repo_owner: &str,
         repo_path: &Path,
     ) -> Result<Self, IndexPublishError> {
-        let repo_url = format!("git@github.com:{}/{}.git", repo_owner, repo_name);
+        let repo_url = format!("git@github.com:{repo_owner}/{repo_name}.git");
 
         // Configure callbacks for SSH authentication
         let callbacks = remote_callbacks();
@@ -61,7 +61,7 @@ impl GithubRepoBuilder {
             .fetch_options(fetch_opts)
             .clone(&repo_url, repo_path)
             .map_err(|e| {
-                IndexPublishError::RepoError(format!("Failed to clone repository: {}", e))
+                IndexPublishError::RepoError(format!("Failed to clone repository: {e}"))
             })?;
 
         Ok(Self { repo })
@@ -110,7 +110,7 @@ impl GitRepoBuilder for GithubRepoBuilder {
         let mut remote = self
             .repo
             .find_remote("origin")
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {e}")))?;
 
         remote
             .fetch(
@@ -119,16 +119,13 @@ impl GitRepoBuilder for GithubRepoBuilder {
                 None,
             )
             .map_err(|e| {
-                IndexPublishError::FetchError(format!("Failed to fetch latest changes: {}", e))
+                IndexPublishError::FetchError(format!("Failed to fetch latest changes: {e}"))
             })?;
 
         // Find the remote branch reference
-        let remote_ref_name = format!("refs/remotes/origin/{}", branch_name);
+        let remote_ref_name = format!("refs/remotes/origin/{branch_name}");
         let remote_ref = self.repo.find_reference(&remote_ref_name).map_err(|e| {
-            IndexPublishError::RepoError(format!(
-                "Failed to find reference {}: {}",
-                remote_ref_name, e
-            ))
+            IndexPublishError::RepoError(format!("Failed to find reference {remote_ref_name}: {e}"))
         })?;
 
         let commit_oid = remote_ref
@@ -139,12 +136,12 @@ impl GitRepoBuilder for GithubRepoBuilder {
         let obj = self
             .repo
             .find_object(commit_oid, None)
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find object: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find object: {e}")))?;
 
         self.repo
             .reset(&obj, git2::ResetType::Hard, None)
             .map_err(|e| {
-                IndexPublishError::RepoError(format!("Failed to reset repository: {}", e))
+                IndexPublishError::RepoError(format!("Failed to reset repository: {e}"))
             })?;
 
         // Checkout
@@ -153,11 +150,11 @@ impl GitRepoBuilder for GithubRepoBuilder {
         checkout_builder.force();
         self.repo
             .checkout_tree(&obj, Some(&mut checkout_builder))
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to checkout tree: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to checkout tree: {e}")))?;
 
         self.repo
-            .set_head(&format!("refs/heads/{}", branch_name))
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to set HEAD: {}", e)))?;
+            .set_head(&format!("refs/heads/{branch_name}"))
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to set HEAD: {e}")))?;
 
         Ok(())
     }
@@ -167,20 +164,20 @@ impl GitRepoBuilder for GithubRepoBuilder {
         let mut index = self
             .repo
             .index()
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get index: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get index: {e}")))?;
 
         // Add all files
         index
             .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
             .map_err(|e| {
-                IndexPublishError::RepoError(format!("Failed to add files to index: {}", e))
+                IndexPublishError::RepoError(format!("Failed to add files to index: {e}"))
             })?;
 
         // Check if there are any changes
         let status = self
             .repo
             .statuses(None)
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get status: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get status: {e}")))?;
 
         if status.is_empty() {
             return Err(IndexPublishError::NoChanges);
@@ -189,23 +186,23 @@ impl GitRepoBuilder for GithubRepoBuilder {
         // Write index
         index
             .write()
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to write index: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to write index: {e}")))?;
 
         // Create tree from index
         let tree_id = index
             .write_tree()
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to write tree: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to write tree: {e}")))?;
 
         let tree = self
             .repo
             .find_tree(tree_id)
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find tree: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find tree: {e}")))?;
 
         // Get the current HEAD commit to use as parent
         let head = self
             .repo
             .head()
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get HEAD: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to get HEAD: {e}")))?;
 
         let head_target = head
             .target()
@@ -214,11 +211,11 @@ impl GitRepoBuilder for GithubRepoBuilder {
         let parent_commit = self
             .repo
             .find_commit(head_target)
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find commit: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find commit: {e}")))?;
 
         // Create the signature for the commit
         let signature = Signature::now("Package Index", "forc-pub@fuel.sh").map_err(|e| {
-            IndexPublishError::RepoError(format!("Failed to create signature: {}", e))
+            IndexPublishError::RepoError(format!("Failed to create signature: {e}"))
         })?;
 
         // Create the commit
@@ -232,7 +229,7 @@ impl GitRepoBuilder for GithubRepoBuilder {
                 &tree,             // Tree
                 &[&parent_commit], // Parents
             )
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to create commit: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to create commit: {e}")))?;
 
         tracing::debug!("Created a local commit, id: {commit_id}");
 
@@ -243,7 +240,7 @@ impl GitRepoBuilder for GithubRepoBuilder {
         let mut remote = self
             .repo
             .find_remote("origin")
-            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {e}")))?;
 
         // Configure callbacks for SSH authentication
         let callbacks = remote_callbacks();
@@ -254,10 +251,7 @@ impl GitRepoBuilder for GithubRepoBuilder {
         // Push to remote
         remote
             .push(
-                &[format!(
-                    "refs/heads/{}:refs/heads/{}",
-                    branch_name, branch_name
-                )],
+                &[format!("refs/heads/{branch_name}:refs/heads/{branch_name}")],
                 Some(&mut push_options),
             )
             .map_err(|e| {
@@ -270,7 +264,7 @@ impl GitRepoBuilder for GithubRepoBuilder {
                 {
                     IndexPublishError::AuthenticationError(e.to_string())
                 } else {
-                    IndexPublishError::PushError(format!("Failed to push changes: {}", e))
+                    IndexPublishError::PushError(format!("Failed to push changes: {e}"))
                 }
             })?;
         tracing::debug!("Pushed to the remote repo");
@@ -327,7 +321,7 @@ impl<T: GitRepoBuilder> GithubIndexPublisher<T> {
         let repo_builder_guard = self
             .repo_builder
             .lock()
-            .map_err(|e| IndexPublishError::RepoError(format!("Mutex poisoned: {}", e)))?;
+            .map_err(|e| IndexPublishError::RepoError(format!("Mutex poisoned: {e}")))?;
         // Deref the guard to call methods on the underlying GithubRepoBuilder
         let repo_builder = &*repo_builder_guard;
 
@@ -409,7 +403,7 @@ where
     async fn publish_entry(self, package_entry: PackageEntry) -> Result<(), IndexPublishError> {
         task::spawn_blocking(move || self.process_repo(&package_entry))
             .await
-            .map_err(|e| IndexPublishError::RepoError(format!("Blocking task JoinError: {}", e)))?
+            .map_err(|e| IndexPublishError::RepoError(format!("Blocking task JoinError: {e}")))?
     }
 }
 
@@ -495,7 +489,7 @@ mod tests {
     async fn publish_new_entry_creates_file() {
         let tmp_dir = tempdir().unwrap();
         let repo_path = tmp_dir.path();
-        println!("Test repo path: {:?}", repo_path);
+        println!("Test repo path: {repo_path:?}");
 
         let chunk_size = 2;
         let namespace = Namespace::Flat; // Or Domain("test.com") etc.
@@ -517,13 +511,12 @@ mod tests {
         // 1. Calculate expected file path
         let expected_relative_path = location_from_root(chunk_size, &namespace, entry.name());
         let expected_file_path = repo_path.join(expected_relative_path);
-        println!("Expecting file at: {:?}", expected_file_path);
+        println!("Expecting file at: {expected_file_path:?}");
 
         // 2. Check file exists
         assert!(
             expected_file_path.exists(),
-            "Expected index file was not created at {:?}",
-            expected_file_path
+            "Expected index file was not created at {expected_file_path:?}"
         );
 
         // 3. Check file content
@@ -571,7 +564,7 @@ mod tests {
         initial_index.insert(entry_v1.clone());
         let initial_content = serde_json::to_string_pretty(&initial_index).unwrap();
         fs::write(&file_path, initial_content).unwrap();
-        println!("Pre-wrote initial file at: {:?}", file_path);
+        println!("Pre-wrote initial file at: {file_path:?}");
 
         // Arrange publisher and new entry
         let publisher = mock_github_index_publisher(repo_path, chunk_size, namespace.clone());
@@ -644,7 +637,7 @@ mod tests {
                 let version = semver::Version::from_str(&version).unwrap();
                 assert_eq!(version, *entry_v1.version());
             }
-            e => panic!("Expected VersionCollision error, but got {:?}", e),
+            e => panic!("Expected VersionCollision error, but got {e:?}"),
         }
 
         // Assert file content hasn't changed from initial state
