@@ -55,6 +55,9 @@ pub enum UploadError {
     #[error("Failed to compile project.")]
     FailedToCompile,
 
+    #[error("Failed to generate documentation.")]
+    FailedToGenerateDocumentation,
+
     #[error("Failed to authenticate.")]
     Authentication,
 
@@ -80,10 +83,106 @@ pub enum UploadError {
     IpfsFetchFailed(String),
 }
 
+/// Generates documentation for a Sway project and uploads it to IPFS.
+/// Returns the IPFS hash of the uploaded documentation tarball, or None if generation fails.
+async fn generate_and_upload_documentation(
+    unpacked_dir: &Path,
+    file_uploader: &FileUploader<'_, impl PinataClient, impl S3Client>,
+) -> Result<String, UploadError> {
+    // Generate documentation
+    tracing::info!("Generating documentation for project");
+    let output = Command::new("forc")
+        .args(["doc", "--path", unpacked_dir.to_str().unwrap()])
+        .current_dir(unpacked_dir)
+        .output()
+        .map_err(|_| UploadError::FailedToGenerateDocumentation)?;
+
+    if !output.status.success() {
+        return Err(UploadError::FailedToGenerateDocumentation);
+    }
+
+    // Upload documentation
+    let doc_dir = unpacked_dir.join("out/doc");
+    if !doc_dir.exists() {
+        tracing::warn!(
+            "Documentation directory not found at: {}",
+            doc_dir.display()
+        );
+        return Err(UploadError::FailedToGenerateDocumentation);
+    }
+
+    let docs_tarball_path = unpacked_dir.join("docs.tgz");
+    create_docs_tarball(&doc_dir, &docs_tarball_path)?;
+
+    tracing::info!(
+        "Uploading documentation: {}",
+        docs_tarball_path.to_string_lossy()
+    );
+    let docs_ipfs_hash = file_uploader.upload_file(&docs_tarball_path).await?;
+
+    // Clean up temporary docs tarball after successful upload
+    if let Err(e) = fs::remove_file(&docs_tarball_path) {
+        tracing::warn!(
+            "Failed to cleanup docs tarball at {}: {}",
+            docs_tarball_path.display(),
+            e
+        );
+    }
+
+    Ok(docs_ipfs_hash)
+}
+
+/// Creates a compressed tarball of the documentation directory.
+fn create_docs_tarball(docs_dir: &Path, output_path: &Path) -> Result<(), UploadError> {
+    tracing::debug!(
+        "Creating docs tarball from {} to {}",
+        docs_dir.display(),
+        output_path.display()
+    );
+
+    let tar_gz = File::create(output_path).map_err(|e| {
+        tracing::error!(
+            "Failed to create tarball file at {}: {}",
+            output_path.display(),
+            e
+        );
+        UploadError::OpenFile
+    })?;
+    let enc = GzEncoder::new(tar_gz, Compression::default());
+    let mut tar = tar::Builder::new(enc);
+
+    tar.append_dir_all(".", docs_dir).map_err(|e| {
+        tracing::error!("Failed to append docs directory to tarball: {}", e);
+        UploadError::CopyFiles
+    })?;
+
+    tar.finish().map_err(|e| {
+        tracing::error!("Failed to finish tarball creation: {}", e);
+        UploadError::CopyFiles
+    })?;
+
+    let enc = tar.into_inner().map_err(|e| {
+        tracing::error!("Failed to get encoder from tarball builder: {}", e);
+        UploadError::CopyFiles
+    })?;
+
+    enc.finish().map_err(|e| {
+        tracing::error!("Failed to finish gzip compression: {}", e);
+        UploadError::CopyFiles
+    })?;
+
+    tracing::debug!(
+        "Successfully created docs tarball at {}",
+        output_path.display()
+    );
+    Ok(())
+}
+
 /// Handles the project upload process by:
 /// 1. Unpacking the tarball, compiling the project
 /// 2. Copying the necessary files to a new directory
 /// 3. Storing the source code tarball and ABI file in IPFS
+/// 4. Generating and uploading documentation
 ///
 /// Returns a [NewUpload] with the necessary information to store in the database.
 pub async fn handle_project_upload<'a>(
@@ -216,6 +315,14 @@ pub async fn handle_project_upload<'a>(
         None => None,
     };
 
+    // Generate and upload documentation
+    let docs_ipfs_hash = generate_and_upload_documentation(&unpacked_dir, file_uploader)
+        .await
+        .map_err(|e| {
+            tracing::warn!("Documentation generation failed: {}", e);
+        })
+        .ok();
+
     // Load the contents of readme and Forc.toml into memory for storage in the database.
     let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
     let forc_manifest = fs::read_to_string(project_dir.join(FORC_MANIFEST_FILE))
@@ -229,6 +336,7 @@ pub async fn handle_project_upload<'a>(
         bytecode_identifier,
         readme,
         forc_manifest,
+        docs_ipfs_hash,
     };
 
     Ok(upload)

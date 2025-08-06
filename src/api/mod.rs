@@ -44,16 +44,16 @@ pub enum ApiError {
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for ApiError {
     fn respond_to(self, _request: &'r Request<'_>) -> rocket::response::Result<'o> {
-        error!("API error: {}", self);
+        error!("API error: {self}");
         let (status, message) = match self {
             ApiError::Generic(ref err, ref status) => (*status, err.to_string()),
             ApiError::Database(ref err) => (
                 Status::InternalServerError,
-                format!("Database error: {}", err),
+                format!("Database error: {err}"),
             ),
-            ApiError::Github(ref err) => (Status::Unauthorized, format!("GitHub error: {}", err)),
-            ApiError::Upload(ref err) => (Status::BadRequest, format!("Upload error: {}", err)),
-            ApiError::Publish(ref err) => (Status::BadRequest, format!("Publish error: {}", err)),
+            ApiError::Github(ref err) => (Status::Unauthorized, format!("GitHub error: {err}")),
+            ApiError::Upload(ref err) => (Status::BadRequest, format!("Upload error: {err}")),
+            ApiError::Publish(ref err) => (Status::BadRequest, format!("Publish error: {err}")),
         };
         let body = json!({
             "status": status.code,

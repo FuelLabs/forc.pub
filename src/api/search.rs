@@ -1,5 +1,5 @@
 use crate::{
-    file_uploader::pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_tgz_url},
+    file_uploader::pinata::{ipfs_hash_to_abi_url, ipfs_hash_to_docs_url, ipfs_hash_to_tgz_url},
     models::PackagePreview,
 };
 use serde::Serialize;
@@ -34,6 +34,7 @@ pub struct FullPackage {
     // IPFS URLs
     pub source_code_ipfs_url: String,
     pub abi_ipfs_url: Option<String>,
+    pub docs_ipfs_url: Option<String>,
 
     // Inline ABI data (only populated when requested)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -71,6 +72,9 @@ impl From<crate::models::FullPackageWithCategories> for FullPackage {
             abi_ipfs_url: full_package
                 .abi_ipfs_hash
                 .map(|hash| ipfs_hash_to_abi_url(&hash)),
+            docs_ipfs_url: full_package
+                .docs_ipfs_hash
+                .map(|hash| ipfs_hash_to_docs_url(&hash)),
             abi: None, // Will be populated when inline_abi is requested
             repository: full_package.repository.and_then(string_to_url),
             documentation: full_package.documentation.and_then(string_to_url),

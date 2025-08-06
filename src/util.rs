@@ -9,7 +9,7 @@ pub fn validate_or_format_semver(version: &str) -> Option<String> {
     match Version::parse(version_trimmed) {
         Ok(parsed_version) => {
             // Return the version in the format with a leading 'v'
-            Some(format!("{}", parsed_version))
+            Some(format!("{parsed_version}"))
         }
         Err(_) => None,
     }
@@ -18,14 +18,14 @@ pub fn validate_or_format_semver(version: &str) -> Option<String> {
 pub fn load_env() {
     // Try to load variables from `.env` first
     if let Err(e) = dotenvy::dotenv() {
-        tracing::error!("Could not load .env: {}", e);
+        tracing::error!("Could not load .env: {e}");
     }
 
     // Then load `.env.local`, potentially overwriting values from `.env`
     if let Err(e) = dotenvy::from_path_override(Path::new(".env.local")) {
         if env::var("RUN_ENV").unwrap_or_default() == "local" {
             // If RUN_ENV is not set, log the error
-            tracing::error!("Could not load .env.local: {}", e);
+            tracing::error!("Could not load .env.local: {e}");
         }
     }
 }
@@ -58,8 +58,7 @@ mod tests {
             assert_eq!(
                 validate_or_format_semver(input.trim()),
                 expected,
-                "Failed on input: '{}'",
-                input
+                "Failed on input: '{input}'"
             );
         }
     }

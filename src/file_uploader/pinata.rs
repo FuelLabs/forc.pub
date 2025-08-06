@@ -5,6 +5,8 @@ use crate::{
 use pinata_sdk::{PinByFile, PinataApi};
 use std::{env, path::Path};
 
+const DOCS_TARBALL_NAME: &str = "docs.tgz";
+
 pub trait PinataClient: Sized {
     fn new() -> impl std::future::Future<Output = Result<Self, UploadError>> + Send;
     fn upload_file_to_ipfs(
@@ -57,9 +59,9 @@ impl PinataClient for PinataClientImpl {
         let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
         let url = format!("{pinata_domain}/ipfs/{ipfs_hash}");
 
-        let response = reqwest::get(&url).await.map_err(|e| {
-            UploadError::IpfsFetchFailed(format!("Failed to fetch from IPFS: {}", e))
-        })?;
+        let response = reqwest::get(&url)
+            .await
+            .map_err(|e| UploadError::IpfsFetchFailed(format!("Failed to fetch from IPFS: {e}")))?;
 
         if !response.status().is_success() {
             return Err(UploadError::IpfsFetchFailed(format!(
@@ -72,9 +74,7 @@ impl PinataClient for PinataClientImpl {
             .bytes()
             .await
             .map(|bytes| bytes.to_vec())
-            .map_err(|e| {
-                UploadError::IpfsFetchFailed(format!("Failed to read IPFS content: {}", e))
-            })
+            .map_err(|e| UploadError::IpfsFetchFailed(format!("Failed to read IPFS content: {e}")))
     }
 }
 
@@ -86,6 +86,11 @@ pub fn ipfs_hash_to_abi_url(hash: &str) -> String {
 pub fn ipfs_hash_to_tgz_url(hash: &str) -> String {
     let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
     format!("{pinata_domain}/ipfs/{hash}?filename={TARBALL_NAME}")
+}
+
+pub fn ipfs_hash_to_docs_url(hash: &str) -> String {
+    let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
+    format!("{pinata_domain}/ipfs/{hash}?filename={DOCS_TARBALL_NAME}")
 }
 
 /// A mock implementation of the PinataClient trait for testing.
