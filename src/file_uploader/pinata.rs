@@ -5,6 +5,8 @@ use crate::{
 use pinata_sdk::{PinByFile, PinataApi};
 use std::{env, path::Path};
 
+const DOCS_TARBALL_NAME: &str = "docs.tgz";
+
 pub trait PinataClient: Sized {
     fn new() -> impl std::future::Future<Output = Result<Self, UploadError>> + Send;
     fn upload_file_to_ipfs(
@@ -90,7 +92,7 @@ pub fn ipfs_hash_to_tgz_url(hash: &str) -> String {
 
 pub fn ipfs_hash_to_docs_url(hash: &str) -> String {
     let pinata_domain = env::var("PINATA_URL").expect("PINATA_URL must be set");
-    format!("{pinata_domain}/ipfs/{hash}?filename=docs.tgz")
+    format!("{pinata_domain}/ipfs/{hash}?filename={DOCS_TARBALL_NAME}")
 }
 
 /// A mock implementation of the PinataClient trait for testing.
