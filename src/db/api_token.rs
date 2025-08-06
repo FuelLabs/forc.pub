@@ -35,7 +35,7 @@ impl PlainToken {
             .take(TOKEN_LENGTH)
             .collect::<String>();
 
-        Self(format!("{}{}", TOKEN_PREFIX, secure_alphanumeric_string))
+        Self(format!("{TOKEN_PREFIX}{secure_alphanumeric_string}"))
     }
 }
 

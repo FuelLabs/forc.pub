@@ -81,6 +81,7 @@ pub struct Upload {
     pub bytecode_identifier: Option<String>,
     pub readme: Option<String>,
     pub forc_manifest: String,
+    pub docs_ipfs_hash: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -94,6 +95,7 @@ pub struct NewUpload {
     pub bytecode_identifier: Option<String>,
     pub readme: Option<String>,
     pub forc_manifest: String,
+    pub docs_ipfs_hash: Option<String>,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -251,6 +253,8 @@ pub struct FullPackage {
     pub source_code_ipfs_hash: String,
     #[diesel(sql_type = Nullable<Text>)]
     pub abi_ipfs_hash: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub docs_ipfs_hash: Option<String>,
 
     // Version Metadata
     #[diesel(sql_type = Nullable<Text>)]

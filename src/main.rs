@@ -41,6 +41,7 @@ use rocket::{
     response::{
         self,
         stream::{Event, EventStream},
+        Redirect,
     },
     serde::json::Json,
     State,
@@ -50,7 +51,7 @@ use std::fs::{self};
 use std::path::PathBuf;
 use std::str::FromStr;
 use tempfile::tempdir;
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
@@ -312,9 +313,22 @@ async fn package(
     version: Option<String>,
     inline_abi: Option<bool>,
 ) -> ApiResult<FullPackage> {
-    let db_data = db.transaction(|conn| {
-        conn.get_full_package_with_categories(name, version.unwrap_or_default())
-    })?;
+    let db_data = db
+        .transaction(|conn| {
+            conn.get_full_package_with_categories(
+                name.clone(),
+                version.as_deref().unwrap_or_default().to_string(),
+            )
+        })
+        .map_err(|e| {
+            error!(
+                "Database error when fetching package '{}' version '{}': {}",
+                name,
+                version.as_deref().unwrap_or("latest"),
+                e
+            );
+            e
+        })?;
 
     let mut full_package = FullPackage::from(db_data.clone());
 
@@ -464,6 +478,40 @@ fn search(
     Ok(Json(result))
 }
 
+#[get("/docs/<name>/<version>")]
+async fn get_package_docs(
+    db: &State<Database>,
+    name: String,
+    version: String,
+) -> Result<Redirect, Status> {
+    use forc_pub::file_uploader::pinata::ipfs_hash_to_docs_url;
+
+    let package_result =
+        db.transaction(|conn| conn.get_full_package_with_categories(name.clone(), version.clone()));
+
+    match package_result {
+        Ok(package_data) => {
+            if let Some(docs_hash) = package_data.package.docs_ipfs_hash {
+                let docs_url = ipfs_hash_to_docs_url(&docs_hash);
+                Ok(Redirect::to(docs_url))
+            } else {
+                error!(
+                    "Documentation not found for package '{}' version '{}'",
+                    name, version
+                );
+                Err(Status::NotFound)
+            }
+        }
+        Err(e) => {
+            error!(
+                "Database error when fetching documentation for package '{}' version '{}': {}",
+                name, version, e
+            );
+            Err(Status::NotFound)
+        }
+    }
+}
+
 #[get("/health")]
 fn health() -> String {
     "true".to_string()
@@ -502,6 +550,7 @@ async fn rocket() -> _ {
                 package_download_links,
                 recent_packages,
                 search,
+                get_package_docs,
                 all_options,
                 health
             ],
