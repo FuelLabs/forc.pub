@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createHighlighter, type Highlighter } from "shiki";
+import swayGrammar from "../../../syntaxes/sway.tmlanguage.json";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -9,6 +10,8 @@ async function getSingletonHighlighter(theme: string) {
       themes: [theme],
       langs: ["js"],
     }).then(async (highlighter) => {
+      // Load the Sway grammar - cast to unknown first to bypass type checking
+      await highlighter.loadLanguage(swayGrammar as unknown as Parameters<typeof highlighter.loadLanguage>[0]);
       return highlighter;
     });
   }
