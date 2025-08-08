@@ -24,6 +24,7 @@ import "./PackageDetail.css";
 import PackageSidebar from "./PackageSidebar";
 import { AbiContent } from "./AbiContent";
 import { VersionsList } from "./VersionsList";
+import CodeBlock from "./CodeBlock";
 
 type TabNames =
   | "Readme"
@@ -100,7 +101,26 @@ const PackageDetail: React.FC<PackageDetailProps> = ({
       <CardContent className="card-content">
         {packageData.readme ? (
           <div className="readme-content">
-            <ReactMarkdown>
+            <ReactMarkdown
+              components={{
+                code: ({ children, className, ...props }) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return match ? (
+                    <CodeBlock {...props}>
+                      {children}
+                    </CodeBlock>
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                pre: ({ children }) => {
+                  // Remove the default pre wrapper, let CodeBlock handle its own styling
+                  return <>{children}</>;
+                }
+              }}
+            >
               {packageData.readme}
             </ReactMarkdown>
           </div>
