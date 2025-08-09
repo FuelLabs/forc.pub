@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createHighlighter, type Highlighter } from "shiki";
+import swayGrammar from "../../../syntaxes/sway.tmlanguage.json";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -9,6 +10,12 @@ async function getSingletonHighlighter(theme: string) {
       themes: [theme],
       langs: ["js"],
     }).then(async (highlighter) => {
+      try {
+        // Load the Sway grammar - cast to unknown first to bypass type checking
+        await highlighter.loadLanguage(swayGrammar as unknown as Parameters<typeof highlighter.loadLanguage>[0]);
+      } catch (error) {
+        console.error("Error loading Sway grammar:", error);
+      }
       return highlighter;
     });
   }
@@ -22,7 +29,7 @@ const CodeBlock: React.FC<{
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const code = String(children).trim();
-  const language = "sway";
+  const language = "Sway";
   const theme = "nord";
 
   useEffect(() => {
@@ -31,12 +38,22 @@ const CodeBlock: React.FC<{
     getSingletonHighlighter(theme)
       .then((highlighter) => {
         if (!cancelled) {
-          setHtml(
-            highlighter.codeToHtml(code, {
-              lang: language,
-              theme,
-            })
-          );
+          try {
+            setHtml(
+              highlighter.codeToHtml(code, {
+                lang: language,
+                theme,
+              })
+            );
+          } catch (langError) {
+            console.warn(`Language ${language} not found, falling back to text`);
+            setHtml(
+              highlighter.codeToHtml(code, {
+                lang: "text",
+                theme,
+              })
+            );
+          }
           setLoading(false);
         }
       })
