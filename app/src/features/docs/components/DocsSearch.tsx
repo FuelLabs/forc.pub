@@ -25,6 +25,7 @@ import { searchPackages, getRecentPackages, PackageSearchResult, RecentPackagesR
 
 export default function DocsSearch() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchResults, setSearchResults] = useState<PackageSearchResult[]>([]);
   const [recentPackages, setRecentPackages] = useState<RecentPackagesResponse>({
     recentlyCreated: [],
@@ -38,6 +39,24 @@ export default function DocsSearch() {
     // Load recent packages on component mount
     loadRecentPackages();
   }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Perform search when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery.trim()) {
+      handleSearch(debouncedQuery);
+    } else {
+      setSearchResults([]);
+    }
+  }, [debouncedQuery]);
 
   const loadRecentPackages = async () => {
     try {
@@ -70,15 +89,7 @@ export default function DocsSearch() {
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value;
-    setSearchQuery(query);
-    
-    // Debounce search
-    setTimeout(() => {
-      if (query === searchQuery) {
-        handleSearch(query);
-      }
-    }, 300);
+    setSearchQuery(event.target.value);
   };
 
   const renderPackageCard = (pkg: PackageSearchResult) => (

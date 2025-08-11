@@ -95,11 +95,26 @@ export default async function DocsPage({ params }: DocsPageProps) {
     // Post-process the HTML content to improve styling and add navigation
     const processedContent = processDocumentationHTML(docContent, name, version);
     
+    // Sanitize the HTML content to prevent XSS attacks
+    // Note: In a production app, you'd want more sophisticated HTML sanitization
+    // For now, we'll do basic content filtering to remove potentially dangerous elements
+    let sanitizedContent = processedContent;
+    
+    // Remove script tags and event handlers
+    sanitizedContent = sanitizedContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    sanitizedContent = sanitizedContent.replace(/<script[^>]*\/>/gi, '');
+    sanitizedContent = sanitizedContent.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+    sanitizedContent = sanitizedContent.replace(/javascript:/gi, '');
+    
+    // Remove other potentially dangerous elements
+    sanitizedContent = sanitizedContent.replace(/<(object|embed|iframe|frame|frameset|noframes|noscript)[^>]*>[\s\S]*?<\/\1>/gi, '');
+    sanitizedContent = sanitizedContent.replace(/<(object|embed|iframe|frame|frameset|noframes|noscript)[^>]*\/>/gi, '');
+    
     // Return the documentation content as HTML
     return (
       <div 
         className="docs-content"
-        dangerouslySetInnerHTML={{ __html: processedContent }}
+        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         style={{
           width: '100%',
           minHeight: '100vh',
@@ -116,6 +131,120 @@ export default async function DocsPage({ params }: DocsPageProps) {
     );
   } catch (error) {
     console.error(`Error serving documentation for ${name}@${version}:`, error);
+    
+    // Provide more specific error handling based on error type
+    if (error instanceof Error) {
+      if (error.message.includes('not available from any source')) {
+        // Return a more helpful error page for missing docs instead of 404
+        return (
+          <div style={{
+            width: '100%',
+            minHeight: '100vh',
+            padding: '40px 20px',
+            textAlign: 'center',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            lineHeight: '1.6',
+            color: '#333',
+            backgroundColor: '#fff',
+            maxWidth: '800px',
+            margin: '0 auto'
+          }}>
+            <h1 style={{ color: '#f57c00', marginBottom: '20px' }}>
+              Documentation Temporarily Unavailable
+            </h1>
+            <p style={{ fontSize: '18px', marginBottom: '20px' }}>
+              Documentation for <strong>{name} v{version}</strong> is temporarily unavailable.
+            </p>
+            <p style={{ color: '#666', marginBottom: '30px' }}>
+              This could be due to:
+            </p>
+            <ul style={{ 
+              textAlign: 'left', 
+              display: 'inline-block',
+              color: '#666',
+              marginBottom: '30px'
+            }}>
+              <li>Documentation is still being processed after publishing</li>
+              <li>Temporary issues accessing IPFS storage</li>
+              <li>Network connectivity issues</li>
+            </ul>
+            <p style={{ marginBottom: '30px' }}>
+              Please try again in a few minutes, or browse other documentation.
+            </p>
+            <a 
+              href={`/package/${name}/${version}`}
+              style={{
+                display: 'inline-block',
+                padding: '12px 24px',
+                backgroundColor: '#1976d2',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                marginRight: '10px'
+              }}
+            >
+              View Package Details
+            </a>
+            <a 
+              href="/docs"
+              style={{
+                display: 'inline-block',
+                padding: '12px 24px',
+                border: '1px solid #1976d2',
+                color: '#1976d2',
+                textDecoration: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              Browse Documentation
+            </a>
+          </div>
+        );
+      }
+      
+      if (error.message.includes('Package not found')) {
+        // Handle package not found case
+        return (
+          <div style={{
+            width: '100%',
+            minHeight: '100vh',
+            padding: '40px 20px',
+            textAlign: 'center',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            lineHeight: '1.6',
+            color: '#333',
+            backgroundColor: '#fff',
+            maxWidth: '800px',
+            margin: '0 auto'
+          }}>
+            <h1 style={{ color: '#d32f2f', marginBottom: '20px' }}>
+              Package Not Found
+            </h1>
+            <p style={{ fontSize: '18px', marginBottom: '20px' }}>
+              The package <strong>{name} v{version}</strong> does not exist.
+            </p>
+            <p style={{ color: '#666', marginBottom: '30px' }}>
+              Please check the package name and version, or search for available packages.
+            </p>
+            <a 
+              href="/docs"
+              style={{
+                display: 'inline-block',
+                padding: '12px 24px',
+                backgroundColor: '#1976d2',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              Browse All Documentation
+            </a>
+          </div>
+        );
+      }
+    }
+    
+    // Fallback to 404 for unknown errors
     notFound();
   }
 }

@@ -1,7 +1,19 @@
 import { extract } from 'tar-stream';
 import * as pako from 'pako';
 
+// Simple in-memory cache with TTL for documentation content
+const documentationCache = new Map<string, { content: string; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Promise<string> {
+  // Check cache first
+  const cacheKey = `${ipfsHash}-${filePath}`;
+  const cached = documentationCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`Cache hit for ${cacheKey}`);
+    return cached.content;
+  }
   const urlVariants: (string | null)[] = [
     // Primary: Try Pinata with docs.tgz filename (matches backend)
     `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tgz`,
@@ -15,29 +27,68 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
     `https://gateway.pinata.cloud/ipfs/${ipfsHash}`
   ];
   
-  for (const url of urlVariants) {
-    if (!url) continue; // Skip null URLs (e.g., when S3 is not configured)
-    
-    try {
-      console.log(`Attempting to fetch docs from: ${url}`);
-      const response = await fetch(url);
-      
-      if (response.ok) {
-        const content = await extractFromTarball(response, filePath);
-        if (content) {
-          console.log(`Successfully extracted ${filePath} from ${url}`);
-          return content;
+  // Try fast endpoints first with shorter timeout, then longer ones
+  const fastUrls = urlVariants.slice(0, 2).filter(Boolean) as string[];
+  const slowUrls = urlVariants.slice(2).filter(Boolean) as string[];
+
+  const tryUrlsWithTimeout = async (urls: string[], timeoutMs: number) => {
+    for (const url of urls) {
+      try {
+        console.log(`Attempting to fetch docs from: ${url} (timeout: ${timeoutMs}ms)`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const content = await extractFromTarball(response, filePath);
+          if (content) {
+            console.log(`Successfully extracted ${filePath} from ${url}`);
+            return content;
+          }
+        } else {
+          console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
         }
-      } else {
-        console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn(`Timeout fetching from ${url} after ${timeoutMs}ms`);
+        } else {
+          console.warn(`Error fetching from ${url}:`, error);
+        }
       }
-    } catch (error) {
-      console.warn(`Error fetching from ${url}:`, error);
-      // Continue to next URL variant
+    }
+    return null;
+  };
+
+  // Try fast URLs first (3s timeout), then slow ones (10s timeout)
+  let content = await tryUrlsWithTimeout(fastUrls, 3000);
+  if (!content && slowUrls.length > 0) {
+    content = await tryUrlsWithTimeout(slowUrls, 10000);
+  }
+
+  if (!content) {
+    throw new Error('Documentation not available from any source (IPFS or S3)');
+  }
+
+  // Cache the successful result
+  documentationCache.set(cacheKey, {
+    content,
+    timestamp: Date.now()
+  });
+  
+  // Simple cache cleanup - remove expired entries occasionally (10% chance)
+  if (Math.random() < 0.1) {
+    const now = Date.now();
+    for (const [key, value] of documentationCache.entries()) {
+      if (now - value.timestamp > CACHE_TTL) {
+        documentationCache.delete(key);
+      }
     }
   }
-  
-  throw new Error('Documentation not available from any source (IPFS or S3)');
+
+  return content;
 }
 
 async function extractFromTarball(response: Response, targetFilePath: string): Promise<string | null> {
