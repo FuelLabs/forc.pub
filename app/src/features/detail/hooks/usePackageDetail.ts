@@ -14,6 +14,7 @@ export interface FullPackage {
   forcVersion: string;
   sourceCodeIpfsUrl: string;
   abiIpfsUrl: string | null;
+  docsIpfsUrl: string | null;
   repository: string | null;
   documentation: string | null;
   homepage: string | null;
