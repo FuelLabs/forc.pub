@@ -108,7 +108,6 @@ async function extractFromTarball(response: Response, targetFilePath: string): P
     return new Promise((resolve, reject) => {
       const extractor = extract();
       let found = false;
-      
       extractor.on('entry', (header, stream, next) => {
         // Look for the exact file path or index.html if path matches directory
         const shouldExtract = 
@@ -172,4 +171,66 @@ export function ipfsHashToS3Url(ipfsHash: string): string | null {
   }
   
   return `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${ipfsHash}`;
+}
+
+// Debug function to list all files in a tarball
+export async function debugTarballStructure(ipfsHash: string): Promise<string[]> {
+  const urlVariants: (string | null)[] = [
+    `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tgz`,
+    `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tar.gz`,
+    `https://ipfs.io/ipfs/${ipfsHash}`,
+    ipfsHashToS3Url(ipfsHash),
+    `https://gateway.pinata.cloud/ipfs/${ipfsHash}`
+  ];
+  
+  for (const url of urlVariants.filter(Boolean) as string[]) {
+    try {
+      console.log(`Attempting to fetch for debug from: ${url}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        const compressed = new Uint8Array(arrayBuffer);
+        
+        let decompressed: Uint8Array;
+        try {
+          decompressed = pako.ungzip(compressed);
+        } catch (error) {
+          console.error('Failed to decompress tarball for debug:', error);
+          continue;
+        }
+        
+        return new Promise((resolve, reject) => {
+          const extractor = extract();
+          const allFiles: string[] = [];
+          
+          extractor.on('entry', (header, stream, next) => {
+            allFiles.push(header.name);
+            stream.on('end', next);
+            stream.resume(); // Skip all files, just collect names
+          });
+          
+          extractor.on('finish', () => {
+            resolve(allFiles);
+          });
+          
+          extractor.on('error', (err) => {
+            console.error('Debug extraction error:', err);
+            reject(err);
+          });
+          
+          extractor.end(decompressed);
+        });
+      }
+    } catch (error) {
+      console.warn(`Debug fetch failed from ${url}:`, error);
+    }
+  }
+  
+  return [];
 }
