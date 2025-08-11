@@ -113,14 +113,20 @@ export async function GET(request: NextRequest) {
   console.log(`Cache MISS for ${cacheKey} - processing from IPFS`);
 
   try {
+    console.log(`Processing request for ipfsHash: ${ipfsHash}, filePath: ${filePath}`);
+    
     // Extract all files from tarball in ONE operation
     const allFiles = await extractAllFromIPFS(ipfsHash);
     
     // Get the HTML file
     const docContent = allFiles[filePath];
     if (!docContent) {
+      console.error(`File ${filePath} not found in tarball`);
+      console.log(`Available files:`, Object.keys(allFiles).slice(0, 20));
       throw new Error(`File ${filePath} not found in tarball`);
     }
+    
+    console.log(`Successfully found ${filePath}, content length: ${docContent.length}`);
     
     // Handle byte code conversion if needed
     let actualContent = docContent;
@@ -186,6 +192,67 @@ export async function GET(request: NextRequest) {
     processedContent = processedContent.replace(
       /href="(\.\.\/)+static\.files\/([^"]+\.(?:svg|png|ico|woff|woff2|ttf))"/g,
       `href="/docs/static/$2?ipfs=${ipfsHash}"`
+    );
+    
+    // Fix internal documentation links to point to our pure route
+    processedContent = processedContent.replace(
+      /href="([^"]+\.html)"/g,
+      (match, href) => {
+        try {
+          // Skip external links (http/https) and anchors (#)
+          if (href.startsWith('http') || href.startsWith('#') || href.includes('://')) {
+            return match;
+          }
+          
+          // Convert relative paths to absolute within the docs
+          let docPath = href;
+          
+          // Handle relative paths like "../option/index.html"
+          if (href.startsWith('../')) {
+            // Remove leading ../ and resolve relative to current file
+            const currentDir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+            const relativeParts = href.split('/').filter(part => part !== '');
+            const pathParts = currentDir ? currentDir.split('/').filter(part => part !== '') : [];
+            
+            for (const part of relativeParts) {
+              if (part === '..') {
+                if (pathParts.length > 0) {
+                  pathParts.pop(); // Go up one directory
+                }
+              } else if (part !== '.') {
+                pathParts.push(part);
+              }
+            }
+            
+            docPath = pathParts.join('/');
+          } else if (!href.startsWith('http') && !href.startsWith('/') && !href.startsWith('#')) {
+            // Handle relative paths within the same directory (like "struct.Address.html")
+            const currentDir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+            if (currentDir) {
+              docPath = currentDir + '/' + href;
+            }
+          }
+          
+          // Ensure path doesn't start with /
+          docPath = docPath.replace(/^\/+/, '');
+          
+          // Don't rewrite if path is empty
+          if (!docPath) {
+            return match;
+          }
+          
+          // If the path doesn't start with 'std/', prepend it since that's the actual structure
+          if (!docPath.startsWith('std/')) {
+            docPath = 'std/' + docPath;
+          }
+          
+          console.log(`Rewriting link: ${href} -> /docs/pure?ipfs=${ipfsHash}&file=${docPath}`);
+          return `href="/docs/pure?ipfs=${ipfsHash}&file=${docPath}"`;
+        } catch (error) {
+          console.error('Error rewriting link:', href, error);
+          return match; // Return original if there's an error
+        }
+      }
     );
 
     // Replace all CSS link tags with one inline style block
