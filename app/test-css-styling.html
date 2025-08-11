@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CSS Styling</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border: 2px solid; }
+        .pass { border-color: green; background: #e8f5e8; }
+        .fail { border-color: red; background: #f5e8e8; }
+        iframe { width: 100%; height: 500px; border: 1px solid #ccc; margin: 10px 0; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🎨 CSS Styling Test</h1>
+    
+    <div id="test-status">🔄 Loading test...</div>
+    
+    <iframe id="docs-frame" src="http://localhost:3001/docs/std/index.html"></iframe>
+    
+    <div id="test-log" class="log"></div>
+    
+    <script>
+        const testLog = document.getElementById('test-log');
+        const testStatus = document.getElementById('test-status');
+        
+        function log(message) {
+            console.log(message);
+            testLog.innerHTML += message + '\n';
+        }
+        
+        function setStatus(message, isPass) {
+            testStatus.innerHTML = message;
+            testStatus.className = 'test-result ' + (isPass ? 'pass' : 'fail');
+        }
+        
+        document.getElementById('docs-frame').onload = function() {
+            setTimeout(() => {
+                try {
+                    const frame = document.getElementById('docs-frame');
+                    const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                    
+                    log('✅ Page loaded successfully');
+                    
+                    // Check if search input exists
+                    const searchInput = frameDoc.getElementById('search-input');
+                    if (!searchInput) {
+                        setStatus('❌ FAIL: Search input not found', false);
+                        return;
+                    }
+                    log('✅ Search input found');
+                    
+                    // Check if search results container exists
+                    const searchSection = frameDoc.getElementById('search');
+                    if (!searchSection) {
+                        setStatus('❌ FAIL: Search results container not found', false);
+                        return;
+                    }
+                    log('✅ Search results container found');
+                    
+                    // Type 'a' in search input
+                    log('🔍 Typing "a" in search input...');
+                    searchInput.value = 'a';
+                    
+                    // Trigger input event
+                    const inputEvent = new Event('input', { bubbles: true });
+                    searchInput.dispatchEvent(inputEvent);
+                    
+                    // Wait for search to complete
+                    setTimeout(() => {
+                        const searchHTML = searchSection.innerHTML;
+                        log('📄 Search section HTML: ' + searchHTML.substring(0, 300) + '...');
+                        
+                        // Test CSS classes and structure
+                        const hasSearchResultsClass = searchSection.className.includes('search-results');
+                        const hasTable = searchHTML.includes('<table>');
+                        const hasTrTd = searchHTML.includes('<tr') && searchHTML.includes('<td');
+                        const hasTypeSpan = searchHTML.includes('<span class="type');
+                        
+                        // Check if main content is hidden  
+                        const mainSection = frameDoc.getElementById('main-content');
+                        const mainHidden = mainSection && (mainSection.className.includes('hidden') || mainSection.style.display === 'none');
+                        
+                        log('🎨 CSS Structure Tests:');
+                        log('  - Search section has "search-results" class: ' + hasSearchResultsClass);
+                        log('  - Results use table structure: ' + hasTable);
+                        log('  - Has proper tr/td tags: ' + hasTrTd);
+                        log('  - Has type span with class: ' + hasTypeSpan);
+                        log('  - Main content is hidden: ' + mainHidden);
+                        log('  - Search section classes: ' + (searchSection.className || 'none'));
+                        log('  - Main section classes: ' + (mainSection ? mainSection.className : 'none'));
+                        
+                        if (hasSearchResultsClass && hasTable && hasTrTd && hasTypeSpan && mainHidden) {
+                            setStatus('🎉 PASS: Search results now have proper CSS styling!', true);
+                            log('✅ SUCCESS: Search results are using the proper CSS structure matching GitHub Pages');
+                        } else {
+                            setStatus('❌ FAIL: CSS styling is incomplete', false);
+                            log('❌ FAILURE: Some CSS styling elements are missing');
+                        }
+                        
+                    }, 1000); // Wait 1 second for search to complete
+                    
+                } catch (error) {
+                    setStatus('❌ FAIL: Test error - ' + error.message, false);
+                    log('💥 Test error: ' + error.message);
+                    log('🔧 This might be due to CORS restrictions or the page not loading properly');
+                }
+            }, 2000); // Wait 2 seconds for page to fully load
+        };
+        
+        // Timeout fallback
+        setTimeout(() => {
+            if (testStatus.innerHTML.includes('Loading test')) {
+                setStatus('❌ FAIL: Test timed out', false);
+                log('⏰ Test timed out - page may not have loaded');
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

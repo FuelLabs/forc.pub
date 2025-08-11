@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Search</title>
+</head>
+<body>
+    <h1>Debug Search Issues</h1>
+    <iframe id="docs-frame" src="http://localhost:3000/docs/working?ipfs=QmexhLHpyb6TMArffS6prZesMnYu53FdL7ThEA5F3ab3va" width="100%" height="600"></iframe>
+    
+    <h2>Console Output:</h2>
+    <pre id="console-output"></pre>
+    
+    <script>
+        const output = document.getElementById('console-output');
+        
+        // Wait for iframe to load
+        document.getElementById('docs-frame').onload = function() {
+            setTimeout(() => {
+                try {
+                    const frame = document.getElementById('docs-frame');
+                    const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                    
+                    // Check if elements exist
+                    const searchInput = frameDoc.getElementById('search-input');
+                    const searchContainer = frameDoc.getElementById('search');
+                    
+                    output.textContent += `Search input found: ${searchInput ? 'YES' : 'NO'}\n`;
+                    output.textContent += `Search container found: ${searchContainer ? 'YES' : 'NO'}\n`;
+                    
+                    // Check if SEARCH_INDEX exists
+                    const hasIndex = frame.contentWindow.SEARCH_INDEX ? 'YES' : 'NO';
+                    output.textContent += `SEARCH_INDEX found: ${hasIndex}\n`;
+                    
+                    // Check if functions exist
+                    const hasInitSearch = typeof frame.contentWindow.initSearch === 'function' ? 'YES' : 'NO';
+                    output.textContent += `initSearch function: ${hasInitSearch}\n`;
+                    
+                    // Try to trigger search
+                    if (searchInput) {
+                        searchInput.value = 'asset';
+                        const event = new Event('input', { bubbles: true });
+                        searchInput.dispatchEvent(event);
+                        
+                        setTimeout(() => {
+                            const resultsHTML = searchContainer ? searchContainer.innerHTML : 'N/A';
+                            output.textContent += `\nSearch results HTML (first 200 chars): ${resultsHTML.substring(0, 200)}\n`;
+                            output.textContent += `Results display style: ${searchContainer ? searchContainer.style.display : 'N/A'}\n`;
+                        }, 500);
+                    }
+                    
+                } catch (error) {
+                    output.textContent += `\nError accessing iframe: ${error.message}\n`;
+                    output.textContent += `This might be due to CORS restrictions.\n`;
+                    output.textContent += `\nPlease open the browser console (F12) and check for JavaScript errors.\n`;
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
