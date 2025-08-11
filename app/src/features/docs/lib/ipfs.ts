@@ -234,3 +234,119 @@ export async function debugTarballStructure(ipfsHash: string): Promise<string[]>
   
   return [];
 }
+
+// Extract all files from IPFS tarball
+export async function extractAllFromTarball(ipfsHash: string): Promise<Map<string, string>> {
+  const urlVariants: (string | null)[] = [
+    `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tgz`,
+    `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tar.gz`,
+    `https://ipfs.io/ipfs/${ipfsHash}`,
+    ipfsHashToS3Url(ipfsHash),
+    `https://gateway.pinata.cloud/ipfs/${ipfsHash}`
+  ];
+  
+  const tryUrlsWithTimeout = async (urls: string[], timeoutMs: number) => {
+    for (const url of urls) {
+      try {
+        console.log(`Attempting to fetch all files from: ${url} (timeout: ${timeoutMs}ms)`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const files = await extractAllFilesFromTarball(response);
+          if (files && files.size > 0) {
+            console.log(`Successfully extracted ${files.size} files from ${url}`);
+            return files;
+          }
+        } else {
+          console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn(`Timeout fetching from ${url} after ${timeoutMs}ms`);
+        } else {
+          console.warn(`Error fetching from ${url}:`, error);
+        }
+      }
+    }
+    return null;
+  };
+
+  // Try fast URLs first (3s timeout), then slow ones (10s timeout)
+  const fastUrls = urlVariants.slice(0, 2).filter(Boolean) as string[];
+  const slowUrls = urlVariants.slice(2).filter(Boolean) as string[];
+  
+  let files = await tryUrlsWithTimeout(fastUrls, 3000);
+  if (!files && slowUrls.length > 0) {
+    files = await tryUrlsWithTimeout(slowUrls, 10000);
+  }
+
+  if (!files) {
+    throw new Error('Documentation not available from any source (IPFS or S3)');
+  }
+
+  return files;
+}
+
+async function extractAllFilesFromTarball(response: Response): Promise<Map<string, string> | null> {
+  try {
+    const arrayBuffer = await response.arrayBuffer();
+    const compressed = new Uint8Array(arrayBuffer);
+    
+    // Decompress gzipped data
+    let decompressed: Uint8Array;
+    try {
+      decompressed = pako.ungzip(compressed);
+    } catch (error) {
+      console.error('Failed to decompress tarball:', error);
+      return null;
+    }
+    
+    return new Promise((resolve, reject) => {
+      const extractor = extract();
+      const allFiles = new Map<string, string>();
+      
+      extractor.on('entry', (header, stream, next) => {
+        if (header.type === 'file') {
+          let content = '';
+          
+          stream.on('data', (chunk) => {
+            content += chunk.toString('utf8');
+          });
+          
+          stream.on('end', () => {
+            allFiles.set(header.name, content);
+            next();
+          });
+          
+          stream.on('error', (err) => {
+            console.error('Stream error:', err);
+            next();
+          });
+        } else {
+          stream.on('end', next);
+          stream.resume(); // Skip this entry
+        }
+      });
+      
+      extractor.on('finish', () => {
+        resolve(allFiles);
+      });
+      
+      extractor.on('error', (err) => {
+        console.error('Extraction error:', err);
+        reject(err);
+      });
+      
+      // Write decompressed data to extractor
+      extractor.end(decompressed);
+    });
+  } catch (error) {
+    console.error('Tarball processing error:', error);
+    return null;
+  }
+}
