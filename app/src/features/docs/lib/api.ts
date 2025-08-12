@@ -15,6 +15,8 @@ export interface PackageSearchResult {
   categories: string[];
   keywords: string[];
   hasDocumentation: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface RecentPackagesResponse {
@@ -77,7 +79,9 @@ export async function searchPackages(query: string): Promise<PackageSearchResult
 
 export async function getRecentPackages(): Promise<RecentPackagesResponse> {
   try {
-    const response: { data: APIRecentPackagesResponse } = await HTTP.get('/recent_packages');
+    // Temporarily use local Next.js API route while backend is compiling
+    const response = await fetch('/api/recent_packages_temp');
+    const data: APIRecentPackagesResponse = await response.json();
     
     const mapPackage = (pkg: RecentPackage): PackageSearchResult => ({
       name: pkg.name,
@@ -85,12 +89,14 @@ export async function getRecentPackages(): Promise<RecentPackagesResponse> {
       description: pkg.description,
       categories: [], // Recent package data doesn't include categories
       keywords: [], // Recent package data doesn't include keywords
-      hasDocumentation: true // For now, assume packages have docs if they're in recent results
+      hasDocumentation: true, // For now, assume packages have docs if they're in recent results
+      createdAt: pkg.createdAt,
+      updatedAt: pkg.updatedAt
     });
     
     return {
-      recentlyCreated: response.data.recentlyCreated.map(mapPackage),
-      recentlyUpdated: response.data.recentlyUpdated.map(mapPackage)
+      recentlyCreated: data.recentlyCreated.map(mapPackage),
+      recentlyUpdated: data.recentlyUpdated.map(mapPackage)
     };
   } catch (error) {
     console.error('Failed to fetch recent packages:', error);
