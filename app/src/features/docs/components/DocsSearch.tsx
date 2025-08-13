@@ -242,7 +242,9 @@ export default function DocsSearch() {
     <Box mt={6}>
       <Typography variant="h5" gutterBottom sx={{ 
         fontWeight: 600, 
-        mb: 3
+        mb: 3,
+        borderBottom: '2px solid #00f58c',
+        paddingBottom: '8px'
       }}>
         Recent Releases
       </Typography>
@@ -340,7 +342,7 @@ export default function DocsSearch() {
           component="h1" 
           sx={{ 
             fontWeight: 700,
-            fontSize: { xs: '2.5rem', md: '3.5rem' },
+            fontSize: { xs: '2rem', md: '2.8rem' },
             mb: 3,
             color: 'white'
           }}
@@ -350,7 +352,7 @@ export default function DocsSearch() {
       </Box>
 
       {/* Search Bar */}
-      <Box display="flex" justifyContent="center" mb={2}>
+      <Box display="flex" justifyContent="center" mb={6}>
         <TextField
           variant="outlined"
           placeholder="Type 'S' or '/' to search"
@@ -387,29 +389,6 @@ export default function DocsSearch() {
         />
       </Box>
 
-      {/* Search button */}
-      <Box display="flex" justifyContent="center" mb={6}>
-        <Box
-          component="button"
-          sx={{
-            px: 3,
-            py: 1,
-            bgcolor: '#303134',
-            color: 'white',
-            border: '1px solid #303134',
-            borderRadius: 1,
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            '&:hover': {
-              bgcolor: '#525355',
-              borderColor: '#525355'
-            }
-          }}
-          onClick={() => searchQuery && handleSearch(searchQuery)}
-        >
-          Search
-        </Box>
-      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3, maxWidth: '500px', mx: 'auto' }}>
