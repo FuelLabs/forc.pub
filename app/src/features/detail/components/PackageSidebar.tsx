@@ -176,37 +176,34 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
           </div>
         )}
 
-        {(data.documentation || data.docsIpfsUrl) && (
-          <div className="sidebar-link-item">
-            <Typography variant="h6" className="sidebar-section-heading">
-              Documentation
-            </Typography>
-            {data.documentation && (
-              <Link
-                href={data.documentation}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link-light link-block"
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}
-              >
-                <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
-                {data.documentation}
-              </Link>
-            )}
-            {data.docsIpfsUrl && (
-              <Link
-                href={`https://docs.forc.pub/${data.name}/${data.version}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link-light link-block"
-                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-              >
-                <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
-                Auto-generated Documentation
-              </Link>
-            )}
-          </div>
-        )}
+        <div className="sidebar-link-item">
+          <Typography variant="h6" className="sidebar-section-heading">
+            Documentation
+          </Typography>
+          {data.documentation ? (
+            <Link
+              href={data.documentation}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-light link-block"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
+              {data.documentation}
+            </Link>
+          ) : (
+            <Link
+              href={`https://docs.forc.pub/package/${data.name}/${data.version}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-light link-block"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
+              https://docs.forc.pub/package/{data.name}/{data.version}
+            </Link>
+          )}
+        </div>
 
         {data.homepage && (
           <div className="sidebar-link-item">
