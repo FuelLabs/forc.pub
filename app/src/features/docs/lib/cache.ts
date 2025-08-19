@@ -9,12 +9,17 @@ interface DocsCache {
   ipfsHash: string;
 }
 
+// Cache configuration constants
+const MAX_PACKAGE_CACHE_SIZE = 100;
+const MAX_FILE_CACHE_SIZE = 1000;
+const PACKAGE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const FILE_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
 // LRU cache for package documentation
-// Max 100 packages in memory, each expires after 24 hours
 const packageCaches = new LRUCache<string, DocsCache>({
-  max: 100, // Maximum 100 packages in cache
-  ttl: 24 * 60 * 60 * 1000, // 24 hours TTL
-  updateAgeOnGet: true, // Reset TTL when accessed
+  max: MAX_PACKAGE_CACHE_SIZE,
+  ttl: PACKAGE_CACHE_TTL,
+  updateAgeOnGet: true,
   allowStale: false,
   // Dispose function called when entries are evicted
   dispose: (value: DocsCache, key: string) => {
@@ -23,10 +28,9 @@ const packageCaches = new LRUCache<string, DocsCache>({
 });
 
 // Individual file cache for single file requests
-// Larger capacity since files are smaller
 const fileCaches = new LRUCache<string, string>({
-  max: 1000, // Maximum 1000 files in cache
-  ttl: 60 * 60 * 1000, // 1 hour TTL for individual files
+  max: MAX_FILE_CACHE_SIZE,
+  ttl: FILE_CACHE_TTL,
   updateAgeOnGet: true,
   allowStale: false
 });

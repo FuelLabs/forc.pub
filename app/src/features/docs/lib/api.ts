@@ -1,6 +1,10 @@
 import HTTP, { PackagePreview } from "../../../utils/http";
 import { RecentPackage, RecentPackagesResponse as APIRecentPackagesResponse } from "../../dashboard/hooks/useFetchRecentPackages";
 
+// API pagination constants
+const DEFAULT_PAGE = "1";
+const MAX_SEARCH_RESULTS = "100";
+
 export interface PackageWithDocs {
   name: string;
   version: string;
@@ -55,8 +59,8 @@ export async function searchPackages(query: string): Promise<PackageSearchResult
   try {
     const data = await apiCall('/search', { 
       q: query,
-      page: "1",
-      per_page: "100"
+      page: DEFAULT_PAGE,
+      per_page: MAX_SEARCH_RESULTS
     }, 'Search failed');
     
     return data.data.map((pkg: PackagePreview) => ({

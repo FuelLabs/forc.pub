@@ -160,9 +160,15 @@ interface LogEntry {
   category?: string;
 }
 
+// Logger configuration constants
+const MAX_LOG_ENTRIES = 1000;
+const DEFAULT_LOG_RETENTION = 24 * 60 * 60 * 1000; // 24 hours
+const DEFAULT_RECENT_LOGS_COUNT = 100;
+const MAX_RECENT_ERRORS = 100;
+
 class DocsLogger {
   private entries: LogEntry[] = [];
-  private maxEntries = 1000;
+  private maxEntries = MAX_LOG_ENTRIES;
 
   private log(level: LogEntry['level'], message: string, context?: Record<string, unknown>, category?: string) {
     const entry: LogEntry = {
@@ -207,12 +213,12 @@ class DocsLogger {
   }
 
   /// Gets recent log entries (for debugging)
-  getRecentLogs(count: number = 100): LogEntry[] {
+  getRecentLogs(count: number = DEFAULT_RECENT_LOGS_COUNT): LogEntry[] {
     return this.entries.slice(-count);
   }
 
   /// Clears old log entries
-  clearOldLogs(olderThanMs: number = 24 * 60 * 60 * 1000): number {
+  clearOldLogs(olderThanMs: number = DEFAULT_LOG_RETENTION): number {
     const cutoff = Date.now() - olderThanMs;
     const originalLength = this.entries.length;
     this.entries = this.entries.filter(entry => entry.timestamp > cutoff);
@@ -365,8 +371,8 @@ class ErrorMetricsCollector {
 
     this.metrics.recentErrors.push(error);
     
-    // Keep only the most recent 100 errors
-    if (this.metrics.recentErrors.length > 100) {
+    // Keep only the most recent errors
+    if (this.metrics.recentErrors.length > MAX_RECENT_ERRORS) {
       this.metrics.recentErrors.shift();
     }
   }

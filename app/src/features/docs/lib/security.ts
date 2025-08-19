@@ -210,9 +210,12 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
-const rateLimitMap = new Map<string, RateLimitEntry>();
+// Rate limiting configuration
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requests per minute per IP
+const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
 
 /// Implements basic rate limiting for documentation endpoints
 /// Prevents DoS attacks by limiting requests per IP address
@@ -248,5 +251,5 @@ export function cleanupRateLimit(): void {
   }
 }
 
-// Cleanup expired entries every 5 minutes
-setInterval(cleanupRateLimit, 5 * 60 * 1000);
+// Cleanup expired entries periodically
+setInterval(cleanupRateLimit, RATE_LIMIT_CLEANUP_INTERVAL);
