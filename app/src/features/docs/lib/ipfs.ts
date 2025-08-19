@@ -1,13 +1,8 @@
-/// Simple IPFS utilities following existing forc.pub patterns
-/// Based on useAbiContent.ts approach
-
 import { extract } from 'tar-stream';
 import * as pako from 'pako';
 import { validateIPFSHash } from './security';
 import { getCachedFile, setCachedFile } from './cache';
 import { convertByteCodeContent, isHtmlFile } from './utils';
-
-/// Simple IPFS fetch - follows useAbiContent.ts pattern
 async function fetchFromIPFS(ipfsHash: string): Promise<ArrayBuffer> {
   const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
   
@@ -19,7 +14,6 @@ async function fetchFromIPFS(ipfsHash: string): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
-/// Extract single file from tarball
 export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Promise<string> {
   const validatedHash = validateIPFSHash(ipfsHash);
   
@@ -37,17 +31,13 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
     throw new Error(`File not found: ${filePath}`);
   }
 
-  // Process content
   const actualContent = convertByteCodeContent(content);
-  const finalContent = isHtmlFile(filePath) ? actualContent : actualContent; // Could add sanitization here if needed
   
-  // Cache result
-  setCachedFile(validatedHash, filePath, finalContent);
+  setCachedFile(validatedHash, filePath, actualContent);
   
-  return finalContent;
+  return actualContent;
 }
 
-/// Extract all files from tarball  
 export async function extractAllFromTarball(ipfsHash: string): Promise<Map<string, string>> {
   const validatedHash = validateIPFSHash(ipfsHash);
   const contentBuffer = await fetchFromIPFS(validatedHash);
@@ -57,7 +47,6 @@ export async function extractAllFromTarball(ipfsHash: string): Promise<Map<strin
     throw new Error('No files found in documentation tarball');
   }
 
-  // Process all files
   const processedFiles = new Map<string, string>();
   for (const [filePath, content] of files.entries()) {
     const actualContent = convertByteCodeContent(content);
@@ -67,7 +56,6 @@ export async function extractAllFromTarball(ipfsHash: string): Promise<Map<strin
   return processedFiles;
 }
 
-/// Basic tarball extraction
 async function extractFileFromTarball(contentBuffer: ArrayBuffer, targetFilePath: string): Promise<string | null> {
   const compressed = new Uint8Array(contentBuffer);
   const decompressed = pako.ungzip(compressed);
@@ -97,7 +85,6 @@ async function extractFileFromTarball(contentBuffer: ArrayBuffer, targetFilePath
   });
 }
 
-/// Extract all files from tarball
 async function extractAllFilesFromTarball(contentBuffer: ArrayBuffer): Promise<Map<string, string>> {
   const compressed = new Uint8Array(contentBuffer);
   const decompressed = pako.ungzip(compressed);

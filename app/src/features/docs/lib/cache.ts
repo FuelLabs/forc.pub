@@ -49,7 +49,6 @@ let packageCacheMisses = 0;
 let fileCacheHits = 0;
 let fileCacheMisses = 0;
 
-/// Gets cached package documentation
 export function getCachedPackageDocs(packageName: string, version: string): DocsCache | undefined {
   const cacheKey = `${packageName}@${version}`;
   const cached = packageCaches.get(cacheKey);
@@ -65,7 +64,6 @@ export function getCachedPackageDocs(packageName: string, version: string): Docs
   return undefined;
 }
 
-/// Caches package documentation
 export function setCachedPackageDocs(
   packageName: string, 
   version: string, 
@@ -92,14 +90,12 @@ export function getCachedFile(ipfsHash: string, filePath: string): string | unde
   return undefined;
 }
 
-/// Caches individual file content
 export function setCachedFile(ipfsHash: string, filePath: string, content: string): void {
   const cacheKey = `${ipfsHash}-${filePath}`;
   fileCaches.set(cacheKey, content);
   console.log(`Cached file ${cacheKey} (${content.length} bytes)`);
 }
 
-/// Removes specific package from cache
 export function evictPackageFromCache(packageName: string, version: string): boolean {
   const cacheKey = `${packageName}@${version}`;
   const deleted = packageCaches.delete(cacheKey);
@@ -111,7 +107,6 @@ export function evictPackageFromCache(packageName: string, version: string): boo
   return deleted;
 }
 
-/// Removes all versions of a package from cache
 export function evictAllPackageVersionsFromCache(packageName: string): number {
   let evictedCount = 0;
   
@@ -159,8 +154,6 @@ export function getCacheStats(): CacheStats {
 export async function prewarmCache(popularPackages: Array<{ name: string; version: string }>): Promise<void> {
   console.log(`Pre-warming cache with ${popularPackages.length} popular packages`);
   
-  // This would need to be implemented with actual package loading logic
-  // For now, just log the intent
   for (const pkg of popularPackages) {
     console.log(`Would pre-warm ${pkg.name}@${pkg.version}`);
   }
