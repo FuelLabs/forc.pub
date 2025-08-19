@@ -57,6 +57,7 @@ export default async function StyledDocsPage({
     // Load all CSS content
     let combinedCSS = '';
     for (const cssUrl of cssUrls) {
+      if (!cssUrl) continue;
       try {
         // Extract filename from URL and load from IPFS
         const filename = cssUrl.split('/').pop()?.split('?')[0];

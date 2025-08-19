@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPackageDetail } from "../../../features/docs/lib/api";
-import { extractDocFromIPFS } from "../../../features/docs/lib/ipfs";
-import fs from 'fs';
-import path from 'path';
 
 // In-memory cache - persists for the lifetime of the server process
 interface DocsCache {
@@ -13,45 +10,6 @@ interface DocsCache {
 
 const packageCaches = new Map<string, DocsCache>();
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-const LOCAL_DOCS_PATH = '/Users/joshuabatty/Documents/rust/fuel/sway/sway-lib-std/out/doc';
-
-async function loadAllDocsFromDisk(): Promise<Map<string, string>> {
-  console.log('Loading all docs from disk into memory...');
-  const files = new Map<string, string>();
-  
-  function walkDirectory(dir: string, baseDir: string = '') {
-    const items = fs.readdirSync(dir);
-    
-    for (const item of items) {
-      const fullPath = path.join(dir, item);
-      const relativePath = baseDir ? path.join(baseDir, item) : item;
-      const stat = fs.statSync(fullPath);
-      
-      if (stat.isDirectory()) {
-        walkDirectory(fullPath, relativePath);
-      } else {
-        try {
-          const content = fs.readFileSync(fullPath, 'utf8');
-          
-          // Normalize file paths for std package to match published package structure
-          // Remove 'std/' prefix from HTML files to make paths consistent
-          let normalizedPath = relativePath;
-          if (normalizedPath.startsWith('std/') && (normalizedPath.endsWith('.html'))) {
-            normalizedPath = normalizedPath.substring(4); // Remove 'std/' prefix
-          }
-          
-          files.set(normalizedPath, content);
-        } catch (error) {
-          console.warn(`Failed to read ${fullPath}:`, error);
-        }
-      }
-    }
-  }
-  
-  walkDirectory(LOCAL_DOCS_PATH);
-  console.log(`Loaded ${files.size} files into memory cache`);
-  return files;
-}
 
 async function loadAllDocsFromIPFS(ipfsHash: string): Promise<Map<string, string>> {
   console.log(`Loading all docs from IPFS ${ipfsHash}...`);
@@ -86,18 +44,7 @@ async function getOrLoadDocs(packageName: string, version: string): Promise<Map<
   // Cache is invalid or doesn't exist, reload
   console.log(`Loading fresh docs for ${cacheKey}`);
   
-  // Special case for "std" package - use local files for testing
-  if (packageName === 'std') {
-    const files = await loadAllDocsFromDisk();
-    packageCaches.set(cacheKey, {
-      files,
-      timestamp: now,
-      ipfsHash: 'local',
-    });
-    return files;
-  }
-  
-  // For real packages, get from IPFS
+  // Get from IPFS
   try {
     // Get package details to find IPFS hash
     const packageData = await getPackageDetail(packageName, version);
@@ -153,19 +100,14 @@ export async function GET(
     version = secondSegment;
     docPath = pathSegments.slice(2);
   } else {
-    // No version specified, get latest version or use default for std
-    if (packageName === 'std') {
-      version = 'latest';
+    // No version specified, get latest version
+    try {
+      const { getLatestVersion } = await import('../../../features/docs/lib/api');
+      version = await getLatestVersion(packageName);
       docPath = pathSegments.slice(1);
-    } else {
-      try {
-        const { getLatestVersion } = await import('../../../features/docs/lib/api');
-        version = await getLatestVersion(packageName);
-        docPath = pathSegments.slice(1);
-      } catch (error) {
-        console.error(`Failed to get latest version for ${packageName}:`, error);
-        return new NextResponse(`Package not found: ${packageName}`, { status: 404 });
-      }
+    } catch (error) {
+      console.error(`Failed to get latest version for ${packageName}:`, error);
+      return new NextResponse(`Package not found: ${packageName}`, { status: 404 });
     }
   }
   

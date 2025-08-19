@@ -14,7 +14,7 @@ export interface PackageSearchResult {
   description: string | null;
   categories: string[];
   keywords: string[];
-  hasDocumentation: boolean;
+  docsIpfsUrl: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -59,7 +59,7 @@ export async function searchPackages(query: string): Promise<PackageSearchResult
       params: { 
         q: query,
         page: "1",
-        per_page: "20"
+        per_page: "100"
       }
     });
     
@@ -69,7 +69,7 @@ export async function searchPackages(query: string): Promise<PackageSearchResult
       description: pkg.description,
       categories: pkg.categories,
       keywords: pkg.keywords,
-      hasDocumentation: true // For now, assume packages have docs if they're in search results
+      docsIpfsUrl: pkg.docsIpfsUrl
     }));
   } catch (error) {
     console.error('Search failed:', error);
@@ -79,9 +79,8 @@ export async function searchPackages(query: string): Promise<PackageSearchResult
 
 export async function getRecentPackages(): Promise<RecentPackagesResponse> {
   try {
-    // Temporarily use local Next.js API route while backend is compiling
-    const response = await fetch('/api/recent_packages_temp');
-    const data: APIRecentPackagesResponse = await response.json();
+    const response = await HTTP.get('/recent_packages');
+    const data: APIRecentPackagesResponse = response.data;
     
     const mapPackage = (pkg: RecentPackage): PackageSearchResult => ({
       name: pkg.name,
@@ -89,7 +88,7 @@ export async function getRecentPackages(): Promise<RecentPackagesResponse> {
       description: pkg.description,
       categories: [], // Recent package data doesn't include categories
       keywords: [], // Recent package data doesn't include keywords
-      hasDocumentation: true, // For now, assume packages have docs if they're in recent results
+      docsIpfsUrl: pkg.docsIpfsUrl,
       createdAt: pkg.createdAt,
       updatedAt: pkg.updatedAt
     });

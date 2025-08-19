@@ -22,38 +22,14 @@ export default function DocsSearch() {
     recentlyCreated: [],
     recentlyUpdated: []
   });
-  const [allPackages, setAllPackages] = useState<PackageSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    // Load recent packages and all packages on component mount
+    // Load recent packages on component mount
     loadRecentPackages();
-    loadAllPackages();
   }, []);
-
-  const loadAllPackages = async () => {
-    try {
-      const response = await fetch('/api/all_packages_temp');
-      const data = await response.json();
-      
-      const mappedPackages = data.packages.map((pkg: any): PackageSearchResult => ({
-        name: pkg.name,
-        version: pkg.version,
-        description: pkg.description,
-        categories: [],
-        keywords: [],
-        hasDocumentation: true,
-        createdAt: pkg.createdAt,
-        updatedAt: pkg.updatedAt
-      }));
-      
-      setAllPackages(mappedPackages);
-    } catch (error) {
-      console.error('Failed to load all packages:', error);
-    }
-  };
 
   // Add keyboard shortcut for search (S key or / key)
   useEffect(() => {
@@ -87,12 +63,12 @@ export default function DocsSearch() {
 
   // Perform search when debounced query changes
   useEffect(() => {
-    if (debouncedQuery.trim() && allPackages.length > 0) {
+    if (debouncedQuery.trim()) {
       handleSearch(debouncedQuery);
     } else {
       setSearchResults([]);
     }
-  }, [debouncedQuery, allPackages]);
+  }, [debouncedQuery]);
 
   const loadRecentPackages = async () => {
     try {
@@ -106,69 +82,54 @@ export default function DocsSearch() {
     }
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
 
-    // Use only allPackages for search to avoid duplicates
-    if (allPackages.length === 0) {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use the search API to get all matching packages from the registry
+      const results = await searchPackages(query);
+      
+      // Filter for packages that have documentation (docsIpfsUrl is not null)
+      const packagesWithDocs = results.filter(pkg => pkg.docsIpfsUrl !== null);
+      
+      // Sort results by relevance
+      const searchTerm = query.toLowerCase();
+      const sortedResults = packagesWithDocs.sort((a, b) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        
+        // Exact matches first
+        if (aName === searchTerm && bName !== searchTerm) return -1;
+        if (bName === searchTerm && aName !== searchTerm) return 1;
+        
+        // Starts with search term
+        if (aName.startsWith(searchTerm) && !bName.startsWith(searchTerm)) return -1;
+        if (bName.startsWith(searchTerm) && !aName.startsWith(searchTerm)) return 1;
+        
+        // Contains search term
+        const aContains = aName.includes(searchTerm);
+        const bContains = bName.includes(searchTerm);
+        if (aContains && !bContains) return -1;
+        if (bContains && !aContains) return 1;
+        
+        // Alphabetical order as fallback
+        return aName.localeCompare(bName);
+      });
+
+      setSearchResults(sortedResults);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setError('Failed to search packages');
       setSearchResults([]);
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const searchTerm = query.toLowerCase();
-    
-    const results = allPackages.filter(pkg => {
-      const name = pkg.name.toLowerCase();
-      const description = (pkg.description || '').toLowerCase();
-      
-      // Exact match gets highest priority
-      if (name.includes(searchTerm) || description.includes(searchTerm)) {
-        return true;
-      }
-      
-      // Fuzzy match - check if all characters of search term appear in order in name
-      let searchIndex = 0;
-      for (let i = 0; i < name.length && searchIndex < searchTerm.length; i++) {
-        if (name[i] === searchTerm[searchIndex]) {
-          searchIndex++;
-        }
-      }
-      
-      return searchIndex === searchTerm.length;
-    });
-
-    // Remove duplicates based on name (just in case)
-    const uniqueResults = results.filter((pkg, index, array) => 
-      array.findIndex(p => p.name === pkg.name) === index
-    );
-
-    // Sort results by relevance (exact name match first, then partial matches)
-    const sortedResults = uniqueResults.sort((a, b) => {
-      const aName = a.name.toLowerCase();
-      const bName = b.name.toLowerCase();
-      
-      // Exact matches first
-      if (aName === searchTerm && bName !== searchTerm) return -1;
-      if (bName === searchTerm && aName !== searchTerm) return 1;
-      
-      // Starts with search term
-      if (aName.startsWith(searchTerm) && !bName.startsWith(searchTerm)) return -1;
-      if (bName.startsWith(searchTerm) && !aName.startsWith(searchTerm)) return 1;
-      
-      // Contains search term
-      const aContains = aName.includes(searchTerm);
-      const bContains = bName.includes(searchTerm);
-      if (aContains && !bContains) return -1;
-      if (bContains && !aContains) return 1;
-      
-      // Alphabetical order as fallback
-      return aName.localeCompare(bName);
-    });
-
-    setSearchResults(sortedResults);
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -407,14 +368,18 @@ export default function DocsSearch() {
       )}
 
       {/* Recent Releases - only show when not searching */}
-      {!searchQuery && allPackages.length > 0 && (
+      {!searchQuery && recentPackages.recentlyUpdated.length > 0 && (
         <Box maxWidth="800px" mx="auto">
-          {renderRecentReleases(allPackages.slice().sort((a, b) => {
-            // Sort by most recent update time (updatedAt), fallback to createdAt
-            const aTime = new Date(a.updatedAt || a.createdAt || '0').getTime();
-            const bTime = new Date(b.updatedAt || b.createdAt || '0').getTime();
-            return bTime - aTime; // Most recent first
-          }))}
+          {renderRecentReleases(
+            recentPackages.recentlyUpdated
+              .filter(pkg => pkg.docsIpfsUrl !== null)
+              .sort((a, b) => {
+                // Sort by most recent update time (updatedAt), fallback to createdAt
+                const aTime = new Date(a.updatedAt || a.createdAt || '0').getTime();
+                const bTime = new Date(b.updatedAt || b.createdAt || '0').getTime();
+                return bTime - aTime; // Most recent first
+              })
+          )}
         </Box>
       )}
 

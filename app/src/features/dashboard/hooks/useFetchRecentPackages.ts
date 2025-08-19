@@ -8,6 +8,7 @@ export interface RecentPackage {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  docsIpfsUrl: string | null;
 }
 
 export interface RecentPackagesResponse {
