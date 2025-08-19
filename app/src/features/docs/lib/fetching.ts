@@ -2,7 +2,7 @@ import { extract } from 'tar-stream';
 import * as pako from 'pako';
 import { validateIPFSHash } from './security';
 import { getCachedFile, setCachedFile } from './cache';
-import { convertByteCodeContent, isHtmlFile } from './utils';
+import { convertByteCodeContent } from './utils';
 async function fetchFromIPFS(ipfsHash: string): Promise<ArrayBuffer> {
   const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
   

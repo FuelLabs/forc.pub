@@ -28,42 +28,44 @@ export interface RecentPackagesResponse {
   recentlyUpdated: PackageSearchResult[];
 }
 
-/// Generic API call wrapper with consistent error handling
-async function apiCall<T>(endpoint: string, params: Record<string, string>, errorMessage: string): Promise<T> {
+export async function getPackageDetail(name: string, version: string): Promise<PackageWithDocs> {
   try {
-    const response = await HTTP.get(endpoint, { params });
-    return response.data;
+    const response = await HTTP.get('/package', { params: { name, version } });
+    const data = response.data;
+    
+    return {
+      name: data.name,
+      version: data.version,
+      description: data.description,
+      docsIpfsUrl: data.docsIpfsUrl
+    };
   } catch (error) {
-    console.error(`API call failed: ${endpoint}`, { params, error });
-    throw new Error(errorMessage);
+    console.error(`Failed to fetch package details for ${name}@${version}`, error);
+    throw new Error(`Failed to fetch package details for ${name}@${version}`);
   }
 }
 
-export async function getPackageDetail(name: string, version: string): Promise<PackageWithDocs> {
-  const data = await apiCall('/package', { name, version }, `Failed to fetch package details for ${name}@${version}`);
-  
-  return {
-    name: data.name,
-    version: data.version,
-    description: data.description,
-    docsIpfsUrl: data.docsIpfsUrl
-  };
-}
-
 export async function getLatestVersion(name: string): Promise<string> {
-  const data = await apiCall('/package', { name }, `Failed to fetch latest version for ${name}`);
-  return data.version;
+  try {
+    const response = await HTTP.get('/package', { params: { name } });
+    return response.data.version;
+  } catch (error) {
+    console.error(`Failed to fetch latest version for ${name}`, error);
+    throw new Error(`Failed to fetch latest version for ${name}`);
+  }
 }
 
 export async function searchPackages(query: string): Promise<PackageSearchResult[]> {
   try {
-    const data = await apiCall('/search', { 
-      q: query,
-      page: DEFAULT_PAGE,
-      per_page: MAX_SEARCH_RESULTS
-    }, 'Search failed');
+    const response = await HTTP.get('/search', { 
+      params: {
+        q: query,
+        page: DEFAULT_PAGE,
+        per_page: MAX_SEARCH_RESULTS
+      }
+    });
     
-    return data.data.map((pkg: PackagePreview) => ({
+    return response.data.data.map((pkg: PackagePreview) => ({
       name: pkg.name,
       version: pkg.version,
       description: pkg.description,
@@ -79,7 +81,8 @@ export async function searchPackages(query: string): Promise<PackageSearchResult
 
 export async function getRecentPackages(): Promise<RecentPackagesResponse> {
   try {
-    const data: APIRecentPackagesResponse = await apiCall('/recent_packages', {}, 'Failed to fetch recent packages');
+    const response = await HTTP.get('/recent_packages');
+    const data: APIRecentPackagesResponse = response.data;
     
     const mapPackage = (pkg: RecentPackage): PackageSearchResult => ({
       name: pkg.name,

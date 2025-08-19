@@ -17,7 +17,6 @@ import {
 } from "../../../features/docs/lib/cache";
 import {
   logError,
-  createErrorResponse,
   createRateLimitResponse
 } from "../../../features/docs/lib/errors";
 import { extractAllFromTarball } from "../../../features/docs/lib/fetching";
@@ -90,12 +89,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
-  // Get client IP and user agent for logging and rate limiting
+  // Get client IP for rate limiting
   const clientIp = request.headers.get('x-forwarded-for') || 
                    request.headers.get('x-real-ip') || 
                    'unknown';
-  const userAgent = request.headers.get('user-agent') || 'unknown';
-  const requestId = request.headers.get('x-request-id') || `req_${Date.now()}`;
   
   // Apply rate limiting
   if (!checkRateLimit(clientIp)) {
