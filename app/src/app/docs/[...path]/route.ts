@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPackageDetail } from "../../../features/docs/lib/api";
+import { getPackageDetail, getLatestVersion } from "../../../features/docs/lib/api";
 import { 
   validatePackageName, 
   validateVersion, 
@@ -10,7 +10,10 @@ import {
 } from "../../../features/docs/lib/security";
 import {
   getCachedPackageDocs,
-  setCachedPackageDocs
+  setCachedPackageDocs,
+  evictPackageFromCache,
+  evictAllPackageVersionsFromCache,
+  clearAllCaches
 } from "../../../features/docs/lib/cache";
 import {
   logger,
@@ -24,6 +27,8 @@ import {
   ErrorSeverity,
   errorMetrics
 } from "../../../features/docs/lib/errors";
+import { extractAllFromTarball } from "../../../features/docs/lib/ipfs";
+import { getContentType, isHtmlFile } from "../../../features/docs/lib/utils";
 
 // Cache interface for documentation (matches cache.ts interface)
 interface DocsCache {
@@ -37,7 +42,6 @@ async function loadAllDocsFromIPFS(ipfsHash: string): Promise<Map<string, string
   logger.info('Starting IPFS documentation extraction', { ipfsHash }, 'IPFS');
   
   try {
-    const { extractAllFromTarball } = await import('../../../features/docs/lib/ipfs');
     const allFiles = await extractAllFromTarball(ipfsHash);
     
     logger.info('IPFS extraction completed successfully', {
@@ -65,11 +69,11 @@ async function getOrLoadDocs(packageName: string, version: string): Promise<Map<
   // Check LRU cache first
   const cached = getCachedPackageDocs(packageName, version);
   if (cached) {
-    console.log(`Using cached docs for ${packageName}@${version}`);
+    logger.debug(`Using cached docs for ${packageName}@${version}`, { packageName, version }, 'CACHE');
     return cached.files;
   }
   
-  console.log(`Loading fresh docs for ${packageName}@${version}`);
+  logger.debug(`Loading fresh docs for ${packageName}@${version}`, { packageName, version }, 'CACHE');
   
   // Get from IPFS
   try {
@@ -99,7 +103,11 @@ async function getOrLoadDocs(packageName: string, version: string): Promise<Map<
     
     return files;
   } catch (error) {
-    console.error(`Failed to load package ${packageName}@${version}:`, error);
+    logger.error(`Failed to load package ${packageName}@${version}`, { 
+      packageName, 
+      version, 
+      error: error instanceof Error ? error.message : String(error)
+    }, 'PACKAGE_LOAD');
     throw error;
   }
 }
@@ -158,7 +166,6 @@ export async function GET(
     } else {
       // No version specified, get latest version
       try {
-        const { getLatestVersion } = await import('../../../features/docs/lib/api');
         version = await getLatestVersion(packageName);
         docPath = pathSegments.slice(1);
       } catch {
@@ -201,32 +208,13 @@ export async function GET(
     }
     
     // Determine content type
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    let contentType = 'application/octet-stream';
-    
-    switch (ext) {
-      case 'html':
-        contentType = 'text/html; charset=utf-8';
-        break;
-      case 'css':
-        contentType = 'text/css';
-        break;
-      case 'js':
-        contentType = 'application/javascript';
-        break;
-      case 'svg':
-        contentType = 'image/svg+xml';
-        break;
-      case 'woff2':
-        contentType = 'font/woff2';
-        break;
-    }
+    const contentType = getContentType(filePath);
     
     // Generate CSP nonce for inline scripts
     const nonce = generateCSPNonce();
     
     // For HTML files, rewrite paths to use clean URLs and fix search
-    if (ext === 'html') {
+    if (isHtmlFile(filePath)) {
       let html = content;
       
       // Rewrite static file paths
@@ -530,22 +518,17 @@ export async function DELETE(
       if (pathSegments.length >= 2) {
         const version = validateVersion(pathSegments[1]);
         
-        // Import cache functions
-        const { evictPackageFromCache } = await import('../../../features/docs/lib/cache');
-        
         const deleted = evictPackageFromCache(packageName, version);
         if (deleted) {
-          console.log(`Cache flushed for ${packageName}@${version}`);
+          logger.info(`Cache flushed for ${packageName}@${version}`, { packageName, version }, 'CACHE_FLUSH');
           return new NextResponse(`Cache flushed for ${packageName}@${version}`, { status: 200 });
         } else {
           return new NextResponse('Cache entry not found', { status: 404 });
         }
       } else {
         // Flush all versions of this package
-        const { evictAllPackageVersionsFromCache } = await import('../../../features/docs/lib/cache');
-        
         const evictedCount = evictAllPackageVersionsFromCache(packageName);
-        console.log(`Cache flushed for all versions of ${packageName} (${evictedCount} entries)`);
+        logger.info(`Cache flushed for all versions of ${packageName}`, { packageName, evictedCount }, 'CACHE_FLUSH');
         return new NextResponse(
           `Cache flushed for all versions of ${packageName} (${evictedCount} entries)`, 
           { status: 200 }
@@ -553,14 +536,14 @@ export async function DELETE(
       }
     } else {
       // Flush entire cache (admin operation - could add auth check here)
-      const { clearAllCaches } = await import('../../../features/docs/lib/cache');
-      
       clearAllCaches();
-      console.log('All docs cache flushed');
+      logger.warn('All docs cache flushed', {}, 'CACHE_FLUSH');
       return new NextResponse('All docs cache flushed', { status: 200 });
     }
   } catch (error) {
-    console.error('Error flushing cache:', error);
+    logger.error('Error flushing cache', { 
+      error: error instanceof Error ? error.message : String(error)
+    }, 'CACHE_FLUSH');
     
     if (error instanceof SecurityValidationError) {
       return new NextResponse(

@@ -1,4 +1,5 @@
 import { extractDocFromIPFS } from "../../../../features/docs/lib/ipfs";
+import { convertByteCodeContent, getContentType } from "../../../../features/docs/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -20,31 +21,9 @@ export async function GET(
   try {
     let content = await extractDocFromIPFS(ipfsHash, tarballPath);
     
-    // Fix byte-code issue if needed
-    if (typeof content === 'string' && content.includes(',') && /^\d+,\d+/.test(content.substring(0, 10))) {
-      const byteCodes = content.split(',').map(num => parseInt(num.trim()));
-      content = String.fromCharCode(...byteCodes);
-    }
-    
-    // Determine content type based on file extension
-    const ext = filePath.split('.').pop()?.toLowerCase();
-    let contentType = 'text/plain';
-    
-    switch (ext) {
-      case 'css':
-        contentType = 'text/css';
-        break;
-      case 'js':
-        contentType = 'application/javascript';
-        break;
-      case 'svg':
-        contentType = 'image/svg+xml';
-        break;
-      case 'woff':
-      case 'woff2':
-        contentType = 'font/woff2';
-        break;
-    }
+    // Fix byte-code issue if needed and determine content type
+    content = convertByteCodeContent(content);
+    const contentType = getContentType(filePath);
     
     return new NextResponse(content, {
       headers: {

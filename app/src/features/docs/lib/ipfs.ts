@@ -8,17 +8,20 @@ import {
   getCachedFile,
   setCachedFile
 } from './cache';
+import {
+  convertByteCodeContent,
+  isHtmlFile
+} from './utils';
 
-/// Extracts and validates documentation files from IPFS with content verification
-export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Promise<string> {
-  // Validate IPFS hash format
-  const validatedHash = validateIPFSHash(ipfsHash);
-  
-  // Check cache first
-  const cached = getCachedFile(validatedHash, filePath);
-  if (cached) {
-    return cached;
-  }
+// Common configuration for IPFS operations
+const IPFS_CONFIG = {
+  FAST_TIMEOUT: 3000,
+  SLOW_TIMEOUT: 10000,
+  MAX_RETRIES: 3
+};
+
+/// Gets standardized IPFS URLs for a given hash
+function getIPFSUrls(validatedHash: string): { fast: string[]; slow: string[] } {
   const urlVariants: (string | null)[] = [
     // Primary: Try Pinata with docs.tgz filename (matches backend)
     `https://gateway.pinata.cloud/ipfs/${validatedHash}?filename=docs.tgz`,
@@ -32,11 +35,17 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
     `https://gateway.pinata.cloud/ipfs/${validatedHash}`
   ];
   
-  // Try fast endpoints first with shorter timeout, then longer ones
-  const fastUrls = urlVariants.slice(0, 2).filter(Boolean) as string[];
-  const slowUrls = urlVariants.slice(2).filter(Boolean) as string[];
+  return {
+    fast: urlVariants.slice(0, 2).filter(Boolean) as string[],
+    slow: urlVariants.slice(2).filter(Boolean) as string[]
+  };
+}
 
-  const tryUrlsWithTimeout = async (urls: string[], timeoutMs: number) => {
+/// Fetches content from IPFS with retry logic and integrity verification
+async function fetchFromIPFS(validatedHash: string): Promise<ArrayBuffer> {
+  const { fast, slow } = getIPFSUrls(validatedHash);
+
+  const tryUrlsWithTimeout = async (urls: string[], timeoutMs: number): Promise<ArrayBuffer | null> => {
     for (const url of urls) {
       try {
         console.log(`Attempting to fetch docs from: ${url} (timeout: ${timeoutMs}ms)`);
@@ -48,29 +57,17 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
         clearTimeout(timeoutId);
         
         if (response.ok) {
-          // Verify content integrity by checking if the retrieved content hashes to expected IPFS hash
           const contentBuffer = await response.arrayBuffer();
-          const actualHash = await verifyContentIntegrity(contentBuffer, validatedHash);
           
-          if (!actualHash) {
+          // Verify content integrity
+          const isValid = await verifyContentIntegrity(contentBuffer, validatedHash);
+          if (!isValid) {
             console.warn(`Content integrity check failed for ${url}`);
             continue;
           }
           
-          const content = await extractFromTarball(new Response(contentBuffer), filePath);
-          if (content) {
-            console.log(`Successfully extracted ${filePath} from ${url} (integrity verified)`);
-            
-            // Sanitize HTML content if it's an HTML file
-            const sanitizedContent = filePath.endsWith('.html') 
-              ? sanitizeHtmlContent(content)
-              : content;
-            
-            // Cache the successful result
-            setCachedFile(validatedHash, filePath, sanitizedContent);
-            
-            return sanitizedContent;
-          }
+          console.log(`Successfully fetched from ${url} (integrity verified)`);
+          return contentBuffer;
         } else {
           console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
         }
@@ -85,17 +82,52 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
     return null;
   };
 
-  // Try fast URLs first (3s timeout), then slow ones (10s timeout)
-  let content = await tryUrlsWithTimeout(fastUrls, 3000);
-  if (!content && slowUrls.length > 0) {
-    content = await tryUrlsWithTimeout(slowUrls, 10000);
+  // Try fast URLs first, then slow ones
+  let contentBuffer = await tryUrlsWithTimeout(fast, IPFS_CONFIG.FAST_TIMEOUT);
+  if (!contentBuffer && slow.length > 0) {
+    contentBuffer = await tryUrlsWithTimeout(slow, IPFS_CONFIG.SLOW_TIMEOUT);
   }
 
-  if (!content) {
+  if (!contentBuffer) {
     throw new Error('Documentation not available from any source (IPFS or S3)');
   }
 
-  return content;
+  return contentBuffer;
+}
+
+
+/// Extracts and validates documentation files from IPFS with content verification
+export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Promise<string> {
+  // Validate IPFS hash format
+  const validatedHash = validateIPFSHash(ipfsHash);
+  
+  // Check cache first
+  const cached = getCachedFile(validatedHash, filePath);
+  if (cached) {
+    return cached;
+  }
+
+  // Fetch content from IPFS
+  const contentBuffer = await fetchFromIPFS(validatedHash);
+  
+  // Extract specific file from tarball
+  const content = await extractFromTarball(new Response(contentBuffer), filePath);
+  if (!content) {
+    throw new Error(`File not found: ${filePath}`);
+  }
+
+  // Convert byte codes if needed
+  const actualContent = convertByteCodeContent(content);
+  
+  // Sanitize HTML content if it's an HTML file
+  const sanitizedContent = isHtmlFile(filePath) 
+    ? sanitizeHtmlContent(actualContent)
+    : actualContent;
+  
+  // Cache the successful result
+  setCachedFile(validatedHash, filePath, sanitizedContent);
+  
+  return sanitizedContent;
 }
 
 /// Verifies IPFS content integrity by checking hash
@@ -132,10 +164,13 @@ async function verifyContentIntegrity(contentBuffer: ArrayBuffer, expectedHash: 
   }
 }
 
-async function extractFromTarball(response: Response, targetFilePath: string): Promise<string | null> {
+/// Common tarball extraction logic with optional file filtering
+async function extractFromTarballCore(
+  contentBuffer: ArrayBuffer, 
+  fileFilter?: (filename: string) => boolean
+): Promise<Map<string, string> | null> {
   try {
-    const arrayBuffer = await response.arrayBuffer();
-    const compressed = new Uint8Array(arrayBuffer);
+    const compressed = new Uint8Array(contentBuffer);
     
     // Decompress gzipped data
     let decompressed: Uint8Array;
@@ -148,17 +183,10 @@ async function extractFromTarball(response: Response, targetFilePath: string): P
     
     return new Promise((resolve, reject) => {
       const extractor = extract();
-      let found = false;
+      const extractedFiles = new Map<string, string>();
+      
       extractor.on('entry', (header, stream, next) => {
-        // Look for the exact file path or index.html if path matches directory
-        const shouldExtract = 
-          header.name === targetFilePath ||
-          header.name.endsWith(`/${targetFilePath}`) ||
-          (targetFilePath.endsWith('/') && header.name === `${targetFilePath}index.html`) ||
-          (targetFilePath === 'index.html' && (header.name === 'index.html' || header.name.endsWith('/index.html')));
-        
-        if (shouldExtract && header.type === 'file') {
-          found = true;
+        if (header.type === 'file' && (!fileFilter || fileFilter(header.name))) {
           let content = '';
           
           stream.on('data', (chunk) => {
@@ -166,222 +194,7 @@ async function extractFromTarball(response: Response, targetFilePath: string): P
           });
           
           stream.on('end', () => {
-            resolve(content);
-            next();
-          });
-          
-          stream.on('error', (err) => {
-            console.error('Stream error:', err);
-            next();
-          });
-        } else {
-          stream.on('end', next);
-          stream.resume(); // Skip this file
-        }
-      });
-      
-      extractor.on('finish', () => {
-        if (!found) {
-          reject(new Error(`File not found: ${targetFilePath}`));
-        }
-      });
-      
-      extractor.on('error', (err) => {
-        console.error('Extraction error:', err);
-        reject(err);
-      });
-      
-      // Write decompressed data to extractor
-      extractor.end(decompressed);
-    });
-  } catch (error) {
-    console.error('Tarball processing error:', error);
-    return null;
-  }
-}
-
-export function ipfsHashToS3Url(ipfsHash: string): string | null {
-  // This constructs an S3 URL for the documentation tarball
-  // The S3 bucket stores files with the IPFS hash as the key
-  const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME;
-  const bucketRegion = process.env.NEXT_PUBLIC_S3_BUCKET_REGION;
-  
-  if (!bucketName || !bucketRegion) {
-    console.warn('S3 bucket configuration not available for fallback');
-    return null;
-  }
-  
-  return `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${ipfsHash}`;
-}
-
-// Debug function to list all files in a tarball
-export async function debugTarballStructure(ipfsHash: string): Promise<string[]> {
-  const urlVariants: (string | null)[] = [
-    `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tgz`,
-    `https://gateway.pinata.cloud/ipfs/${ipfsHash}?filename=docs.tar.gz`,
-    `https://ipfs.io/ipfs/${ipfsHash}`,
-    ipfsHashToS3Url(ipfsHash),
-    `https://gateway.pinata.cloud/ipfs/${ipfsHash}`
-  ];
-  
-  for (const url of urlVariants.filter(Boolean) as string[]) {
-    try {
-      console.log(`Attempting to fetch for debug from: ${url}`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const arrayBuffer = await response.arrayBuffer();
-        const compressed = new Uint8Array(arrayBuffer);
-        
-        let decompressed: Uint8Array;
-        try {
-          decompressed = pako.ungzip(compressed);
-        } catch (error) {
-          console.error('Failed to decompress tarball for debug:', error);
-          continue;
-        }
-        
-        return new Promise((resolve, reject) => {
-          const extractor = extract();
-          const allFiles: string[] = [];
-          
-          extractor.on('entry', (header, stream, next) => {
-            allFiles.push(header.name);
-            stream.on('end', next);
-            stream.resume(); // Skip all files, just collect names
-          });
-          
-          extractor.on('finish', () => {
-            resolve(allFiles);
-          });
-          
-          extractor.on('error', (err) => {
-            console.error('Debug extraction error:', err);
-            reject(err);
-          });
-          
-          extractor.end(decompressed);
-        });
-      }
-    } catch (error) {
-      console.warn(`Debug fetch failed from ${url}:`, error);
-    }
-  }
-  
-  return [];
-}
-
-/// Extract all files from IPFS tarball with security and caching
-export async function extractAllFromTarball(ipfsHash: string): Promise<Map<string, string>> {
-  // Validate IPFS hash format
-  const validatedHash = validateIPFSHash(ipfsHash);
-  const urlVariants: (string | null)[] = [
-    `https://gateway.pinata.cloud/ipfs/${validatedHash}?filename=docs.tgz`,
-    `https://gateway.pinata.cloud/ipfs/${validatedHash}?filename=docs.tar.gz`,
-    `https://ipfs.io/ipfs/${validatedHash}`,
-    ipfsHashToS3Url(validatedHash),
-    `https://gateway.pinata.cloud/ipfs/${validatedHash}`
-  ];
-  
-  const tryUrlsWithTimeout = async (urls: string[], timeoutMs: number) => {
-    for (const url of urls) {
-      try {
-        console.log(`Attempting to fetch all files from: ${url} (timeout: ${timeoutMs}ms)`);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          // Verify content integrity
-          const contentBuffer = await response.arrayBuffer();
-          const isValid = await verifyContentIntegrity(contentBuffer, validatedHash);
-          
-          if (!isValid) {
-            console.warn(`Content integrity check failed for ${url}`);
-            continue;
-          }
-          
-          const files = await extractAllFilesFromTarball(new Response(contentBuffer));
-          if (files && files.size > 0) {
-            console.log(`Successfully extracted ${files.size} files from ${url} (integrity verified)`);
-            
-            // Sanitize HTML files
-            const sanitizedFiles = new Map<string, string>();
-            for (const [filePath, content] of files.entries()) {
-              const sanitized = filePath.endsWith('.html') 
-                ? sanitizeHtmlContent(content)
-                : content;
-              sanitizedFiles.set(filePath, sanitized);
-            }
-            
-            return sanitizedFiles;
-          }
-        } else {
-          console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.warn(`Timeout fetching from ${url} after ${timeoutMs}ms`);
-        } else {
-          console.warn(`Error fetching from ${url}:`, error);
-        }
-      }
-    }
-    return null;
-  };
-
-  // Try fast URLs first (3s timeout), then slow ones (10s timeout)
-  const fastUrls = urlVariants.slice(0, 2).filter(Boolean) as string[];
-  const slowUrls = urlVariants.slice(2).filter(Boolean) as string[];
-  
-  let files = await tryUrlsWithTimeout(fastUrls, 3000);
-  if (!files && slowUrls.length > 0) {
-    files = await tryUrlsWithTimeout(slowUrls, 10000);
-  }
-
-  if (!files) {
-    throw new Error('Documentation not available from any source (IPFS or S3)');
-  }
-
-  return files;
-}
-
-async function extractAllFilesFromTarball(response: Response): Promise<Map<string, string> | null> {
-  try {
-    const arrayBuffer = await response.arrayBuffer();
-    const compressed = new Uint8Array(arrayBuffer);
-    
-    // Decompress gzipped data
-    let decompressed: Uint8Array;
-    try {
-      decompressed = pako.ungzip(compressed);
-    } catch (error) {
-      console.error('Failed to decompress tarball:', error);
-      return null;
-    }
-    
-    return new Promise((resolve, reject) => {
-      const extractor = extract();
-      const allFiles = new Map<string, string>();
-      
-      extractor.on('entry', (header, stream, next) => {
-        if (header.type === 'file') {
-          let content = '';
-          
-          stream.on('data', (chunk) => {
-            content += chunk.toString('utf8');
-          });
-          
-          stream.on('end', () => {
-            allFiles.set(header.name, content);
+            extractedFiles.set(header.name, content);
             next();
           });
           
@@ -396,7 +209,7 @@ async function extractAllFilesFromTarball(response: Response): Promise<Map<strin
       });
       
       extractor.on('finish', () => {
-        resolve(allFiles);
+        resolve(extractedFiles);
       });
       
       extractor.on('error', (err) => {
@@ -404,11 +217,78 @@ async function extractAllFilesFromTarball(response: Response): Promise<Map<strin
         reject(err);
       });
       
-      // Write decompressed data to extractor
       extractor.end(decompressed);
     });
   } catch (error) {
     console.error('Tarball processing error:', error);
     return null;
   }
+}
+
+/// Extract single file from tarball
+async function extractFromTarball(response: Response, targetFilePath: string): Promise<string | null> {
+  const fileFilter = (filename: string) => {
+    return filename === targetFilePath ||
+           filename.endsWith(`/${targetFilePath}`) ||
+           (targetFilePath.endsWith('/') && filename === `${targetFilePath}index.html`) ||
+           (targetFilePath === 'index.html' && (filename === 'index.html' || filename.endsWith('/index.html')));
+  };
+
+  const files = await extractFromTarballCore(await response.arrayBuffer(), fileFilter);
+  return files?.values().next().value || null;
+}
+
+/// Extract all files from tarball
+async function extractAllFilesFromTarball(response: Response): Promise<Map<string, string> | null> {
+  return extractFromTarballCore(await response.arrayBuffer());
+}
+
+export function ipfsHashToS3Url(ipfsHash: string): string | null {
+  const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME;
+  const bucketRegion = process.env.NEXT_PUBLIC_S3_BUCKET_REGION;
+  
+  if (!bucketName || !bucketRegion) {
+    console.warn('S3 bucket configuration not available for fallback');
+    return null;
+  }
+  
+  return `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${ipfsHash}`;
+}
+
+/// Debug function to list all files in a tarball
+export async function debugTarballStructure(ipfsHash: string): Promise<string[]> {
+  try {
+    const validatedHash = validateIPFSHash(ipfsHash);
+    const contentBuffer = await fetchFromIPFS(validatedHash);
+    const files = await extractFromTarballCore(contentBuffer);
+    return files ? Array.from(files.keys()) : [];
+  } catch (error) {
+    console.warn(`Debug fetch failed:`, error);
+    return [];
+  }
+}
+
+/// Extract all files from IPFS tarball with security and caching
+export async function extractAllFromTarball(ipfsHash: string): Promise<Map<string, string>> {
+  const validatedHash = validateIPFSHash(ipfsHash);
+  const contentBuffer = await fetchFromIPFS(validatedHash);
+  const files = await extractAllFilesFromTarball(new Response(contentBuffer));
+  
+  if (!files || files.size === 0) {
+    throw new Error('No files found in documentation tarball');
+  }
+
+  console.log(`Successfully extracted ${files.size} files from IPFS (integrity verified)`);
+  
+  // Process files: convert byte codes and sanitize HTML
+  const processedFiles = new Map<string, string>();
+  for (const [filePath, content] of files.entries()) {
+    const actualContent = convertByteCodeContent(content);
+    const sanitized = isHtmlFile(filePath) 
+      ? sanitizeHtmlContent(actualContent)
+      : actualContent;
+    processedFiles.set(filePath, sanitized);
+  }
+  
+  return processedFiles;
 }
