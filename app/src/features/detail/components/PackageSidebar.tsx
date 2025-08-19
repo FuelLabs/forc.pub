@@ -191,17 +191,21 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
               {data.documentation}
             </Link>
-          ) : (
+          ) : data.docsIpfsUrl ? (
             <Link
-              href={`https://docs.forc.pub/package/${data.name}/${data.version}`}
+              href={`/docs/${data.name}/${data.version}`}
               target="_blank"
               rel="noopener noreferrer"
               className="link-light link-block"
               sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
             >
               <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
-              https://docs.forc.pub/package/{data.name}/{data.version}
+              Auto-generated Documentation
             </Link>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No documentation available
+            </Typography>
           )}
         </div>
 
