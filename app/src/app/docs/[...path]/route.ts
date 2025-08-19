@@ -16,16 +16,9 @@ import {
   clearAllCaches
 } from "../../../features/docs/lib/cache";
 import {
-  logger,
-  handleError,
-  createErrorContext,
-  NetworkError,
-  IPFSError,
-  RateLimitError,
-  DocsError,
-  ErrorCategory,
-  ErrorSeverity,
-  errorMetrics
+  logError,
+  createErrorResponse,
+  createRateLimitResponse
 } from "../../../features/docs/lib/errors";
 import { extractAllFromTarball } from "../../../features/docs/lib/ipfs";
 import { getContentType, isHtmlFile } from "../../../features/docs/lib/utils";
@@ -39,27 +32,12 @@ interface DocsCache {
 
 /// Loads all documentation files from IPFS with security and caching
 async function loadAllDocsFromIPFS(ipfsHash: string): Promise<Map<string, string>> {
-  logger.info('Starting IPFS documentation extraction', { ipfsHash }, 'IPFS');
-  
   try {
     const allFiles = await extractAllFromTarball(ipfsHash);
-    
-    logger.info('IPFS extraction completed successfully', {
-      ipfsHash,
-      fileCount: allFiles.size,
-      fileTypes: Array.from(new Set(
-        Array.from(allFiles.keys())
-          .map(path => path.split('.').pop())
-          .filter(Boolean)
-      ))
-    }, 'IPFS');
-    
+    console.log(`Extracted ${allFiles.size} files from IPFS: ${ipfsHash}`);
     return allFiles;
   } catch (error) {
-    logger.error('IPFS extraction failed', {
-      ipfsHash,
-      error: error instanceof Error ? error.message : String(error)
-    }, 'IPFS');
+    logError('IPFS extraction failed', error, { ipfsHash });
     throw error;
   }
 }
@@ -69,11 +47,11 @@ async function getOrLoadDocs(packageName: string, version: string): Promise<Map<
   // Check LRU cache first
   const cached = getCachedPackageDocs(packageName, version);
   if (cached) {
-    logger.debug(`Using cached docs for ${packageName}@${version}`, { packageName, version }, 'CACHE');
+    console.log(`Using cached docs for ${packageName}@${version}`);
     return cached.files;
   }
   
-  logger.debug(`Loading fresh docs for ${packageName}@${version}`, { packageName, version }, 'CACHE');
+  console.log(`Loading fresh docs for ${packageName}@${version}`);
   
   // Get from IPFS
   try {
@@ -103,11 +81,7 @@ async function getOrLoadDocs(packageName: string, version: string): Promise<Map<
     
     return files;
   } catch (error) {
-    logger.error(`Failed to load package ${packageName}@${version}`, { 
-      packageName, 
-      version, 
-      error: error instanceof Error ? error.message : String(error)
-    }, 'PACKAGE_LOAD');
+    logError(`Failed to load package ${packageName}@${version}`, error, { packageName, version });
     throw error;
   }
 }
@@ -125,14 +99,10 @@ export async function GET(
   
   // Apply rate limiting
   if (!checkRateLimit(clientIp)) {
-    const context = createErrorContext(undefined, undefined, undefined, undefined, clientIp, userAgent, requestId);
-    const rateLimitError = new RateLimitError('Too many requests', context, 30, 60000);
-    errorMetrics.recordError(rateLimitError);
-    
-    const errorResponse = handleError(rateLimitError, context);
-    return new NextResponse(errorResponse.message, { 
-      status: errorResponse.status,
-      headers: errorResponse.headers
+    const response = createRateLimitResponse();
+    return new NextResponse(response.message, { 
+      status: response.status,
+      headers: response.headers
     });
   }
   
@@ -148,13 +118,6 @@ export async function GET(
     const packageName = validatePackageName(pathSegments[0]);
     let version: string;
     let docPath: string[];
-    
-    logger.info('Documentation request received', {
-      packageName,
-      pathSegments: pathSegments.slice(1),
-      clientIp,
-      userAgent
-    }, 'REQUEST');
   
     // Check if second segment looks like a version (contains dots, numbers, or common version patterns)
     const secondSegment = pathSegments[1];
@@ -168,13 +131,9 @@ export async function GET(
       try {
         version = await getLatestVersion(packageName);
         docPath = pathSegments.slice(1);
-      } catch {
-        const context = createErrorContext(packageName, undefined, undefined, undefined, clientIp, userAgent, requestId);
-        const networkError = new NetworkError(`Package not found: ${packageName}`, context, 404);
-        errorMetrics.recordError(networkError);
-        
-        const errorResponse = handleError(networkError, context);
-        return new NextResponse(errorResponse.message, { status: errorResponse.status });
+      } catch (error) {
+        logError(`Package not found: ${packageName}`, error);
+        return new NextResponse('Package not found', { status: 404 });
       }
     }
     
@@ -186,24 +145,12 @@ export async function GET(
     const content = files.get(filePath);
     
     if (!content) {
-      const context = createErrorContext(packageName, version, filePath, undefined, clientIp, userAgent, requestId);
-      const notFoundError = new DocsError(
-        `File not found: ${filePath} in package ${packageName}@${version}`,
-        ErrorCategory.NETWORK,
-        ErrorSeverity.LOW,
-        context,
-        'FILE_NOT_FOUND',
-        false
-      );
-      errorMetrics.recordError(notFoundError);
-      
-      logger.warn('File not found', {
-        packageName,
-        version,
+      logError(`File not found: ${filePath}`, new Error('File not found'), { 
+        packageName, 
+        version, 
         filePath,
-        availableFiles: Array.from(files.keys()).slice(0, 10) // Log first 10 files for debugging
-      }, 'FILE_NOT_FOUND');
-      
+        availableFiles: Array.from(files.keys()).slice(0, 10)
+      });
       return new NextResponse('File not found', { status: 404 });
     }
     
@@ -406,14 +353,6 @@ document.addEventListener('DOMContentLoaded', function() {
           return `href="/docs/${packageName}/${version}/${targetPath}"`;
         }
       );
-      
-      logger.info('Documentation served successfully', {
-        packageName,
-        version,
-        filePath,
-        contentLength: html.length,
-        contentType
-      }, 'SUCCESS');
 
       return new NextResponse(html, {
         headers: {
@@ -428,13 +367,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // For non-HTML files, serve as-is with security headers
-    logger.info('Static asset served successfully', {
-      packageName,
-      version,
-      filePath,
-      contentLength: content.length,
-      contentType
-    }, 'SUCCESS');
 
     return new NextResponse(content, {
       headers: {
@@ -446,46 +378,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
   } catch (error) {
-    const context = createErrorContext(undefined, undefined, undefined, undefined, clientIp, userAgent, requestId);
+    logError('Documentation route error', error);
     
-    // Log all errors for monitoring
-    logger.error('Unhandled error in documentation route', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      context
-    }, 'UNHANDLED_ERROR');
-    
-    // Convert to appropriate error type if needed
-    let docsError: DocsError;
+    // Handle specific error types
     if (error instanceof SecurityValidationError) {
-      docsError = new DocsError(
-        error.message,
-        ErrorCategory.SECURITY,
-        ErrorSeverity.MEDIUM,
-        context,
-        'VALIDATION_FAILED',
-        false
-      );
-    } else if (error instanceof Error && error.message.includes('IPFS')) {
-      docsError = new IPFSError(error.message, context);
-    } else {
-      docsError = new DocsError(
-        error instanceof Error ? error.message : 'Unknown error',
-        ErrorCategory.PARSING,
-        ErrorSeverity.HIGH,
-        context,
-        'UNKNOWN_ERROR',
-        true
-      );
+      return new NextResponse(`Validation error: ${error.message}`, { status: 400 });
     }
     
-    errorMetrics.recordError(docsError);
-    
-    const errorResponse = handleError(error, context);
-    return new NextResponse(errorResponse.message, { 
-      status: errorResponse.status,
-      headers: errorResponse.headers
-    });
+    // Generic error response
+    return new NextResponse('Internal server error', { status: 500 });
   }
 }
 
@@ -520,7 +421,7 @@ export async function DELETE(
         
         const deleted = evictPackageFromCache(packageName, version);
         if (deleted) {
-          logger.info(`Cache flushed for ${packageName}@${version}`, { packageName, version }, 'CACHE_FLUSH');
+          console.log(`Cache flushed for ${packageName}@${version}`);
           return new NextResponse(`Cache flushed for ${packageName}@${version}`, { status: 200 });
         } else {
           return new NextResponse('Cache entry not found', { status: 404 });
@@ -528,7 +429,7 @@ export async function DELETE(
       } else {
         // Flush all versions of this package
         const evictedCount = evictAllPackageVersionsFromCache(packageName);
-        logger.info(`Cache flushed for all versions of ${packageName}`, { packageName, evictedCount }, 'CACHE_FLUSH');
+        console.log(`Cache flushed for all versions of ${packageName} (${evictedCount} entries)`);
         return new NextResponse(
           `Cache flushed for all versions of ${packageName} (${evictedCount} entries)`, 
           { status: 200 }
@@ -537,24 +438,16 @@ export async function DELETE(
     } else {
       // Flush entire cache (admin operation - could add auth check here)
       clearAllCaches();
-      logger.warn('All docs cache flushed', {}, 'CACHE_FLUSH');
+      console.log('All docs cache flushed');
       return new NextResponse('All docs cache flushed', { status: 200 });
     }
   } catch (error) {
-    logger.error('Error flushing cache', { 
-      error: error instanceof Error ? error.message : String(error)
-    }, 'CACHE_FLUSH');
+    logError('Error flushing cache', error);
     
     if (error instanceof SecurityValidationError) {
-      return new NextResponse(
-        `Validation error: ${error.message}`, 
-        { status: 400 }
-      );
+      return new NextResponse(`Validation error: ${error.message}`, { status: 400 });
     }
     
-    return new NextResponse(
-      `Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-      { status: 500 }
-    );
+    return new NextResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
   }
 }
