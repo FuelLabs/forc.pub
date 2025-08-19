@@ -20,7 +20,7 @@ import {
   createErrorResponse,
   createRateLimitResponse
 } from "../../../features/docs/lib/errors";
-import { extractAllFromTarball } from "../../../features/docs/lib/ipfs";
+import { extractAllFromTarball } from "../../../features/docs/lib/fetching";
 import { getContentType, isHtmlFile } from "../../../features/docs/lib/utils";
 
 // Cache interface for documentation (matches cache.ts interface)
@@ -30,14 +30,14 @@ interface DocsCache {
   ipfsHash: string;
 }
 
-/// Loads all documentation files from IPFS with security and caching
-async function loadAllDocsFromIPFS(ipfsHash: string): Promise<Map<string, string>> {
+/// Loads all documentation files from IPFS or S3 with security and caching
+async function loadAllDocsFromStorage(ipfsHash: string): Promise<Map<string, string>> {
   try {
     const allFiles = await extractAllFromTarball(ipfsHash);
-    console.log(`Extracted ${allFiles.size} files from IPFS: ${ipfsHash}`);
+    console.log(`Extracted ${allFiles.size} files from storage: ${ipfsHash}`);
     return allFiles;
   } catch (error) {
-    logError('IPFS extraction failed', error, { ipfsHash });
+    logError('Storage extraction failed', error, { ipfsHash });
     throw error;
   }
 }
@@ -68,8 +68,8 @@ async function getOrLoadDocs(packageName: string, version: string): Promise<Map<
     }
     const ipfsHash = ipfsHashMatch[1];
     
-    // Load all files from IPFS
-    const files = await loadAllDocsFromIPFS(ipfsHash);
+    // Load all files from storage
+    const files = await loadAllDocsFromStorage(ipfsHash);
     
     // Update LRU cache
     const cacheEntry: DocsCache = {

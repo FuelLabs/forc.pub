@@ -14,6 +14,43 @@ async function fetchFromIPFS(ipfsHash: string): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
+async function fetchFromS3(ipfsHash: string): Promise<ArrayBuffer> {
+  const bucketName = process.env.S3_BUCKET_NAME;
+  const bucketRegion = process.env.S3_BUCKET_REGION;
+  
+  if (!bucketName || !bucketRegion) {
+    throw new Error('S3 configuration missing');
+  }
+  
+  const s3Url = `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${ipfsHash}`;
+  
+  const response = await fetch(s3Url);
+  if (!response.ok) {
+    throw new Error(`S3 HTTP error! status: ${response.status}`);
+  }
+  
+  return response.arrayBuffer();
+}
+
+async function fetchWithFallback(ipfsHash: string): Promise<ArrayBuffer> {
+  try {
+    console.log(`Attempting to fetch from IPFS: ${ipfsHash}`);
+    return await fetchFromIPFS(ipfsHash);
+  } catch (ipfsError) {
+    console.warn(`IPFS fetch failed for ${ipfsHash}:`, ipfsError);
+    console.log(`Falling back to S3 for: ${ipfsHash}`);
+    
+    try {
+      const result = await fetchFromS3(ipfsHash);
+      console.log(`Successfully fetched from S3: ${ipfsHash}`);
+      return result;
+    } catch (s3Error) {
+      console.error(`S3 fallback also failed for ${ipfsHash}:`, s3Error);
+      throw new Error(`Both IPFS and S3 failed. IPFS: ${ipfsError}. S3: ${s3Error}`);
+    }
+  }
+}
+
 export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Promise<string> {
   const validatedHash = validateIPFSHash(ipfsHash);
   
@@ -23,8 +60,8 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
     return cached;
   }
 
-  // Fetch and extract
-  const contentBuffer = await fetchFromIPFS(validatedHash);
+  // Fetch and extract with fallback
+  const contentBuffer = await fetchWithFallback(validatedHash);
   const content = await extractFileFromTarball(contentBuffer, filePath);
   
   if (!content) {
@@ -40,7 +77,7 @@ export async function extractDocFromIPFS(ipfsHash: string, filePath: string): Pr
 
 export async function extractAllFromTarball(ipfsHash: string): Promise<Map<string, string>> {
   const validatedHash = validateIPFSHash(ipfsHash);
-  const contentBuffer = await fetchFromIPFS(validatedHash);
+  const contentBuffer = await fetchWithFallback(validatedHash);
   const files = await extractAllFilesFromTarball(contentBuffer);
   
   if (files.size === 0) {

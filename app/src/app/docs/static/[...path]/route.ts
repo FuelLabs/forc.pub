@@ -1,4 +1,4 @@
-import { extractDocFromIPFS } from "../../../../features/docs/lib/ipfs";
+import { extractDocFromIPFS } from "../../../../features/docs/lib/fetching";
 import { convertByteCodeContent, getContentType } from "../../../../features/docs/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
