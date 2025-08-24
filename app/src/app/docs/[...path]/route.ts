@@ -10,10 +10,7 @@ import {
 } from "../../../features/docs/lib/security";
 import {
   getCachedPackageDocs,
-  setCachedPackageDocs,
-  evictPackageFromCache,
-  evictAllPackageVersionsFromCache,
-  clearAllCaches
+  setCachedPackageDocs
 } from "../../../features/docs/lib/cache";
 import {
   logError,
@@ -387,64 +384,3 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 }
 
-/// Cache management endpoint with security controls
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  // Get client IP for rate limiting
-  const clientIp = request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown';
-  
-  // Apply rate limiting
-  if (!checkRateLimit(clientIp)) {
-    return new NextResponse('Too many requests', { 
-      status: 429,
-      headers: {
-        'Retry-After': '60'
-      }
-    });
-  }
-  
-  try {
-    const pathSegments = params.path || [];
-    
-    if (pathSegments.length >= 1) {
-      const packageName = validatePackageName(pathSegments[0]);
-      
-      if (pathSegments.length >= 2) {
-        const version = validateVersion(pathSegments[1]);
-        
-        const deleted = evictPackageFromCache(packageName, version);
-        if (deleted) {
-          console.log(`Cache flushed for ${packageName}@${version}`);
-          return new NextResponse(`Cache flushed for ${packageName}@${version}`, { status: 200 });
-        } else {
-          return new NextResponse('Cache entry not found', { status: 404 });
-        }
-      } else {
-        // Flush all versions of this package
-        const evictedCount = evictAllPackageVersionsFromCache(packageName);
-        console.log(`Cache flushed for all versions of ${packageName} (${evictedCount} entries)`);
-        return new NextResponse(
-          `Cache flushed for all versions of ${packageName} (${evictedCount} entries)`, 
-          { status: 200 }
-        );
-      }
-    } else {
-      // Flush entire cache (admin operation - could add auth check here)
-      clearAllCaches();
-      console.log('All docs cache flushed');
-      return new NextResponse('All docs cache flushed', { status: 200 });
-    }
-  } catch (error) {
-    logError('Error flushing cache', error);
-    
-    if (error instanceof SecurityValidationError) {
-      return new NextResponse(`Validation error: ${error.message}`, { status: 400 });
-    }
-    
-    return new NextResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
-  }
-}

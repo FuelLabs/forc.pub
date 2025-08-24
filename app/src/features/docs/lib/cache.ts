@@ -96,47 +96,6 @@ export function setCachedFile(ipfsHash: string, filePath: string, content: strin
   console.log(`Cached file ${cacheKey} (${content.length} bytes)`);
 }
 
-export function evictPackageFromCache(packageName: string, version: string): boolean {
-  const cacheKey = `${packageName}@${version}`;
-  const deleted = packageCaches.delete(cacheKey);
-  
-  if (deleted) {
-    console.log(`Evicted package cache for ${cacheKey}`);
-  }
-  
-  return deleted;
-}
-
-export function evictAllPackageVersionsFromCache(packageName: string): number {
-  let evictedCount = 0;
-  
-  for (const key of packageCaches.keys()) {
-    if (key.startsWith(`${packageName}@`)) {
-      packageCaches.delete(key);
-      evictedCount++;
-    }
-  }
-  
-  console.log(`Evicted ${evictedCount} versions of ${packageName} from cache`);
-  return evictedCount;
-}
-
-/// Clears all caches
-export function clearAllCaches(): void {
-  const packageCount = packageCaches.size;
-  const fileCount = fileCaches.size;
-  
-  packageCaches.clear();
-  fileCaches.clear();
-  
-  // Reset stats
-  packageCacheHits = 0;
-  packageCacheMisses = 0;
-  fileCacheHits = 0;
-  fileCacheMisses = 0;
-  
-  console.log(`Cleared all caches: ${packageCount} packages, ${fileCount} files`);
-}
 
 /// Gets cache statistics
 export function getCacheStats(): CacheStats {
