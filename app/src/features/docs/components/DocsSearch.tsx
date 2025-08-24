@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import NextLink from "next/link";
 import {
   Box,
   Container,
@@ -140,6 +141,12 @@ export default function DocsSearch() {
   const getTimeAgo = (dateString: string) => {
     const now = new Date();
     const published = new Date(dateString);
+    
+    // Handle invalid dates
+    if (isNaN(published.getTime())) {
+      return 'recently';
+    }
+    
     const diffInMinutes = Math.floor((now.getTime() - published.getTime()) / (1000 * 60));
     
     // Handle future dates by treating them as "just now"
@@ -172,7 +179,8 @@ export default function DocsSearch() {
         >
           <Box display="flex" alignItems="center" gap={1} mb={0.5}>
             <Link
-              href={`/docs/${pkg.name}/${pkg.version}`}
+              component={NextLink}
+              href={`/docs/${encodeURIComponent(pkg.name)}/${encodeURIComponent(pkg.version)}`}
               color="primary"
               underline="hover"
               variant="h6"
@@ -181,7 +189,6 @@ export default function DocsSearch() {
                 fontWeight: 500,
                 fontSize: '1.1rem'
               }}
-              onClick={() => router.push(`/docs/${pkg.name}/${pkg.version}`)}
             >
               {pkg.name}
             </Link>
@@ -235,7 +242,8 @@ export default function DocsSearch() {
               <Box flex={1}>
                 <Box display="flex" alignItems="center" gap={1} mb={0.5}>
                   <Link
-                    href={`/docs/${pkg.name}/${pkg.version}`}
+                    component={NextLink}
+                    href={`/docs/${encodeURIComponent(pkg.name)}/${encodeURIComponent(pkg.version)}`}
                     color="primary"
                     underline="hover"
                     sx={{ 
@@ -243,7 +251,6 @@ export default function DocsSearch() {
                       fontWeight: 500,
                       fontSize: '1rem'
                     }}
-                    onClick={() => router.push(`/docs/${pkg.name}/${pkg.version}`)}
                   >
                     {pkg.name}
                   </Link>
@@ -375,8 +382,11 @@ export default function DocsSearch() {
               .filter(pkg => pkg.docsIpfsUrl !== null)
               .sort((a, b) => {
                 // Sort by most recent update time (updatedAt), fallback to createdAt
-                const aTime = new Date(a.updatedAt || a.createdAt || '0').getTime();
-                const bTime = new Date(b.updatedAt || b.createdAt || '0').getTime();
+                const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                // Handle invalid dates
+                if (isNaN(aTime)) return 1;
+                if (isNaN(bTime)) return -1;
                 return bTime - aTime; // Most recent first
               })
           )}

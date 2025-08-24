@@ -5,13 +5,24 @@ import { getCachedFile, setCachedFile } from './cache';
 import { convertByteCodeContent } from './utils';
 async function fetchFromIPFS(ipfsHash: string): Promise<ArrayBuffer> {
   const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
-  const response = await fetch(ipfsUrl);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const response = await fetch(ipfsUrl, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.arrayBuffer();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('IPFS fetch timeout after 30 seconds');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  
-  return response.arrayBuffer();
 }
 
 async function fetchFromS3(ipfsHash: string): Promise<ArrayBuffer> {
@@ -23,13 +34,24 @@ async function fetchFromS3(ipfsHash: string): Promise<ArrayBuffer> {
   }
   
   const s3Url = `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${ipfsHash}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   
-  const response = await fetch(s3Url);
-  if (!response.ok) {
-    throw new Error(`S3 HTTP error! status: ${response.status}`);
+  try {
+    const response = await fetch(s3Url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`S3 HTTP error! status: ${response.status}`);
+    }
+    
+    return response.arrayBuffer();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('S3 fetch timeout after 30 seconds');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  
-  return response.arrayBuffer();
 }
 
 async function fetchWithFallback(ipfsHash: string): Promise<ArrayBuffer> {
@@ -95,7 +117,13 @@ export async function extractAllFromTarball(ipfsHash: string): Promise<Map<strin
 
 async function extractFileFromTarball(contentBuffer: ArrayBuffer, targetFilePath: string): Promise<string | null> {
   const compressed = new Uint8Array(contentBuffer);
-  const decompressed = pako.ungzip(compressed);
+  let decompressed: Uint8Array;
+  
+  try {
+    decompressed = pako.ungzip(compressed);
+  } catch (error) {
+    throw new Error(`Failed to decompress tarball: ${error instanceof Error ? error.message : 'Unknown decompression error'}`);
+  }
   
   return new Promise((resolve, reject) => {
     const extractor = extract();
@@ -124,7 +152,13 @@ async function extractFileFromTarball(contentBuffer: ArrayBuffer, targetFilePath
 
 async function extractAllFilesFromTarball(contentBuffer: ArrayBuffer): Promise<Map<string, string>> {
   const compressed = new Uint8Array(contentBuffer);
-  const decompressed = pako.ungzip(compressed);
+  let decompressed: Uint8Array;
+  
+  try {
+    decompressed = pako.ungzip(compressed);
+  } catch (error) {
+    throw new Error(`Failed to decompress tarball: ${error instanceof Error ? error.message : 'Unknown decompression error'}`);
+  }
   
   return new Promise((resolve, reject) => {
     const extractor = extract();
