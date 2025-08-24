@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import NextLink from "next/link";
 import {
   Box,
@@ -25,7 +24,6 @@ export default function DocsSearch() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     // Load recent packages on component mount

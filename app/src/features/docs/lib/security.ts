@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'crypto';
+import { createHash } from 'crypto';
 
 export class SecurityValidationError extends Error {
   constructor(message: string) {
