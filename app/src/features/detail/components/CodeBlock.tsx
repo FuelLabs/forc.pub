@@ -45,7 +45,7 @@ const CodeBlock: React.FC<{
                 theme,
               })
             );
-          } catch (langError) {
+          } catch {
             console.warn(`Language ${language} not found, falling back to text`);
             setHtml(
               highlighter.codeToHtml(code, {

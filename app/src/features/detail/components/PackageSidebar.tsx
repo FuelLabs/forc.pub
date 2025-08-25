@@ -176,11 +176,11 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
           </div>
         )}
 
-        {data.documentation && (
-          <div className="sidebar-link-item">
-            <Typography variant="h6" className="sidebar-section-heading">
-              Documentation
-            </Typography>
+        <div className="sidebar-link-item">
+          <Typography variant="h6" className="sidebar-section-heading">
+            Documentation
+          </Typography>
+          {data.documentation ? (
             <Link
               href={data.documentation}
               target="_blank"
@@ -191,8 +191,23 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
               {data.documentation}
             </Link>
-          </div>
-        )}
+          ) : data.docsIpfsUrl ? (
+            <Link
+              href={`/docs/${data.name}/${data.version}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-light link-block"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
+              Auto-generated Documentation
+            </Link>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No documentation available
+            </Typography>
+          )}
+        </div>
 
         {data.homepage && (
           <div className="sidebar-link-item">

@@ -20,6 +20,7 @@ export interface PackagePreview {
   updatedAt: string;
   categories: string[];
   keywords: string[];
+  docsIpfsUrl: string | null;
 }
 
 export interface AuthenticatedUser {
