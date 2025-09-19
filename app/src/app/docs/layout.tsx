@@ -22,7 +22,7 @@ export default function DocsLayout({ children }: DocsLayoutProps) {
         <Toolbar>
           <Button
             component={Link}
-            href="/"
+            href={process.env.NEXT_PUBLIC_ROOT_URL ?? "https://forc.pub/"}
             startIcon={<HomeIcon />}
             color="inherit"
             sx={{
