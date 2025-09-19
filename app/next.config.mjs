@@ -39,30 +39,6 @@ const nextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: '/',
-        has: [
-          {
-            type: 'host',
-            value: 'docs.forc.pub',
-          },
-        ],
-        destination: '/docs',
-      },
-      {
-        source: '/:path((?!docs/|_next/|api/|favicon\.ico|robots\.txt|sitemap\.xml).*)',
-        has: [
-          {
-            type: 'host',
-            value: 'docs.forc.pub',
-          },
-        ],
-        destination: '/docs/:path',
-      },
-    ];
-  },
 };
 
 export default nextConfig;
