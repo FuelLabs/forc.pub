@@ -364,7 +364,7 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
     .arg("--no-confirm")
     .arg("--root")
     .arg(forc_path)
-    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/{forc_version}/forc-binaries-{os}_{arch}.tar.gz"))
+    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"))
     .arg("--bin-dir=forc-binaries/forc")
     .arg("--pkg-fmt=tgz")
     .arg(format!("forc@{forc_version}"))
