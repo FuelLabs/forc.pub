@@ -391,27 +391,116 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
         }
     };
 
-    let output = Command::new("cargo")
-    .arg("binstall")
-    .arg("--no-confirm")
-    .arg("--root")
-    .arg(forc_path)
-    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"))
-    .arg("--bin-dir=forc-binaries/forc")
-    .arg("--pkg-fmt=tgz")
-    .arg(format!("forc@{forc_version}"))
-    .output()
-    .map_err(|err| {
-        error!("Failed to install forc with binstall: {:?}", err);
-        UploadError::InvalidForcVersion(forc_version.to_string())
-    })?;
+    install_forc_components(forc_version, forc_path, os, arch, &["forc", "forc-doc"])
+}
 
-    if !output.status.success() {
-        error!("Failed to install forc: {:?}", output);
-        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
-    } else {
-        Ok(())
+fn install_forc_components(
+    forc_version: &str,
+    forc_path: &Path,
+    os: &str,
+    arch: &str,
+    components: &[&str],
+) -> Result<(), UploadError> {
+    for component in missing_components(forc_path, components) {
+        run_binstall(forc_version, forc_path, os, arch, component)?;
+
+        if forc_path.join("bin").join(component).exists() {
+            continue;
+        }
+
+        if component == "forc-doc" {
+            run_plain_binstall(forc_version, forc_path, component)?;
+            if forc_path.join("bin").join(component).exists() {
+                continue;
+            }
+        }
+
+        return Err(UploadError::InvalidForcVersion(forc_version.to_string()));
     }
+
+    Ok(())
+}
+
+fn run_binstall(
+    forc_version: &str,
+    forc_path: &Path,
+    os: &str,
+    arch: &str,
+    component: &str,
+) -> Result<(), UploadError> {
+    let output = Command::new("cargo")
+        .arg("binstall")
+        .arg("--no-confirm")
+        .arg("--root")
+        .arg(forc_path)
+        .arg(format!(
+            "--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"
+        ))
+        .arg(format!("--bin-dir=forc-binaries/{component}"))
+        .arg("--pkg-fmt=tgz")
+        .arg(format!("forc@{forc_version}"))
+        .output()
+        .map_err(|err| {
+            error!(
+                "Failed to spawn cargo-binstall for forc component '{}': {:?}",
+                component,
+                err
+            );
+            UploadError::InvalidForcVersion(forc_version.to_string())
+        })?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        error!(
+            "Failed to install forc component '{}': status: {}, stderr: {}",
+            component,
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
+    }
+}
+
+fn run_plain_binstall(
+    forc_version: &str,
+    forc_path: &Path,
+    component: &str,
+) -> Result<(), UploadError> {
+    let output = Command::new("cargo")
+        .arg("binstall")
+        .arg("--no-confirm")
+        .arg("--root")
+        .arg(forc_path)
+        .arg(format!("{component}@{forc_version}"))
+        .output()
+        .map_err(|err| {
+            error!(
+                "Failed to spawn cargo-binstall fallback for '{}': {:?}",
+                component, err
+            );
+            UploadError::InvalidForcVersion(forc_version.to_string())
+        })?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        error!(
+            "Fallback install failed for component '{}': status: {}, stderr: {}",
+            component,
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
+    }
+}
+
+fn missing_components<'a>(forc_path: &Path, components: &'a [&str]) -> Vec<&'a str> {
+    components
+        .iter()
+        .copied()
+        .filter(|component| !forc_path.join("bin").join(component).exists())
+        .collect()
 }
 
 #[cfg(test)]
@@ -419,6 +508,39 @@ mod tests {
     use super::*;
     use crate::file_uploader::tests::get_mock_file_uploader;
     use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn install_forc_at_path_produces_functional_binaries() {
+        use tempfile::tempdir;
+
+        let forc_root = tempdir().expect("tempdir ok");
+        install_forc_at_path("0.70.0", forc_root.path()).expect("install ok");
+
+        for binary in ["forc", "forc-doc"] {
+            let binary_path = forc_root.path().join("bin").join(binary);
+            assert!(
+                binary_path.exists(),
+                "missing binary: {}",
+                binary_path.display()
+            );
+
+            let output = Command::new(&binary_path)
+                .arg("--version")
+                .output()
+                .expect("command ok");
+
+            assert!(
+                output.status.success(),
+                "{} --version failed: {}",
+                binary,
+                String::from_utf8_lossy(&output.stderr)
+            );
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            assert!(stdout.contains("0.70.0"), "{} output: {}", binary, stdout);
+        }
+    }
 
     #[tokio::test]
     #[serial]
