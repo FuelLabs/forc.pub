@@ -7,6 +7,7 @@ use flate2::{
 };
 use forc_util::bytecode::get_bytecode_id;
 use serde::Serialize;
+use std::fmt;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,6 +23,8 @@ const README_FILE: &str = "README.md";
 const FORC_MANIFEST_FILE: &str = "Forc.toml";
 const MAX_UPLOAD_SIZE_STR: &str = "10MB";
 pub const TARBALL_NAME: &str = "project.tgz";
+// These are the components that can be installed with cargo-binstall.
+const FORC_COMPONENTS: &[Component; 2] = &[Component::Forc, Component::ForcDoc];
 
 #[derive(Error, Debug, PartialEq, Eq, Serialize)]
 pub enum UploadError {
@@ -391,11 +394,10 @@ pub fn install_binaries_at_path(forc_version: &str, forc_path: &Path) -> Result<
         }
     };
 
-    let components = &[Component::Forc, Component::ForcDoc];
-    for component in missing_components(forc_path, components) {
+    for component in missing_components(forc_path, FORC_COMPONENTS) {
         install_component(forc_version, forc_path, os, arch, component)?;
 
-        if !forc_path.join("bin").join(component.name()).exists() {
+        if !forc_path.join("bin").join(component.binary_name()).exists() {
             return Err(UploadError::InvalidForcVersion(forc_version.to_string()));
         }
     }
@@ -411,11 +413,17 @@ enum Component {
 }
 
 impl Component {
-    fn name(self) -> &'static str {
+    fn binary_name(self) -> &'static str {
         match self {
             Component::Forc => "forc",
             Component::ForcDoc => "forc-doc",
         }
+    }
+}
+
+impl fmt::Display for Component {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.binary_name())
     }
 }
 
@@ -426,7 +434,6 @@ fn install_component(
     arch: &str,
     component: Component,
 ) -> Result<(), UploadError> {
-    let component_name = component.name();
     let output = Command::new("cargo")
         .arg("binstall")
         .arg("--no-confirm")
@@ -435,14 +442,14 @@ fn install_component(
         .arg(format!(
             "--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"
         ))
-        .arg(format!("--bin-dir=forc-binaries/{component_name}"))
+        .arg(format!("--bin-dir=forc-binaries/{component}"))
         .arg("--pkg-fmt=tgz")
-        .arg(format!("{component_name}@{forc_version}"))
+        .arg(format!("{component}@{forc_version}"))
         .output()
         .map_err(|err| {
             error!(
                 "Failed to spawn cargo-binstall for forc component '{}': {:?}",
-                component_name,
+                component,
                 err
             );
             UploadError::InvalidForcVersion(forc_version.to_string())
@@ -453,7 +460,7 @@ fn install_component(
     } else {
         error!(
             "Failed to install forc component '{}': status: {}, stderr: {}",
-            component_name,
+            component,
             output.status,
             String::from_utf8_lossy(&output.stderr)
         );
@@ -465,7 +472,7 @@ fn missing_components(forc_path: &Path, components: &[Component]) -> Vec<Compone
     components
         .iter()
         .copied()
-        .filter(|component| !forc_path.join("bin").join(component.name()).exists())
+        .filter(|component| !forc_path.join("bin").join(component.binary_name()).exists())
         .collect()
 }
 
@@ -483,8 +490,9 @@ mod tests {
         let forc_root = tempdir().expect("tempdir ok");
         install_binaries_at_path("0.70.0", forc_root.path()).expect("install ok");
 
-        for binary in ["forc", "forc-doc"] {
-            let binary_path = forc_root.path().join("bin").join(binary);
+        for component in FORC_COMPONENTS.iter().copied() {
+            let binary_name = component.binary_name();
+            let binary_path = forc_root.path().join("bin").join(binary_name);
             assert!(
                 binary_path.exists(),
                 "missing binary: {}",
@@ -499,12 +507,17 @@ mod tests {
             assert!(
                 output.status.success(),
                 "{} --version failed: {}",
-                binary,
+                component,
                 String::from_utf8_lossy(&output.stderr)
             );
 
             let stdout = String::from_utf8_lossy(&output.stdout);
-            assert!(stdout.contains("0.70.0"), "{} output: {}", binary, stdout);
+            assert!(
+                stdout.contains("0.70.0"),
+                "{} output: {}",
+                component,
+                stdout
+            );
         }
     }
 
