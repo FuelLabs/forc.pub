@@ -22,7 +22,7 @@ use forc_pub::file_uploader::{
 };
 use forc_pub::github::handle_login;
 use forc_pub::handlers::publish::handle_publish;
-use forc_pub::handlers::upload::{handle_project_upload, install_forc_at_path, UploadError};
+use forc_pub::handlers::upload::{handle_project_upload, install_binaries_at_path, UploadError};
 use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
@@ -192,7 +192,7 @@ async fn upload_project<'a>(
         let forc_path_clone = forc_path.clone();
         let forc_version_clone = forc_version.clone();
         let handle = task::spawn_blocking(move || {
-            install_forc_at_path(&forc_version_clone, &forc_path_clone)
+            install_binaries_at_path(&forc_version_clone, &forc_path_clone)
         });
 
         while !handle.is_finished() {

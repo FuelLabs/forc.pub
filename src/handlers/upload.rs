@@ -374,8 +374,8 @@ pub async fn handle_project_upload<'a>(
     Ok(upload)
 }
 
-/// Installs the given version of forc at the specific root path using cargo-binstall.
-pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), UploadError> {
+/// Installs the given version of forc and forc-doc at the specific root path using cargo-binstall.
+pub fn install_binaries_at_path(forc_version: &str, forc_path: &Path) -> Result<(), UploadError> {
     let os = match std::env::consts::OS {
         "linux" => "linux",
         "macos" => "darwin",
@@ -391,43 +391,42 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
         }
     };
 
-    install_forc_components(forc_version, forc_path, os, arch, &["forc", "forc-doc"])
-}
-
-fn install_forc_components(
-    forc_version: &str,
-    forc_path: &Path,
-    os: &str,
-    arch: &str,
-    components: &[&str],
-) -> Result<(), UploadError> {
+    let components = &[Component::Forc, Component::ForcDoc];
     for component in missing_components(forc_path, components) {
-        run_binstall(forc_version, forc_path, os, arch, component)?;
+        install_component(forc_version, forc_path, os, arch, component)?;
 
-        if forc_path.join("bin").join(component).exists() {
-            continue;
+        if !forc_path.join("bin").join(component.name()).exists() {
+            return Err(UploadError::InvalidForcVersion(forc_version.to_string()));
         }
-
-        if component == "forc-doc" {
-            run_plain_binstall(forc_version, forc_path, component)?;
-            if forc_path.join("bin").join(component).exists() {
-                continue;
-            }
-        }
-
-        return Err(UploadError::InvalidForcVersion(forc_version.to_string()));
     }
 
     Ok(())
 }
 
-fn run_binstall(
+/// These are the components that can be installed with cargo-binstall.
+#[derive(Copy, Clone, Debug)]
+enum Component {
+    Forc,
+    ForcDoc,
+}
+
+impl Component {
+    fn name(self) -> &'static str {
+        match self {
+            Component::Forc => "forc",
+            Component::ForcDoc => "forc-doc",
+        }
+    }
+}
+
+fn install_component(
     forc_version: &str,
     forc_path: &Path,
     os: &str,
     arch: &str,
-    component: &str,
+    component: Component,
 ) -> Result<(), UploadError> {
+    let component_name = component.name();
     let output = Command::new("cargo")
         .arg("binstall")
         .arg("--no-confirm")
@@ -436,14 +435,14 @@ fn run_binstall(
         .arg(format!(
             "--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"
         ))
-        .arg(format!("--bin-dir=forc-binaries/{component}"))
+        .arg(format!("--bin-dir=forc-binaries/{component_name}"))
         .arg("--pkg-fmt=tgz")
-        .arg(format!("forc@{forc_version}"))
+        .arg(format!("{component_name}@{forc_version}"))
         .output()
         .map_err(|err| {
             error!(
                 "Failed to spawn cargo-binstall for forc component '{}': {:?}",
-                component,
+                component_name,
                 err
             );
             UploadError::InvalidForcVersion(forc_version.to_string())
@@ -454,7 +453,7 @@ fn run_binstall(
     } else {
         error!(
             "Failed to install forc component '{}': status: {}, stderr: {}",
-            component,
+            component_name,
             output.status,
             String::from_utf8_lossy(&output.stderr)
         );
@@ -462,44 +461,11 @@ fn run_binstall(
     }
 }
 
-fn run_plain_binstall(
-    forc_version: &str,
-    forc_path: &Path,
-    component: &str,
-) -> Result<(), UploadError> {
-    let output = Command::new("cargo")
-        .arg("binstall")
-        .arg("--no-confirm")
-        .arg("--root")
-        .arg(forc_path)
-        .arg(format!("{component}@{forc_version}"))
-        .output()
-        .map_err(|err| {
-            error!(
-                "Failed to spawn cargo-binstall fallback for '{}': {:?}",
-                component, err
-            );
-            UploadError::InvalidForcVersion(forc_version.to_string())
-        })?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        error!(
-            "Fallback install failed for component '{}': status: {}, stderr: {}",
-            component,
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
-    }
-}
-
-fn missing_components<'a>(forc_path: &Path, components: &'a [&str]) -> Vec<&'a str> {
+fn missing_components(forc_path: &Path, components: &[Component]) -> Vec<Component> {
     components
         .iter()
         .copied()
-        .filter(|component| !forc_path.join("bin").join(component).exists())
+        .filter(|component| !forc_path.join("bin").join(component.name()).exists())
         .collect()
 }
 
@@ -515,7 +481,7 @@ mod tests {
         use tempfile::tempdir;
 
         let forc_root = tempdir().expect("tempdir ok");
-        install_forc_at_path("0.70.0", forc_root.path()).expect("install ok");
+        install_binaries_at_path("0.70.0", forc_root.path()).expect("install ok");
 
         for binary in ["forc", "forc-doc"] {
             let binary_path = forc_root.path().join("bin").join(binary);
@@ -553,7 +519,7 @@ mod tests {
         let forc_path = PathBuf::from(&forc_path_str);
         fs::create_dir_all(forc_path.clone()).ok();
         let forc_path = fs::canonicalize(forc_path.clone()).expect("forc path ok");
-        install_forc_at_path(forc_version, &forc_path).expect("forc installed");
+        install_binaries_at_path(forc_version, &forc_path).expect("forc installed");
 
         let mock_file_uploader = get_mock_file_uploader();
 
