@@ -90,37 +90,39 @@ pub enum UploadError {
 /// Returns the IPFS hash of the uploaded documentation tarball, or None if generation fails.
 async fn generate_and_upload_documentation(
     unpacked_dir: &Path,
-    forc_bin_path: &Path,
+    forc_path: &Path,
     file_uploader: &FileUploader<'_, impl PinataClient, impl S3Client>,
 ) -> Result<String, UploadError> {
+    let forc_doc_bin_path = forc_path.join("bin/forc-doc");
+
     // Generate documentation
     tracing::info!(
-        "Generating documentation for project using forc binary at {}",
-        forc_bin_path.display()
+        "Generating documentation using forc-doc binary at {}",
+        forc_doc_bin_path.display()
     );
-    let output = Command::new(forc_bin_path)
-        .args(["doc", "--path", unpacked_dir.to_str().unwrap()])
+    let output = Command::new(&forc_doc_bin_path)
+        .args(["--path", unpacked_dir.to_str().unwrap()])
         .current_dir(unpacked_dir)
         .output()
         .map_err(|err| {
             tracing::error!(
-                "Failed to spawn forc doc command at {}: {:?}",
-                forc_bin_path.display(),
+                "Failed to spawn forc-doc command at {}: {:?}",
+                forc_doc_bin_path.display(),
                 err
             );
             UploadError::FailedToGenerateDocumentation
         })?;
 
-    tracing::info!("forc doc completed with status: {}", output.status);
+    tracing::info!("forc-doc completed with status: {}", output.status);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !stdout.trim().is_empty() {
-        tracing::debug!("forc doc stdout: {}", stdout);
+        tracing::debug!("forc-doc stdout: {}", stdout);
     }
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     if !stderr.trim().is_empty() {
-        tracing::warn!("forc doc stderr: {}", stderr);
+        tracing::warn!("forc-doc stderr: {}", stderr);
     }
 
     if !output.status.success() {
@@ -351,7 +353,7 @@ pub async fn handle_project_upload<'a>(
 
     // Generate and upload documentation
     let docs_ipfs_hash =
-        generate_and_upload_documentation(&unpacked_dir, &forc_bin_path, file_uploader)
+        generate_and_upload_documentation(&unpacked_dir, &forc_path, file_uploader)
             .await
             .map_err(|e| {
                 tracing::warn!("Documentation generation failed: {}", e);
@@ -484,11 +486,11 @@ mod tests {
 
     #[test]
     #[serial]
-    fn install_forc_at_path_produces_functional_binaries() {
+    fn install_binaries_at_path_produces_functional_binaries() {
         use tempfile::tempdir;
 
         let forc_root = tempdir().expect("tempdir ok");
-        install_binaries_at_path("0.70.0", forc_root.path()).expect("install ok");
+        install_binaries_at_path("0.70.1", forc_root.path()).expect("install ok");
 
         for component in FORC_COMPONENTS.iter().copied() {
             let binary_name = component.binary_name();
@@ -513,7 +515,7 @@ mod tests {
 
             let stdout = String::from_utf8_lossy(&output.stdout);
             assert!(
-                stdout.contains("0.70.0"),
+                stdout.contains("0.70.1"),
                 "{} output: {}",
                 component,
                 stdout
