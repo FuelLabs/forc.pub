@@ -352,13 +352,12 @@ pub async fn handle_project_upload<'a>(
     };
 
     // Generate and upload documentation
-    let docs_ipfs_hash =
-        generate_and_upload_documentation(&unpacked_dir, &forc_path, file_uploader)
-            .await
-            .map_err(|e| {
-                tracing::warn!("Documentation generation failed: {}", e);
-            })
-            .ok();
+    let docs_ipfs_hash = generate_and_upload_documentation(&unpacked_dir, forc_path, file_uploader)
+        .await
+        .map_err(|e| {
+            tracing::warn!("Documentation generation failed: {}", e);
+        })
+        .ok();
 
     // Load the contents of readme and Forc.toml into memory for storage in the database.
     let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
@@ -514,12 +513,7 @@ mod tests {
             );
 
             let stdout = String::from_utf8_lossy(&output.stdout);
-            assert!(
-                stdout.contains("0.70.1"),
-                "{} output: {}",
-                component,
-                stdout
-            );
+            assert!(stdout.contains("0.70.1"), "{component} output: {stdout}");
         }
     }
 
