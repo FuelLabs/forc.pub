@@ -92,6 +92,13 @@ async fn generate_and_upload_documentation(
     file_uploader: &FileUploader<'_, impl PinataClient, impl S3Client>,
 ) -> Result<String, UploadError> {
     let forc_doc_bin_path = forc_path.join("bin/forc-doc");
+    if !forc_doc_bin_path.exists() {
+        tracing::warn!(
+            "forc-doc binary not found at {}; skipping documentation generation",
+            forc_doc_bin_path.display()
+        );
+        return Err(UploadError::FailedToGenerateDocumentation);
+    }
 
     // Generate documentation
     tracing::info!(
