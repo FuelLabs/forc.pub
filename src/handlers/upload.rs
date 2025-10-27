@@ -6,6 +6,7 @@ use flate2::{
     {read::GzDecoder, write::GzEncoder},
 };
 use forc_util::bytecode::get_bytecode_id;
+use semver::Version;
 use serde::Serialize;
 use std::fmt;
 use std::fs::{self, File};
@@ -23,9 +24,6 @@ const README_FILE: &str = "README.md";
 const FORC_MANIFEST_FILE: &str = "Forc.toml";
 const MAX_UPLOAD_SIZE_STR: &str = "10MB";
 pub const TARBALL_NAME: &str = "project.tgz";
-// These are the components that can be installed with cargo-binstall.
-const FORC_COMPONENTS: &[Component; 2] = &[Component::Forc, Component::ForcDoc];
-
 #[derive(Error, Debug, PartialEq, Eq, Serialize)]
 pub enum UploadError {
     #[error("Failed to create temporary directory.")]
@@ -395,7 +393,9 @@ pub fn install_binaries_at_path(forc_version: &str, forc_path: &Path) -> Result<
         }
     };
 
-    for component in missing_components(forc_path, FORC_COMPONENTS) {
+    let components = components_for_version(forc_version);
+
+    for component in missing_components(forc_path, &components) {
         install_component(forc_version, forc_path, os, arch, component)?;
 
         if !forc_path.join("bin").join(component.binary_name()).exists() {
@@ -406,8 +406,7 @@ pub fn install_binaries_at_path(forc_version: &str, forc_path: &Path) -> Result<
     Ok(())
 }
 
-/// These are the components that can be installed with cargo-binstall.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Component {
     Forc,
     ForcDoc,
@@ -426,6 +425,27 @@ impl fmt::Display for Component {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.binary_name())
     }
+}
+
+fn components_for_version(forc_version: &str) -> Vec<Component> {
+    let mut components = vec![Component::Forc];
+
+    if supports_forc_doc(forc_version) {
+        components.push(Component::ForcDoc);
+    } else {
+        tracing::debug!(
+            "Skipping forc-doc installation for unsupported version {}",
+            forc_version
+        );
+    }
+
+    components
+}
+
+fn supports_forc_doc(forc_version: &str) -> bool {
+    Version::parse(forc_version.trim_start_matches('v'))
+        .map(|version| version >= Version::new(0, 70, 0))
+        .unwrap_or(false)
 }
 
 fn install_component(
@@ -491,7 +511,9 @@ mod tests {
         let forc_root = tempdir().expect("tempdir ok");
         install_binaries_at_path("0.70.1", forc_root.path()).expect("install ok");
 
-        for component in FORC_COMPONENTS.iter().copied() {
+        let components = components_for_version("0.70.1");
+
+        for component in components.iter().copied() {
             let binary_name = component.binary_name();
             let binary_path = forc_root.path().join("bin").join(binary_name);
             assert!(
@@ -515,6 +537,15 @@ mod tests {
             let stdout = String::from_utf8_lossy(&output.stdout);
             assert!(stdout.contains("0.70.1"), "{component} output: {stdout}");
         }
+    }
+
+    #[test]
+    fn components_for_version_only_enables_forc_doc_when_supported() {
+        let modern = components_for_version("0.70.1");
+        assert!(modern.contains(&Component::ForcDoc));
+
+        let legacy = components_for_version("0.65.0");
+        assert_eq!(legacy, vec![Component::Forc]);
     }
 
     #[tokio::test]
