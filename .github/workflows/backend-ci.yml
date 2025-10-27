@@ -83,6 +83,16 @@ jobs:
         run: |
           cp .env.example .env.local
           docker compose up -d db
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            if docker compose exec -T db pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB_NAME}"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs db
+          exit 1
       - name: setup binstall
         uses: taiki-e/install-action@cargo-binstall
       - name: Install forc for tests
@@ -139,4 +149,3 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           profile-name: "super-fast-builder"
-

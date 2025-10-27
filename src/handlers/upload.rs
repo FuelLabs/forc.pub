@@ -6,7 +6,9 @@ use flate2::{
     {read::GzDecoder, write::GzEncoder},
 };
 use forc_util::bytecode::get_bytecode_id;
+use semver::Version;
 use serde::Serialize;
+use std::fmt;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,7 +24,6 @@ const README_FILE: &str = "README.md";
 const FORC_MANIFEST_FILE: &str = "Forc.toml";
 const MAX_UPLOAD_SIZE_STR: &str = "10MB";
 pub const TARBALL_NAME: &str = "project.tgz";
-
 #[derive(Error, Debug, PartialEq, Eq, Serialize)]
 pub enum UploadError {
     #[error("Failed to create temporary directory.")]
@@ -87,37 +88,46 @@ pub enum UploadError {
 /// Returns the IPFS hash of the uploaded documentation tarball, or None if generation fails.
 async fn generate_and_upload_documentation(
     unpacked_dir: &Path,
-    forc_bin_path: &Path,
+    forc_path: &Path,
     file_uploader: &FileUploader<'_, impl PinataClient, impl S3Client>,
 ) -> Result<String, UploadError> {
+    let forc_doc_bin_path = forc_path.join("bin/forc-doc");
+    if !forc_doc_bin_path.exists() {
+        tracing::warn!(
+            "forc-doc binary not found at {}; skipping documentation generation",
+            forc_doc_bin_path.display()
+        );
+        return Err(UploadError::FailedToGenerateDocumentation);
+    }
+
     // Generate documentation
     tracing::info!(
-        "Generating documentation for project using forc binary at {}",
-        forc_bin_path.display()
+        "Generating documentation using forc-doc binary at {}",
+        forc_doc_bin_path.display()
     );
-    let output = Command::new(forc_bin_path)
-        .args(["doc", "--path", unpacked_dir.to_str().unwrap()])
+    let output = Command::new(&forc_doc_bin_path)
+        .args(["--path", unpacked_dir.to_str().unwrap()])
         .current_dir(unpacked_dir)
         .output()
         .map_err(|err| {
             tracing::error!(
-                "Failed to spawn forc doc command at {}: {:?}",
-                forc_bin_path.display(),
+                "Failed to spawn forc-doc command at {}: {:?}",
+                forc_doc_bin_path.display(),
                 err
             );
             UploadError::FailedToGenerateDocumentation
         })?;
 
-    tracing::info!("forc doc completed with status: {}", output.status);
+    tracing::info!("forc-doc completed with status: {}", output.status);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if !stdout.trim().is_empty() {
-        tracing::debug!("forc doc stdout: {}", stdout);
+        tracing::debug!("forc-doc stdout: {}", stdout);
     }
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     if !stderr.trim().is_empty() {
-        tracing::warn!("forc doc stderr: {}", stderr);
+        tracing::warn!("forc-doc stderr: {}", stderr);
     }
 
     if !output.status.success() {
@@ -347,13 +357,12 @@ pub async fn handle_project_upload<'a>(
     };
 
     // Generate and upload documentation
-    let docs_ipfs_hash =
-        generate_and_upload_documentation(&unpacked_dir, &forc_bin_path, file_uploader)
-            .await
-            .map_err(|e| {
-                tracing::warn!("Documentation generation failed: {}", e);
-            })
-            .ok();
+    let docs_ipfs_hash = generate_and_upload_documentation(&unpacked_dir, forc_path, file_uploader)
+        .await
+        .map_err(|e| {
+            tracing::warn!("Documentation generation failed: {}", e);
+        })
+        .ok();
 
     // Load the contents of readme and Forc.toml into memory for storage in the database.
     let readme = fs::read_to_string(project_dir.join(README_FILE)).ok();
@@ -374,8 +383,8 @@ pub async fn handle_project_upload<'a>(
     Ok(upload)
 }
 
-/// Installs the given version of forc at the specific root path using cargo-binstall.
-pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), UploadError> {
+/// Installs the given version of forc and forc-doc at the specific root path using cargo-binstall.
+pub fn install_binaries_at_path(forc_version: &str, forc_path: &Path) -> Result<(), UploadError> {
     let os = match std::env::consts::OS {
         "linux" => "linux",
         "macos" => "darwin",
@@ -391,27 +400,108 @@ pub fn install_forc_at_path(forc_version: &str, forc_path: &Path) -> Result<(), 
         }
     };
 
-    let output = Command::new("cargo")
-    .arg("binstall")
-    .arg("--no-confirm")
-    .arg("--root")
-    .arg(forc_path)
-    .arg(format!("--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"))
-    .arg("--bin-dir=forc-binaries/forc")
-    .arg("--pkg-fmt=tgz")
-    .arg(format!("forc@{forc_version}"))
-    .output()
-    .map_err(|err| {
-        error!("Failed to install forc with binstall: {:?}", err);
-        UploadError::InvalidForcVersion(forc_version.to_string())
-    })?;
+    let components = components_for_version(forc_version);
 
-    if !output.status.success() {
-        error!("Failed to install forc: {:?}", output);
-        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
-    } else {
-        Ok(())
+    for component in missing_components(forc_path, &components) {
+        install_component(forc_version, forc_path, os, arch, component)?;
+
+        if !forc_path.join("bin").join(component.binary_name()).exists() {
+            return Err(UploadError::InvalidForcVersion(forc_version.to_string()));
+        }
     }
+
+    Ok(())
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Component {
+    Forc,
+    ForcDoc,
+}
+
+impl Component {
+    fn binary_name(self) -> &'static str {
+        match self {
+            Component::Forc => "forc",
+            Component::ForcDoc => "forc-doc",
+        }
+    }
+}
+
+impl fmt::Display for Component {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.binary_name())
+    }
+}
+
+fn components_for_version(forc_version: &str) -> Vec<Component> {
+    let mut components = vec![Component::Forc];
+
+    if supports_forc_doc(forc_version) {
+        components.push(Component::ForcDoc);
+    } else {
+        tracing::debug!(
+            "Skipping forc-doc installation for unsupported version {}",
+            forc_version
+        );
+    }
+
+    components
+}
+
+fn supports_forc_doc(forc_version: &str) -> bool {
+    Version::parse(forc_version.trim_start_matches('v'))
+        .map(|version| version >= Version::new(0, 70, 0))
+        .unwrap_or(false)
+}
+
+fn install_component(
+    forc_version: &str,
+    forc_path: &Path,
+    os: &str,
+    arch: &str,
+    component: Component,
+) -> Result<(), UploadError> {
+    let output = Command::new("cargo")
+        .arg("binstall")
+        .arg("--no-confirm")
+        .arg("--root")
+        .arg(forc_path)
+        .arg(format!(
+            "--pkg-url=https://github.com/FuelLabs/sway/releases/download/v{forc_version}/forc-binaries-{os}_{arch}.tar.gz"
+        ))
+        .arg(format!("--bin-dir=forc-binaries/{component}"))
+        .arg("--pkg-fmt=tgz")
+        .arg(format!("{component}@{forc_version}"))
+        .output()
+        .map_err(|err| {
+            error!(
+                "Failed to spawn cargo-binstall for forc component '{}': {:?}",
+                component,
+                err
+            );
+            UploadError::InvalidForcVersion(forc_version.to_string())
+        })?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        error!(
+            "Failed to install forc component '{}': status: {}, stderr: {}",
+            component,
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(UploadError::InvalidForcVersion(forc_version.to_string()))
+    }
+}
+
+fn missing_components(forc_path: &Path, components: &[Component]) -> Vec<Component> {
+    components
+        .iter()
+        .copied()
+        .filter(|component| !forc_path.join("bin").join(component.binary_name()).exists())
+        .collect()
 }
 
 #[cfg(test)]
@@ -419,6 +509,51 @@ mod tests {
     use super::*;
     use crate::file_uploader::tests::get_mock_file_uploader;
     use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn install_binaries_at_path_produces_functional_binaries() {
+        use tempfile::tempdir;
+
+        let forc_root = tempdir().expect("tempdir ok");
+        install_binaries_at_path("0.70.1", forc_root.path()).expect("install ok");
+
+        let components = components_for_version("0.70.1");
+
+        for component in components.iter().copied() {
+            let binary_name = component.binary_name();
+            let binary_path = forc_root.path().join("bin").join(binary_name);
+            assert!(
+                binary_path.exists(),
+                "missing binary: {}",
+                binary_path.display()
+            );
+
+            let output = Command::new(&binary_path)
+                .arg("--version")
+                .output()
+                .expect("command ok");
+
+            assert!(
+                output.status.success(),
+                "{} --version failed: {}",
+                component,
+                String::from_utf8_lossy(&output.stderr)
+            );
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            assert!(stdout.contains("0.70.1"), "{component} output: {stdout}");
+        }
+    }
+
+    #[test]
+    fn components_for_version_only_enables_forc_doc_when_supported() {
+        let modern = components_for_version("0.70.1");
+        assert!(modern.contains(&Component::ForcDoc));
+
+        let legacy = components_for_version("0.65.0");
+        assert_eq!(legacy, vec![Component::Forc]);
+    }
 
     #[tokio::test]
     #[serial]
@@ -431,7 +566,7 @@ mod tests {
         let forc_path = PathBuf::from(&forc_path_str);
         fs::create_dir_all(forc_path.clone()).ok();
         let forc_path = fs::canonicalize(forc_path.clone()).expect("forc path ok");
-        install_forc_at_path(forc_version, &forc_path).expect("forc installed");
+        install_binaries_at_path(forc_version, &forc_path).expect("forc installed");
 
         let mock_file_uploader = get_mock_file_uploader();
 
