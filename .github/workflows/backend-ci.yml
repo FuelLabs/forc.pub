@@ -82,7 +82,7 @@ jobs:
       - name: Start local database with environment
         run: |
           cp .env.example .env.local
-          docker compose up -d db
+          docker compose up -d --wait db
       - name: setup binstall
         uses: taiki-e/install-action@cargo-binstall
       - name: Install forc for tests
