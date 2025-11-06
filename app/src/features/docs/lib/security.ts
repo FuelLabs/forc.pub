@@ -7,13 +7,19 @@ export class SecurityValidationError extends Error {
   }
 }
 
+const PACKAGE_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+
 export function validatePackageName(name: string): string {
   if (!name || typeof name !== 'string' || !name.trim()) {
     throw new SecurityValidationError('Package name is required');
   }
   
   const trimmed = name.trim();
-  if (trimmed.includes('..') || trimmed.includes('/')) {
+  if (trimmed.includes('..') || trimmed.includes('/') || trimmed.startsWith('.')) {
+    throw new SecurityValidationError('Invalid package name');
+  }
+
+  if (!PACKAGE_NAME_REGEX.test(trimmed)) {
     throw new SecurityValidationError('Invalid package name');
   }
   

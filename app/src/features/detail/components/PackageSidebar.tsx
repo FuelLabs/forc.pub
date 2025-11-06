@@ -33,6 +33,22 @@ interface PackageSidebarProps {
 
 const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
   const router = useRouter();
+  const docsRelativeUrl =
+    data?.docsIpfsUrl && data.name && data.version
+      ? `/docs/${encodeURIComponent(data.name)}/${encodeURIComponent(data.version)}`
+      : "";
+
+  const docsOrigin =
+    (typeof window !== "undefined" && window.location?.origin) ||
+    process.env.NEXT_PUBLIC_APP_ORIGIN ||
+    "";
+
+  const docsLinkLabel = docsRelativeUrl
+    ? docsOrigin
+      ? `${docsOrigin}${docsRelativeUrl}`
+      : docsRelativeUrl
+    : "";
+
   if (loading) {
     return (
       <Box
@@ -193,14 +209,15 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
             </Link>
           ) : data.docsIpfsUrl ? (
             <Link
-              href={`/docs/${data.name}/${data.version}`}
+              href={docsRelativeUrl || `/docs/${data.name}/${data.version}`}
               target="_blank"
               rel="noopener noreferrer"
               className="link-light link-block"
               sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              title={docsLinkLabel || docsRelativeUrl}
             >
               <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
-              Auto-generated Documentation
+              {docsLinkLabel || `Docs for ${data.name}@${data.version}`}
             </Link>
           ) : (
             <Typography variant="body2" color="text.secondary">

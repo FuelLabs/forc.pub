@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPackageDetail, getLatestVersion } from "../../../features/docs/lib/api";
+import { getPackageDetail, getLatestVersion, PackageNotFoundError } from "../../../features/docs/lib/api";
 import { 
   validatePackageName, 
   validateVersion, 
@@ -17,7 +17,7 @@ import {
   createRateLimitResponse
 } from "../../../features/docs/lib/errors";
 import { extractAllFromTarball } from "../../../features/docs/lib/fetching";
-import { getContentType, isHtmlFile } from "../../../features/docs/lib/utils";
+import { getContentType, isHtmlFile, convertByteCodeContent } from "../../../features/docs/lib/utils";
 
 // Cache interface for documentation (matches cache.ts interface)
 interface DocsCache {
@@ -136,7 +136,19 @@ export async function GET(
     const filePath = validateFilePath(requestedPath);
   
     const files = await getOrLoadDocs(packageName, version);
-    const content = files.get(filePath);
+
+    let resolvedPath = filePath;
+    let content = files.get(filePath);
+
+    if (!content) {
+      for (const [storedPath, storedContent] of files.entries()) {
+        if (storedPath === filePath || storedPath.endsWith(`/${filePath}`)) {
+          content = storedContent;
+          resolvedPath = storedPath;
+          break;
+        }
+      }
+    }
     
     if (!content) {
       logError(`File not found: ${filePath}`, new Error('File not found'), { 
@@ -149,13 +161,13 @@ export async function GET(
     }
     
     // Determine content type
-    const contentType = getContentType(filePath);
+    const contentType = getContentType(resolvedPath);
     
     // Generate CSP nonce for inline scripts
     const nonce = generateCSPNonce();
     
     // For HTML files, rewrite paths to use clean URLs and fix search
-    if (isHtmlFile(filePath)) {
+    if (isHtmlFile(resolvedPath)) {
       let html = content;
       
       // Rewrite static file paths
@@ -185,12 +197,7 @@ export async function GET(
       const searchJsContent = files.get('search.js');
       let searchIndexCode = '';
       if (searchJsContent) {
-        let actualSearchJS = searchJsContent;
-        if (searchJsContent.includes(',') && /^\d+,\d+/.test(searchJsContent.substring(0, 10))) {
-          const byteCodes = searchJsContent.split(',').map(num => parseInt(num.trim()));
-          actualSearchJS = String.fromCharCode(...byteCodes);
-        }
-        searchIndexCode = actualSearchJS;
+        searchIndexCode = convertByteCodeContent(searchJsContent);
       }
       
       // Add ONLY our working search implementation with SEARCH_INDEX inline
@@ -338,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
             targetPath = href.substring(3); // Remove ../
           } else {
             // Same directory links - add current directory
-            const currentDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            const currentDir = resolvedPath.substring(0, resolvedPath.lastIndexOf('/'));
             if (currentDir && !href.includes('/')) {
               targetPath = currentDir + '/' + href;
             }
@@ -378,9 +385,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (error instanceof SecurityValidationError) {
       return new NextResponse(`Validation error: ${error.message}`, { status: 400 });
     }
+    if (error instanceof PackageNotFoundError) {
+      return new NextResponse('Package not found', { status: 404 });
+    }
     
     // Generic error response
     return new NextResponse('Internal server error', { status: 500 });
   }
 }
-

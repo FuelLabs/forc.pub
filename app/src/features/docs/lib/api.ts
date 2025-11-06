@@ -1,3 +1,4 @@
+import axios from "axios";
 import HTTP, { PackagePreview } from "../../../utils/http";
 import { RecentPackage, RecentPackagesResponse as APIRecentPackagesResponse } from "../../dashboard/hooks/useFetchRecentPackages";
 
@@ -28,6 +29,14 @@ export interface RecentPackagesResponse {
   recentlyUpdated: PackageSearchResult[];
 }
 
+export class PackageNotFoundError extends Error {
+  constructor(name: string, version?: string) {
+    const versionSuffix = version ? `@${version}` : '';
+    super(`Package not found: ${name}${versionSuffix}`);
+    this.name = 'PackageNotFoundError';
+  }
+}
+
 export async function getPackageDetail(name: string, version: string): Promise<PackageWithDocs> {
   try {
     const response = await HTTP.get('/package', { params: { name, version } });
@@ -40,6 +49,10 @@ export async function getPackageDetail(name: string, version: string): Promise<P
       docsIpfsUrl: data.docsIpfsUrl
     };
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      throw new PackageNotFoundError(name, version);
+    }
+
     console.error(`Failed to fetch package details for ${name}@${version}`, error);
     throw new Error(`Failed to fetch package details for ${name}@${version}`);
   }
@@ -50,6 +63,10 @@ export async function getLatestVersion(name: string): Promise<string> {
     const response = await HTTP.get('/package', { params: { name } });
     return response.data.version;
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      throw new PackageNotFoundError(name);
+    }
+
     console.error(`Failed to fetch latest version for ${name}`, error);
     throw new Error(`Failed to fetch latest version for ${name}`);
   }
