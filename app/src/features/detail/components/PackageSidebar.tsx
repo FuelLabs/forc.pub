@@ -33,29 +33,21 @@ interface PackageSidebarProps {
 
 const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
   const router = useRouter();
-  const [docsRelativeUrl, setDocsRelativeUrl] = React.useState<string>("");
-  const [docsLinkLabel, setDocsLinkLabel] = React.useState<string>("");
+  const docsRelativeUrl =
+    data?.docsIpfsUrl && data.name && data.version
+      ? `/docs/${encodeURIComponent(data.name)}/${encodeURIComponent(data.version)}`
+      : "";
 
-  React.useEffect(() => {
-    if (!data?.docsIpfsUrl) {
-      setDocsRelativeUrl("");
-      setDocsLinkLabel("");
-      return;
-    }
+  const docsOrigin =
+    (typeof window !== "undefined" && window.location?.origin) ||
+    process.env.NEXT_PUBLIC_APP_ORIGIN ||
+    "";
 
-    const relativePath = `/docs/${encodeURIComponent(data.name)}/${encodeURIComponent(data.version)}`;
-    setDocsRelativeUrl(relativePath);
-
-    const configuredOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN ?? "";
-
-    if (typeof window !== "undefined" && window.location?.origin) {
-      setDocsLinkLabel(`${window.location.origin}${relativePath}`);
-    } else if (configuredOrigin) {
-      setDocsLinkLabel(`${configuredOrigin}${relativePath}`);
-    } else {
-      setDocsLinkLabel(relativePath);
-    }
-  }, [data?.docsIpfsUrl, data?.name, data?.version]);
+  const docsLinkLabel = docsRelativeUrl
+    ? docsOrigin
+      ? `${docsOrigin}${docsRelativeUrl}`
+      : docsRelativeUrl
+    : "";
 
   if (loading) {
     return (
