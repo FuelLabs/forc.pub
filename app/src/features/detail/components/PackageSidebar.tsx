@@ -217,7 +217,7 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
               title={docsLinkLabel || docsRelativeUrl}
             >
               <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
-              {docsLinkLabel || docsRelativeUrl || `Docs for ${data.name}@${data.version}`}
+              {docsLinkLabel || `Docs for ${data.name}@${data.version}`}
             </Link>
           ) : (
             <Typography variant="body2" color="text.secondary">

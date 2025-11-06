@@ -39,12 +39,7 @@ export function convertByteCodeContent(content: string): string {
       .map(num => parseInt(num.trim(), 10))
       .filter(num => Number.isFinite(num) && num >= 0 && num <= 255);
 
-    const byteArray = new Uint8Array(numbers.length);
-    for (let i = 0; i < numbers.length; i += 1) {
-      byteArray[i] = numbers[i];
-    }
-
-    return new TextDecoder().decode(byteArray);
+    return new TextDecoder().decode(new Uint8Array(numbers));
   }
   return content;
 }
