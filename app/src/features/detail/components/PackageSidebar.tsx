@@ -33,6 +33,30 @@ interface PackageSidebarProps {
 
 const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
   const router = useRouter();
+  const [docsRelativeUrl, setDocsRelativeUrl] = React.useState<string>("");
+  const [docsLinkLabel, setDocsLinkLabel] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (!data?.docsIpfsUrl) {
+      setDocsRelativeUrl("");
+      setDocsLinkLabel("");
+      return;
+    }
+
+    const relativePath = `/docs/${encodeURIComponent(data.name)}/${encodeURIComponent(data.version)}`;
+    setDocsRelativeUrl(relativePath);
+
+    const configuredOrigin = process.env.NEXT_PUBLIC_APP_ORIGIN ?? "";
+
+    if (typeof window !== "undefined" && window.location?.origin) {
+      setDocsLinkLabel(`${window.location.origin}${relativePath}`);
+    } else if (configuredOrigin) {
+      setDocsLinkLabel(`${configuredOrigin}${relativePath}`);
+    } else {
+      setDocsLinkLabel(relativePath);
+    }
+  }, [data?.docsIpfsUrl, data?.name, data?.version]);
+
   if (loading) {
     return (
       <Box
@@ -193,14 +217,15 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
             </Link>
           ) : data.docsIpfsUrl ? (
             <Link
-              href={`/docs/${data.name}/${data.version}`}
+              href={docsRelativeUrl || `/docs/${data.name}/${data.version}`}
               target="_blank"
               rel="noopener noreferrer"
               className="link-light link-block"
               sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              title={docsLinkLabel || docsRelativeUrl}
             >
               <DescriptionIcon fontSize="small" style={{ marginRight: 6 }} />
-              Auto-generated Documentation
+              {docsLinkLabel || docsRelativeUrl || `Docs for ${data.name}@${data.version}`}
             </Link>
           ) : (
             <Typography variant="body2" color="text.secondary">

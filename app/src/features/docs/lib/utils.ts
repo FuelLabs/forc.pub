@@ -34,8 +34,17 @@ export function getContentType(filePath: string): string {
 /// This handles the comma-separated byte code format that sometimes appears in IPFS content
 export function convertByteCodeContent(content: string): string {
   if (content.includes(',') && /^\d+,\d+/.test(content.substring(0, 10))) {
-    const byteCodes = content.split(',').map(num => parseInt(num.trim()));
-    return String.fromCharCode(...byteCodes);
+    const numbers = content
+      .split(',')
+      .map(num => parseInt(num.trim(), 10))
+      .filter(num => Number.isFinite(num) && num >= 0 && num <= 255);
+
+    const byteArray = new Uint8Array(numbers.length);
+    for (let i = 0; i < numbers.length; i += 1) {
+      byteArray[i] = numbers[i];
+    }
+
+    return new TextDecoder().decode(byteArray);
   }
   return content;
 }
