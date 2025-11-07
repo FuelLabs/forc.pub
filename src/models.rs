@@ -218,6 +218,14 @@ pub struct PackagePreview {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(QueryableByName, Debug, Clone)]
+pub struct PackagePreviewWithDocsHash {
+    #[diesel(embed)]
+    pub package: PackagePreview,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub docs_ipfs_hash: Option<String>,
+}
+
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PackagePreviewWithCategories {

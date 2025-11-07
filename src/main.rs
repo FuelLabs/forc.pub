@@ -7,7 +7,9 @@ use chrono::{DateTime, Utc};
 use forc_pub::api::api_token::{CreateTokenRequest, CreateTokenResponse, Token, TokensResponse};
 use forc_pub::api::pagination::{PaginatedResponse, Pagination};
 use forc_pub::api::publish::{PublishRequest, PublishResponse, UploadResponse};
-use forc_pub::api::search::{DownloadLinksResponse, FullPackage, RecentPackagesResponse};
+use forc_pub::api::search::{
+    DownloadLinksResponse, FullPackage, RecentPackage, RecentPackagesResponse,
+};
 use forc_pub::api::ApiError;
 use forc_pub::api::{
     auth::{LoginRequest, LoginResponse, UserResponse},
@@ -17,7 +19,7 @@ use forc_pub::db::error::DatabaseError;
 use forc_pub::db::Database;
 use forc_pub::file_uploader::s3::{ipfs_hash_to_s3_url, S3Client, S3ClientImpl};
 use forc_pub::file_uploader::{
-    pinata::{PinataClient, PinataClientImpl},
+    pinata::{ipfs_hash_to_docs_url, PinataClient, PinataClientImpl},
     FileUploader,
 };
 use forc_pub::github::handle_login;
@@ -27,7 +29,8 @@ use forc_pub::middleware::cors::Cors;
 use forc_pub::middleware::session_auth::{SessionAuth, SESSION_COOKIE_NAME};
 use forc_pub::middleware::token_auth::TokenAuth;
 use forc_pub::models::{
-    FullPackageWithCategories, PackagePreviewWithCategories, PackageVersionInfo,
+    FullPackageWithCategories, PackagePreviewWithCategories, PackagePreviewWithDocsHash,
+    PackageVersionInfo,
 };
 use forc_pub::util::{load_env, validate_or_format_semver};
 use rocket::http::Status;
@@ -400,9 +403,26 @@ fn recent_packages(db: &State<Database>) -> ApiResult<RecentPackagesResponse> {
         Ok::<_, DatabaseError>((recently_created, recently_updated))
     })?;
     Ok(Json(RecentPackagesResponse {
-        recently_created,
-        recently_updated,
+        recently_created: map_recent_packages(recently_created),
+        recently_updated: map_recent_packages(recently_updated),
     }))
+}
+
+fn map_recent_packages(packages: Vec<PackagePreviewWithDocsHash>) -> Vec<RecentPackage> {
+    packages
+        .into_iter()
+        .map(|pkg| {
+            let docs_ipfs_url = pkg
+                .docs_ipfs_hash
+                .filter(|hash| !hash.is_empty())
+                .map(|hash| ipfs_hash_to_docs_url(&hash));
+
+            RecentPackage {
+                package: pkg.package,
+                docs_ipfs_url,
+            }
+        })
+        .collect()
 }
 
 /// Catches all OPTION requests in order to get the CORS related Fairing triggered.
@@ -484,8 +504,6 @@ async fn get_package_docs(
     name: String,
     version: String,
 ) -> Result<Redirect, Status> {
-    use forc_pub::file_uploader::pinata::ipfs_hash_to_docs_url;
-
     let package_result =
         db.transaction(|conn| conn.get_full_package_with_categories(name.clone(), version.clone()));
 

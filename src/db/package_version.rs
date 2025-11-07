@@ -4,7 +4,7 @@ use crate::api::pagination::{PaginatedResponse, Pagination};
 use crate::handlers::publish::PublishInfo;
 use crate::models::{
     ApiToken, AuthorInfo, CountResult, FullPackage, FullPackageWithCategories, PackagePreview,
-    PackagePreviewWithCategories, PackageVersionInfo,
+    PackagePreviewWithCategories, PackagePreviewWithDocsHash, PackageVersionInfo,
 };
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
@@ -136,7 +136,9 @@ impl DbConn<'_> {
     }
 
     /// Fetch the most recently updated packages.
-    pub fn get_recently_updated(&mut self) -> Result<Vec<PackagePreview>, DatabaseError> {
+    pub fn get_recently_updated(
+        &mut self,
+    ) -> Result<Vec<PackagePreviewWithDocsHash>, DatabaseError> {
         let packages = diesel::sql_query(
             r#"WITH ranked_versions AS (
                 SELECT 
@@ -146,30 +148,35 @@ impl DbConn<'_> {
                     pv.package_description AS description, 
                     p.created_at AS created_at, 
                     pv.created_at AS updated_at,
+                    u.docs_ipfs_hash AS docs_ipfs_hash,
                     ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
                 FROM package_versions pv
                 JOIN packages p ON pv.package_id = p.id
+                JOIN uploads u ON pv.upload_id = u.id
             )
             SELECT 
                 name, 
                 version, 
                 description, 
                 created_at, 
-                updated_at
+                updated_at,
+                docs_ipfs_hash
             FROM ranked_versions
             WHERE rank = 1
             ORDER BY updated_at DESC
             LIMIT 10;
             "#,
         )
-        .load::<PackagePreview>(self.inner())
+        .load::<PackagePreviewWithDocsHash>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("recently updated".to_string(), err))?;
 
         Ok(packages)
     }
 
     /// Fetch the [PackagePreview]s of the most recently created packages.
-    pub fn get_recently_created(&mut self) -> Result<Vec<PackagePreview>, DatabaseError> {
+    pub fn get_recently_created(
+        &mut self,
+    ) -> Result<Vec<PackagePreviewWithDocsHash>, DatabaseError> {
         let packages = diesel::sql_query(
             r#"WITH ranked_versions AS (
                 SELECT 
@@ -179,23 +186,26 @@ impl DbConn<'_> {
                     pv.package_description AS description, 
                     p.created_at AS created_at, 
                     pv.created_at AS updated_at,
+                    u.docs_ipfs_hash AS docs_ipfs_hash,
                     ROW_NUMBER() OVER (PARTITION BY p.id ORDER BY pv.created_at DESC) AS rank
                 FROM package_versions pv
                 JOIN packages p ON pv.package_id = p.id
+                JOIN uploads u ON pv.upload_id = u.id
             )
             SELECT 
                 name, 
                 version, 
                 description, 
                 created_at, 
-                updated_at
+                updated_at,
+                docs_ipfs_hash
             FROM ranked_versions
             WHERE rank = 1
             ORDER BY created_at DESC
             LIMIT 10;
             "#,
         )
-        .load::<PackagePreview>(self.inner())
+        .load::<PackagePreviewWithDocsHash>(self.inner())
         .map_err(|err| DatabaseError::QueryFailed("recently created".to_string(), err))?;
 
         Ok(packages)

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -32,6 +32,7 @@ interface PackageSidebarProps {
 }
 
 const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
+  const warmedDocsRef = useRef<Set<string>>(new Set());
   const router = useRouter();
   const docsRelativeUrl =
     data?.docsIpfsUrl && data.name && data.version
@@ -48,6 +49,74 @@ const PackageSidebar = ({ data, loading, error }: PackageSidebarProps) => {
       ? `${docsOrigin}${docsRelativeUrl}`
       : docsRelativeUrl
     : "";
+
+  useEffect(() => {
+    const docKey =
+      data?.docsIpfsUrl && data?.name && data?.version
+        ? `${data.name}@${data.version}`
+        : null;
+
+    if (!docKey || !docsRelativeUrl || warmedDocsRef.current.has(docKey)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isMounted = true;
+    const baseDocsUrl = docsRelativeUrl.endsWith("/")
+      ? docsRelativeUrl.slice(0, -1)
+      : docsRelativeUrl;
+
+    const warmDocs = async () => {
+      try {
+        const response = await fetch(baseDocsUrl, {
+          signal: controller.signal,
+          credentials: "same-origin",
+          cache: "force-cache",
+          headers: {
+            "x-docs-prefetch": "1",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Docs prefetch failed with status ${response.status}`);
+        }
+
+        // Warm the search index in the background; ignore any errors.
+        fetch(`${baseDocsUrl}/search.js`, {
+          signal: controller.signal,
+          credentials: "same-origin",
+          cache: "force-cache",
+          headers: {
+            "x-docs-prefetch": "1",
+          },
+        }).catch(() => undefined);
+
+        if (isMounted) {
+          warmedDocsRef.current.add(docKey);
+          if (process.env.NODE_ENV !== "production") {
+            console.debug(`Prefetched docs for ${docKey}`);
+          }
+        }
+      } catch (prefetchError) {
+        if (
+          controller.signal.aborted ||
+          (prefetchError as Error).name === "AbortError"
+        ) {
+          return;
+        }
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("Docs prefetch failed", prefetchError);
+        }
+      }
+    };
+
+    warmDocs();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [data?.docsIpfsUrl, data?.name, data?.version, docsRelativeUrl]);
 
   if (loading) {
     return (
