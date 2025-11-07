@@ -8,8 +8,17 @@ use url::Url;
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentPackagesResponse {
-    pub recently_created: Vec<PackagePreview>,
-    pub recently_updated: Vec<PackagePreview>,
+    pub recently_created: Vec<RecentPackage>,
+    pub recently_updated: Vec<RecentPackage>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentPackage {
+    #[serde(flatten)]
+    pub package: PackagePreview,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub docs_ipfs_url: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
