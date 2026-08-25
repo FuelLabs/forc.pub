@@ -242,8 +242,20 @@ impl GitRepoBuilder for GithubRepoBuilder {
             .find_remote("origin")
             .map_err(|e| IndexPublishError::RepoError(format!("Failed to find remote: {e}")))?;
 
-        // Configure callbacks for SSH authentication
-        let callbacks = remote_callbacks();
+        // Configure callbacks for SSH authentication.
+        let mut callbacks = remote_callbacks();
+
+        // libgit2's `push` returns Ok even when the server rejects a ref update (for example a
+        // non-fast-forward because a concurrent publish advanced the branch). The rejection is only
+        // reported through this callback, so a non-empty `status` must be turned into a hard error.
+        // Without this, a dropped push looks like success and the caller records the package version
+        // in the database while the index commit never landed -- the "phantom version" bug.
+        callbacks.push_update_reference(|refname, status| match status {
+            Some(status) => Err(git2::Error::from_str(&format!(
+                "remote rejected update to {refname}: {status}"
+            ))),
+            None => Ok(()),
+        });
 
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);
@@ -273,6 +285,11 @@ impl GitRepoBuilder for GithubRepoBuilder {
 }
 
 const SSH_KEY_ENV_VAR: &str = "GITHUB_SSH_KEY";
+
+/// Maximum number of times `process_repo` attempts the sync/apply/commit/push cycle before giving up.
+/// Kept small on purpose: `/publish` is synchronous, so every attempt counts against the client's
+/// request timeout (see the retry loop in `process_repo`).
+const MAX_PUSH_ATTEMPTS: usize = 3;
 
 /// A git credentials handler specifically for reading the ssh key or its path
 /// from `SSH_KEY` environment variable.
@@ -327,8 +344,6 @@ impl<T: GitRepoBuilder> GithubIndexPublisher<T> {
 
         let tmp_path = repo_builder.path()?;
         let branch_name = repo_builder.resolve_default_branch_name()?;
-        repo_builder.update_and_checkout_default_branch(&branch_name)?;
-        self.write_package_entry(tmp_path, package_entry)?;
 
         let commit_message = match &self.namespace {
             Namespace::Flat => format!(
@@ -344,11 +359,44 @@ impl<T: GitRepoBuilder> GithubIndexPublisher<T> {
             ),
         };
 
-        repo_builder.stage_and_commit_changes(&commit_message)?;
-        repo_builder.push_changes(&branch_name)?;
+        // The index repo has a single branch that every publish pushes to. Concurrent publishes all
+        // branch from the same tip, so the first push fast-forwards the remote and the rest become
+        // non-fast-forwards that the remote rejects. Rather than fail we re-sync to the latest remote tip,
+        // re-apply our entry and push again. Each attempt starts from `update_and_checkout_default_branch`,
+        // which hard resets to `origin/<branch>`, so retrying converges once no other publish is racing us.
+        //
+        // `/publish` is synchronous: the client's request stays open for the whole loop, so the attempt
+        // count is deliberately small to stay well within the client/proxy request timeout.
+        // Also, we expect contention to be rare.
+        let mut attempt = 1;
+        loop {
+            repo_builder.update_and_checkout_default_branch(&branch_name)?;
+            // A genuine duplicate (the exact version already in the index) surfaces here as
+            // `VersionCollision` and propagates immediately. It must not be retried.
+            self.write_package_entry(tmp_path, package_entry)?;
+            repo_builder.stage_and_commit_changes(&commit_message)?;
 
-        Ok(())
+            match repo_builder.push_changes(&branch_name) {
+                Ok(()) => return Ok(()),
+                // Authentication problems will never succeed on retry.
+                Err(e @ IndexPublishError::AuthenticationError(_)) => return Err(e),
+                Err(e) => {
+                    if attempt >= MAX_PUSH_ATTEMPTS {
+                        return Err(e);
+                    }
+                    tracing::warn!(
+                        "Index push for {} version {} failed (attempt {attempt}/{MAX_PUSH_ATTEMPTS}), \
+                         re-syncing with the remote and retrying: {e}",
+                        package_entry.name(),
+                        package_entry.version(),
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(200 * attempt as u64));
+                    attempt += 1;
+                }
+            }
+        }
     }
+
     /// Write the package entry to the appropriate location in the repository
     fn write_package_entry(
         &self,
@@ -409,20 +457,63 @@ where
 
 // --- Mock Implementation ---
 #[cfg(test)]
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// How the mock's `push_changes` should behave, so tests can exercise the retry loop.
+#[cfg(test)]
+#[derive(Clone)]
+enum PushBehavior {
+    /// Every push succeeds (the default; preserves existing tests).
+    AlwaysOk,
+    /// The first `n` pushes fail with a (retriable) `PushError`, then every push succeeds.
+    FailTransientlyThenOk(usize),
+    /// Every push fails with the given error kind.
+    AlwaysFail(FailKind),
+}
+
+#[cfg(test)]
+#[derive(Clone)]
+enum FailKind {
+    /// A retriable push rejection (e.g. non-fast-forward).
+    Push,
+    /// A non-retriable authentication failure.
+    Auth,
+}
+
+#[cfg(test)]
 struct MockGithubRepoBuilder {
     repo: git2::Repository,
+    push_behavior: PushBehavior,
+    /// When true, `update_and_checkout_default_branch` clears the working tree, modelling a hard
+    /// reset to an empty remote tip so a retry re-applies its entry from scratch. Left false by
+    /// default so tests that pre-seed an index file (existing "remote" content) keep it.
+    reset_working_tree_on_sync: bool,
+    /// Number of `push_changes` calls, for asserting the retry loop's behavior.
+    push_attempts: Arc<AtomicUsize>,
+    /// Number of `update_and_checkout_default_branch` calls, i.e. how many times we re-synced.
+    sync_attempts: Arc<AtomicUsize>,
 }
 
 #[cfg(test)]
 impl MockGithubRepoBuilder {
     // Helper to create the mock, including initializing the repo
     fn new(path: &Path) -> Self {
+        Self::with_push_behavior(path, PushBehavior::AlwaysOk)
+    }
+
+    fn with_push_behavior(path: &Path, push_behavior: PushBehavior) -> Self {
         // Ensure the target directory exists
         fs::create_dir_all(path).expect("Failed to create mock repo directory");
         // Initialize a bare repo so path calculations work
         let repo = git2::Repository::init_bare(path.join(".git")) // Init bare usually sufficient
             .expect("Failed to initialize mock git repository");
-        Self { repo }
+        Self {
+            repo,
+            push_behavior,
+            reset_working_tree_on_sync: false,
+            push_attempts: Arc::new(AtomicUsize::new(0)),
+            sync_attempts: Arc::new(AtomicUsize::new(0)),
+        }
     }
 }
 
@@ -432,6 +523,23 @@ impl GitRepoBuilder for MockGithubRepoBuilder {
         &self,
         _branch_name: &str,
     ) -> Result<(), IndexPublishError> {
+        self.sync_attempts.fetch_add(1, Ordering::SeqCst);
+        if self.reset_working_tree_on_sync {
+            // Discard anything a previous attempt wrote, mirroring a hard reset to the remote tip.
+            let root = self.path()?.to_path_buf();
+            for entry in fs::read_dir(&root).expect("Failed to read mock repo dir") {
+                let entry = entry.expect("Failed to read mock repo entry");
+                if entry.file_name() == ".git" {
+                    continue;
+                }
+                let path = entry.path();
+                if path.is_dir() {
+                    fs::remove_dir_all(&path).expect("Failed to reset mock repo dir");
+                } else {
+                    fs::remove_file(&path).expect("Failed to reset mock repo file");
+                }
+            }
+        }
         Ok(())
     }
 
@@ -440,7 +548,25 @@ impl GitRepoBuilder for MockGithubRepoBuilder {
     }
 
     fn push_changes(&self, _branch_name: &str) -> Result<(), IndexPublishError> {
-        Ok(())
+        let attempt = self.push_attempts.fetch_add(1, Ordering::SeqCst) + 1;
+        match &self.push_behavior {
+            PushBehavior::AlwaysOk => Ok(()),
+            PushBehavior::FailTransientlyThenOk(n) => {
+                if attempt <= *n {
+                    Err(IndexPublishError::PushError(format!(
+                        "mock transient push rejection (attempt {attempt})"
+                    )))
+                } else {
+                    Ok(())
+                }
+            }
+            PushBehavior::AlwaysFail(FailKind::Push) => Err(IndexPublishError::PushError(
+                "mock permanent push rejection".to_string(),
+            )),
+            PushBehavior::AlwaysFail(FailKind::Auth) => Err(
+                IndexPublishError::AuthenticationError("mock authentication failure".to_string()),
+            ),
+        }
     }
 
     fn path(&self) -> Result<&std::path::Path, IndexPublishError> {
@@ -643,5 +769,109 @@ mod tests {
         // Assert file content hasn't changed from initial state
         let content_after = fs::read_to_string(&file_path).unwrap();
         assert_eq!(content_after.trim(), initial_content.trim());
+    }
+
+    // Build a minimal package entry for the retry tests.
+    fn sample_entry(name: &str, version: &str) -> PackageEntry {
+        PackageEntry::new(
+            name.to_string(),
+            semver::Version::from_str(version).unwrap(),
+            "QmHash".to_string(),
+            None,
+            vec![],
+            false,
+        )
+    }
+
+    #[tokio::test]
+    async fn push_retries_and_succeeds_after_transient_rejections() {
+        let tmp_dir = tempdir().unwrap();
+        let repo_path = tmp_dir.path();
+
+        // Fail the first two pushes, then succeed: models a couple of lost non-fast-forward races.
+        let mut mock = MockGithubRepoBuilder::with_push_behavior(
+            repo_path,
+            PushBehavior::FailTransientlyThenOk(2),
+        );
+        // Each retry must re-sync and re-apply the entry from a clean tree.
+        mock.reset_working_tree_on_sync = true;
+        let push_attempts = mock.push_attempts.clone();
+        let sync_attempts = mock.sync_attempts.clone();
+
+        let publisher = GithubIndexPublisher::new(2, Namespace::Flat, Arc::new(Mutex::new(mock)));
+
+        publisher
+            .publish_entry(sample_entry("my-package", "0.1.0"))
+            .await
+            .expect("publish should succeed once the transient rejections clear");
+
+        assert_eq!(
+            push_attempts.load(Ordering::SeqCst),
+            3,
+            "expected two failed pushes followed by one successful push"
+        );
+        assert_eq!(
+            sync_attempts.load(Ordering::SeqCst),
+            3,
+            "each attempt must re-sync with the remote before pushing"
+        );
+    }
+
+    #[tokio::test]
+    async fn push_gives_up_after_max_attempts() {
+        let tmp_dir = tempdir().unwrap();
+        let repo_path = tmp_dir.path();
+
+        let mut mock = MockGithubRepoBuilder::with_push_behavior(
+            repo_path,
+            PushBehavior::AlwaysFail(FailKind::Push),
+        );
+        mock.reset_working_tree_on_sync = true;
+        let push_attempts = mock.push_attempts.clone();
+
+        let publisher = GithubIndexPublisher::new(2, Namespace::Flat, Arc::new(Mutex::new(mock)));
+
+        let result = publisher
+            .publish_entry(sample_entry("my-package", "0.1.0"))
+            .await;
+
+        assert!(
+            matches!(&result, Err(IndexPublishError::PushError(_))),
+            "a push that never succeeds must surface as an error, got {result:?}"
+        );
+        assert_eq!(
+            push_attempts.load(Ordering::SeqCst),
+            MAX_PUSH_ATTEMPTS,
+            "the loop must stop after MAX_PUSH_ATTEMPTS"
+        );
+    }
+
+    #[tokio::test]
+    async fn authentication_errors_are_not_retried() {
+        let tmp_dir = tempdir().unwrap();
+        let repo_path = tmp_dir.path();
+
+        let mut mock = MockGithubRepoBuilder::with_push_behavior(
+            repo_path,
+            PushBehavior::AlwaysFail(FailKind::Auth),
+        );
+        mock.reset_working_tree_on_sync = true;
+        let push_attempts = mock.push_attempts.clone();
+
+        let publisher = GithubIndexPublisher::new(2, Namespace::Flat, Arc::new(Mutex::new(mock)));
+
+        let result = publisher
+            .publish_entry(sample_entry("my-package", "0.1.0"))
+            .await;
+
+        assert!(
+            matches!(&result, Err(IndexPublishError::AuthenticationError(_))),
+            "authentication failures must be returned as-is, got {result:?}"
+        );
+        assert_eq!(
+            push_attempts.load(Ordering::SeqCst),
+            1,
+            "authentication failures must not be retried"
+        );
     }
 }

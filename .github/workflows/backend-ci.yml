@@ -93,11 +93,11 @@ jobs:
           done
           docker compose logs db
           exit 1
+      # `cargo-binstall` is required at test time: the forc-install tests
+      # (`install_binaries_at_path_*`, `handle_project_upload_success`) shell out to
+      # `cargo binstall` to fetch prebuilt forc release binaries.
       - name: setup binstall
         uses: taiki-e/install-action@cargo-binstall
-      - name: Install forc for tests
-        run: |
-          cargo binstall --no-confirm --root tests/fixtures/forc-0.65.0 forc@0.65.0
       - uses: WarpBuilds/rust-cache@v2
       - name: Run tests
         uses: actions-rs/cargo@v1
