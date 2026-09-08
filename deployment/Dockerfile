@@ -31,6 +31,8 @@ RUN cargo build --release
 # Stage 2: Run
 FROM rust:1.85 as run
 
+ARG TARGETARCH
+
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates curl jq git libpq5 rsync \
     # Clean up
@@ -47,11 +49,16 @@ WORKDIR /root/
 
 # Install the latest 20 versions of forc with cargo-binstall
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-RUN tags=$(curl -s "https://api.github.com/repos/FuelLabs/sway/tags?per_page=20" | grep '"name"' | sed -E 's/.*"name": "v?([^"]+)".*/\1/') && \
+RUN case "${TARGETARCH}" in \
+      amd64) forc_arch=amd64 ;; \
+      arm64) forc_arch=arm64 ;; \
+      *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    tags=$(curl -s "https://api.github.com/repos/FuelLabs/sway/tags?per_page=20" | grep '"name"' | sed -E 's/.*"name": "v?([^"]+)".*/\1/') && \
     echo "Tags fetched from the repository:" && \
     for tag in $tags; do \
     echo "Tag: $tag" && \
-    cargo binstall --no-confirm --root "forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v$tag/forc-binaries-linux_amd64.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
+    cargo binstall --no-confirm --root "forc-$tag" --pkg-url="https://github.com/FuelLabs/sway/releases/download/v${tag}/forc-binaries-linux_${forc_arch}.tar.gz" --bin-dir="forc-binaries/forc" --pkg-fmt="tgz" forc; \
     done
 
 COPY --from=builder /build/target/release/forc_pub .
