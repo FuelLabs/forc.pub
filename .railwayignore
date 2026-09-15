@@ -1,0 +1,23 @@
+# Only app/ (the Next.js frontend) is needed for the Railway image. Leading slashes anchor to the repo root.
+/src
+/tests
+/migrations
+/helm
+/deployment
+/projects
+/docs
+/scripts
+/target
+/Cargo.lock
+/Cargo.toml
+/config.toml
+/diesel.toml
+/Rocket.toml
+/rust-toolchain.toml
+/docker-compose.yml
+/.env
+/.env.*
+/.github
+/app/node_modules
+/app/build
+/app/.next

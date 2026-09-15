@@ -21,6 +21,8 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   distDir: "build",
+  // Railway's Dockerfile sets NEXT_OUTPUT=standalone; Vercel keeps the default output.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   env: envVars,
   images: {
     remotePatterns: [{ hostname: "avatars.githubusercontent.com" }],
