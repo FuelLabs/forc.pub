@@ -10,7 +10,6 @@
     "@mui/icons-material": "^5.15.14",
     "@mui/material": "^5.15.14",
     "@mui/material-nextjs": "^7.0.2",
-    "@vercel/analytics": "^1.5.0",
     "axios": "^1.6.8",
     "dompurify": "^3.2.6",
     "lru-cache": "^10.2.0",
