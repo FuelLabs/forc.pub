@@ -3,8 +3,14 @@ import * as pako from 'pako';
 import { validateIPFSHash } from './security';
 import { getCachedFile, setCachedFile } from './cache';
 import { convertByteCodeContent } from './utils';
+// The public Pinata gateway rate-limits shared egress IPs (HTTP 429), so hosts
+// other than Vercel point this at the project's own gateway (https://ipfs.forc.pub).
+const IPFS_GATEWAY_URL = (
+  process.env.IPFS_GATEWAY_URL ?? "https://gateway.pinata.cloud"
+).replace(/\/$/, "");
+
 async function fetchFromIPFS(ipfsHash: string): Promise<ArrayBuffer> {
-  const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+  const ipfsUrl = `${IPFS_GATEWAY_URL}/ipfs/${ipfsHash}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
   

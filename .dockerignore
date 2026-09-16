@@ -1,0 +1,9 @@
+# Shared by app/ (Next image, Dockerfile) and deployment/Dockerfile (Rust API), both built with the repo root as context.
+# Only build outputs and VCS data are excluded; the Rust sources and .env the API image copies must stay.
+node_modules
+**/node_modules
+**/.next
+**/build
+target
+.git
+.vercel
